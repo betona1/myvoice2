@@ -106,6 +106,7 @@ def run_finetune(
     result_path = payload_path.replace(".json", ".result.json")
     sub_env = os.environ.copy()
     sub_env["CUDA_VISIBLE_DEVICES"] = train_gpu
+    sub_env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     script = os.path.join(os.path.dirname(__file__), "train_subprocess.py")
     proc = subprocess.run([sys.executable, script, payload_path, result_path], env=sub_env)
     if proc.returncode != 0 or not os.path.exists(result_path):
