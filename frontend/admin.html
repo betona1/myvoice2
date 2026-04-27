@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyVoice — 회원관리</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#7c6dfa">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07090f;--bg2:#0d1020;
+      --surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.07);
+      --border:rgba(255,255,255,0.09);--border2:rgba(124,109,250,0.35);
+      --text:#eef0f8;--muted:#7a8299;--muted2:#4a5270;
+      --accent:#7c6dfa;--accent2:#4fd1c5;--accent3:#f687b3;
+      --danger:#f05252;--success:#34d399;
+      --grad:linear-gradient(135deg,#7c6dfa 0%,#4fd1c5 100%);
+      --font-h:'Syne',sans-serif;--font-b:'Noto Sans KR',sans-serif;
+      --radius:16px;--radius-sm:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;}
+    body::before{
+      content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 600px 400px at 10% 20%,rgba(124,109,250,0.12) 0%,transparent 60%),
+        radial-gradient(ellipse 500px 400px at 90% 80%,rgba(79,209,197,0.08) 0%,transparent 60%);
+    }
+
+    header{
+      position:sticky;top:0;z-index:50;
+      background:rgba(7,9,15,0.85);backdrop-filter:blur(24px);
+      border-bottom:1px solid var(--border);padding:0.9rem 2rem;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .logo{font-family:var(--font-h);font-size:1.35rem;font-weight:900;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .logo-sub{font-size:0.75rem;color:var(--muted);margin-left:0.5rem;-webkit-text-fill-color:var(--muted);}
+
+    .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:1.5rem;}
+
+    .page-title{
+      font-family:var(--font-h);font-size:1.1rem;font-weight:800;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;
+    }
+
+    .stats{display:flex;gap:0.8rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+    .stat{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);
+      padding:0.7rem 1rem;flex:1;min-width:100px;
+    }
+    .stat-label{font-size:0.7rem;color:var(--muted);margin-bottom:0.2rem;}
+    .stat-value{font-family:var(--font-h);font-size:1.3rem;font-weight:800;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+    .toolbar{display:flex;gap:0.4rem;margin-bottom:0.8rem;flex-wrap:wrap;align-items:center;}
+    .toolbar input,.toolbar select{
+      padding:0.5rem 0.8rem;font-size:0.82rem;
+      background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:var(--radius-sm);
+      color:var(--text);outline:none;font-family:var(--font-b);
+    }
+    .toolbar input{flex:1;min-width:150px;}
+    .toolbar select{min-width:100px;}
+    .toolbar input:focus,.toolbar select:focus{border-color:var(--accent);}
+    .toolbar select option{background:#0d1020;color:var(--text);}
+
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:0.3rem;
+      padding:0.45rem 0.8rem;border:none;border-radius:var(--radius-sm);
+      font-family:var(--font-b);font-size:0.78rem;font-weight:600;
+      cursor:pointer;transition:all 0.2s;
+    }
+    .btn:active{transform:scale(0.97);}
+    .btn-primary{background:var(--grad);color:#fff;box-shadow:0 0 15px rgba(124,109,250,0.2);}
+    .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-danger{background:rgba(240,82,82,0.1);border:1px solid rgba(240,82,82,0.25);color:#fca5a5;}
+    .btn-danger:hover{background:rgba(240,82,82,0.2);}
+    .btn-success{background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:var(--success);}
+
+    .badge{
+      display:inline-block;padding:0.15rem 0.45rem;border-radius:4px;
+      font-size:0.68rem;font-weight:700;white-space:nowrap;
+    }
+    .badge-admin{background:rgba(124,109,250,0.2);color:var(--accent);}
+    .badge-staff{background:rgba(79,209,197,0.2);color:var(--accent2);}
+    .badge-user{background:rgba(255,255,255,0.06);color:var(--muted);}
+    .badge-google{background:rgba(66,133,244,0.15);color:#8ab4f8;}
+    .badge-email{background:rgba(255,255,255,0.06);color:var(--muted);}
+    .badge-verified{background:rgba(52,211,153,0.15);color:var(--success);}
+    .badge-unverified{background:rgba(240,82,82,0.15);color:#fca5a5;}
+    .badge-active{background:rgba(52,211,153,0.15);color:var(--success);}
+    .badge-inactive{background:rgba(240,82,82,0.15);color:#fca5a5;}
+    /* plan badges */
+    .badge-free{background:rgba(255,255,255,0.06);color:var(--muted);}
+    .badge-beta{background:rgba(246,135,179,0.2);color:var(--accent3);}
+    .badge-basic{background:rgba(79,209,197,0.15);color:var(--accent2);}
+    .badge-pro{background:rgba(124,109,250,0.2);color:var(--accent);}
+    .badge-max{background:linear-gradient(135deg,rgba(124,109,250,0.25),rgba(246,135,179,0.25));color:#e0d4ff;}
+    /* user_type badges */
+    .badge-general{background:rgba(255,255,255,0.06);color:var(--muted);}
+    .badge-voice{background:rgba(246,135,179,0.15);color:var(--accent3);}
+    .badge-group{background:rgba(79,209,197,0.15);color:var(--accent2);}
+    .badge-vip{background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,165,0,0.15));color:#ffd700;}
+
+    .select-sm{
+      padding:0.2rem 0.3rem;font-size:0.72rem;
+      background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:5px;
+      color:var(--text);outline:none;font-family:var(--font-b);
+    }
+    .select-sm:focus{border-color:var(--accent);}
+    .select-sm option{background:#0d1020;color:var(--text);}
+    .level-input{
+      width:50px;padding:0.2rem 0.4rem;font-size:0.78rem;
+      background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:5px;
+      color:var(--text);text-align:center;outline:none;font-family:var(--font-b);
+    }
+    .level-input:focus{border-color:var(--accent);}
+
+    .toast{
+      position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;
+      background:rgba(13,16,32,0.95);backdrop-filter:blur(20px);
+      border:1px solid var(--border);border-radius:var(--radius-sm);
+      padding:0.7rem 1rem;font-size:0.82rem;max-width:300px;
+      opacity:0;transform:translateY(10px);transition:opacity 0.3s,transform 0.3s;
+      pointer-events:none;
+    }
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{border-color:rgba(52,211,153,0.5);}
+    .toast.error{border-color:rgba(240,82,82,0.5);color:#fca5a5;}
+
+    .empty{text-align:center;padding:2rem;color:var(--muted2);font-size:0.85rem;}
+
+    /* 데스크톱 테이블 */
+    .desktop-table{display:block;}
+    table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+    th{
+      background:rgba(13,16,32,0.9);
+      padding:0.5rem 0.5rem;text-align:left;font-size:0.68rem;
+      color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+      border-bottom:1px solid var(--border2);
+    }
+    td{padding:0.5rem 0.5rem;border-bottom:1px solid var(--border);vertical-align:middle;}
+    tr:hover td{background:rgba(124,109,250,0.03);}
+
+    /* 모바일 카드 */
+    .user-cards{display:none;}
+    .user-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:0.9rem;margin-bottom:0.6rem;
+    }
+    .user-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;}
+    .user-card-name{font-weight:700;font-size:0.9rem;}
+    .user-card-email{font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;}
+    .user-card-badges{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.6rem;}
+    .user-card-row{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;}
+    .user-card-row label{font-size:0.72rem;color:var(--muted);min-width:40px;}
+    .user-card-actions{display:flex;justify-content:flex-end;gap:0.3rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);}
+
+    @media(max-width:768px){
+      header{padding:0.6rem 1rem;}
+      .container{padding:0.8rem;}
+      .stats{gap:0.4rem;}
+      .stat{padding:0.5rem 0.7rem;min-width:70px;}
+      .stat-value{font-size:1rem;}
+      .desktop-table{display:none !important;}
+      .user-cards{display:block !important;}
+      .btn{font-size:0.72rem;padding:0.35rem 0.6rem;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <a href="/" style="text-decoration:none;"><span class="logo">MyVoice</span></a>
+    <span class="logo-sub">회원관리</span>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <a href="/library" class="btn btn-secondary" style="text-decoration:none;">Library</a>
+    <a href="/" class="btn btn-secondary" style="text-decoration:none;">TTS Studio</a>
+    <button onclick="doLogout()" class="btn btn-danger">로그아웃</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="page-title">회원 관리</div>
+
+  <div class="stats" id="statsArea">
+    <div class="stat"><div class="stat-label">전체</div><div class="stat-value" id="statTotal">-</div></div>
+    <div class="stat"><div class="stat-label">관리자</div><div class="stat-value" id="statAdmin">-</div></div>
+    <div class="stat"><div class="stat-label">Beta</div><div class="stat-value" id="statBeta">-</div></div>
+    <div class="stat"><div class="stat-label">구독자</div><div class="stat-value" id="statPaid">-</div></div>
+    <div class="stat"><div class="stat-label">음원</div><div class="stat-value" id="statVoice">-</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="이메일 또는 이름 검색..." oninput="filterUsers()">
+    <select id="filterPlan" onchange="filterUsers()">
+      <option value="">플랜 전체</option>
+      <option value="free">Free</option>
+      <option value="beta">Beta</option>
+      <option value="basic">Basic</option>
+      <option value="pro">Pro</option>
+      <option value="max">Max</option>
+    </select>
+    <select id="filterType" onchange="filterUsers()">
+      <option value="">유형 전체</option>
+      <option value="general">일반</option>
+      <option value="voice">음원</option>
+      <option value="group">그룹</option>
+      <option value="vip">VIP</option>
+    </select>
+    <button class="btn btn-secondary" onclick="loadUsers()">새로고침</button>
+  </div>
+
+  <!-- 데스크톱 테이블 -->
+  <div class="desktop-table" style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>이름</th>
+          <th>이메일</th>
+          <th>가입</th>
+          <th>상태</th>
+          <th>플랜</th>
+          <th>유형</th>
+          <th>권한</th>
+          <th>가입일</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        <tr><td colspan="10" class="empty">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 모바일 카드 -->
+  <div class="user-cards" id="userCards">
+    <div class="empty">로딩 중...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let allUsers = [];
+  let currentAdmin = null;
+
+  const PLAN_LABELS = { free:'Free', beta:'Beta', basic:'Basic', pro:'Pro', max:'Max' };
+  const TYPE_LABELS = { general:'일반', voice:'음원', group:'그룹', vip:'VIP' };
+
+  async function checkAuth() {
+    const token = localStorage.getItem('access_token');
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    try {
+      const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
+      if (!res.ok) { location.href = '/login'; return; }
+      const d = await res.json();
+      currentAdmin = d.user;
+      if (d.user.level > 10) { alert('관리자 권한이 필요합니다'); location.href = '/'; return; }
+    } catch(e) { location.href = '/login'; }
+  }
+
+  async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('access_token');
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, { ...options, headers, credentials: 'include' });
+    if (res.status === 401) { location.href = '/login'; return null; }
+    return res;
+  }
+
+  async function doLogout() {
+    await authFetch('/api/auth/logout', { method: 'POST' });
+    localStorage.removeItem('access_token');
+    location.href = '/login';
+  }
+
+  function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  function levelBadge(lvl) {
+    if (lvl === 0) return '<span class="badge badge-admin">SUPER</span>';
+    if (lvl <= 9) return '<span class="badge badge-staff">STAFF</span>';
+    if (lvl <= 49) return '<span class="badge badge-admin">TRUSTED</span>';
+    if (lvl <= 99) return '<span class="badge badge-user">STANDARD</span>';
+    if (lvl <= 199) return '<span class="badge badge-user">LIMITED</span>';
+    if (lvl <= 254) return '<span class="badge badge-unverified">PENDING</span>';
+    return '<span class="badge badge-inactive">NEW</span>';
+  }
+
+  function planBadge(plan) {
+    const p = plan || 'free';
+    return `<span class="badge badge-${p}">${PLAN_LABELS[p] || p}</span>`;
+  }
+
+  function typeBadge(type) {
+    const t = type || 'general';
+    return `<span class="badge badge-${t}">${TYPE_LABELS[t] || t}</span>`;
+  }
+
+  function formatDate(d) { return d ? d.substring(0, 10) : '-'; }
+
+  function planOptions(current) {
+    return Object.keys(PLAN_LABELS).map(k =>
+      `<option value="${k}" ${k===current?'selected':''}>${PLAN_LABELS[k]}</option>`
+    ).join('');
+  }
+  function typeOptions(current) {
+    return Object.keys(TYPE_LABELS).map(k =>
+      `<option value="${k}" ${k===current?'selected':''}>${TYPE_LABELS[k]}</option>`
+    ).join('');
+  }
+
+  async function loadUsers() {
+    const res = await authFetch('/api/auth/users');
+    if (!res) return;
+    const d = await res.json();
+    allUsers = d.users || [];
+    updateStats();
+    filterUsers();
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = allUsers.length;
+    document.getElementById('statAdmin').textContent = allUsers.filter(u => u.level <= 10).length;
+    document.getElementById('statBeta').textContent = allUsers.filter(u => (u.plan||'free') === 'beta').length;
+    document.getElementById('statPaid').textContent = allUsers.filter(u => ['basic','pro','max'].includes(u.plan)).length;
+    document.getElementById('statVoice').textContent = allUsers.filter(u => (u.user_type||'general') === 'voice').length;
+  }
+
+  function filterUsers() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const fp = document.getElementById('filterPlan').value;
+    const ft = document.getElementById('filterType').value;
+    let filtered = allUsers;
+    if (q) filtered = filtered.filter(u => u.email.toLowerCase().includes(q) || u.display_name.toLowerCase().includes(q));
+    if (fp) filtered = filtered.filter(u => (u.plan || 'free') === fp);
+    if (ft) filtered = filtered.filter(u => (u.user_type || 'general') === ft);
+    renderUsers(filtered);
+  }
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('userTableBody');
+    const cards = document.getElementById('userCards');
+    if (users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">회원이 없습니다</td></tr>';
+      cards.innerHTML = '<div class="empty">회원이 없습니다</div>';
+      return;
+    }
+
+    // 데스크톱 테이블
+    tbody.innerHTML = users.map(u => {
+      const plan = u.plan || 'free';
+      const utype = u.user_type || 'general';
+      return `
+      <tr>
+        <td style="color:var(--muted2);">${u.id}</td>
+        <td style="font-weight:600;">${currentAdmin&&Number(currentAdmin.level)<=10?`<span style="cursor:pointer;color:var(--accent2);text-decoration:underline;text-decoration-style:dotted;" onclick="impersonate(${u.id})" title="클릭: 이 사용자로 로그인">${esc(u.display_name)}</span>`:esc(u.display_name)}</td>
+        <td style="font-size:0.75rem;color:var(--muted);">${esc(u.email)}</td>
+        <td>${u.auth_provider==='google'?'<span class="badge badge-google">G</span>':'<span class="badge badge-email">E</span>'}
+            ${u.email_verified?'<span class="badge badge-verified">V</span>':''}</td>
+        <td>${u.is_active?'<span class="badge badge-active">ON</span>':'<span class="badge badge-inactive">OFF</span>'}</td>
+        <td><select class="select-sm" onchange="changePlan(${u.id},this.value)">${planOptions(plan)}</select></td>
+        <td><select class="select-sm" onchange="changeType(${u.id},this.value)">${typeOptions(utype)}</select></td>
+        <td>
+          ${levelBadge(u.level)}
+          <input type="number" class="level-input" value="${u.level}" min="0" max="255"
+            onchange="changeLevel(${u.id},this.value)" title="0=SUPER 1-9=STAFF 10-49=TRUSTED 50-99=STANDARD 100-199=LIMITED 200-254=PENDING 255=NEW">
+        </td>
+        <td style="font-size:0.7rem;color:var(--muted);">${formatDate(u.created_at)}</td>
+        <td>
+          ${u.is_active
+            ? `<button class="btn btn-danger" style="font-size:0.65rem;padding:0.2rem 0.4rem;" onclick="toggleActive(${u.id},0)">정지</button>`
+            : `<button class="btn btn-success" style="font-size:0.65rem;padding:0.2rem 0.4rem;" onclick="toggleActive(${u.id},1)">활성</button>`
+          }
+        </td>
+      </tr>`;
+    }).join('');
+
+    // 모바일 카드
+    cards.innerHTML = users.map(u => {
+      const plan = u.plan || 'free';
+      const utype = u.user_type || 'general';
+      return `
+      <div class="user-card">
+        <div class="user-card-header">
+          <span class="user-card-name">${currentAdmin&&Number(currentAdmin.level)<=10?`<span style="cursor:pointer;color:var(--accent2);text-decoration:underline dotted;" onclick="impersonate(${u.id})">${esc(u.display_name)}</span>`:esc(u.display_name)}</span>
+          <span style="font-size:0.7rem;color:var(--muted2);">#${u.id}</span>
+        </div>
+        <div class="user-card-email">${esc(u.email)}</div>
+        <div class="user-card-badges">
+          ${u.auth_provider==='google'?'<span class="badge badge-google">Google</span>':'<span class="badge badge-email">Email</span>'}
+          ${u.email_verified?'<span class="badge badge-verified">인증</span>':'<span class="badge badge-unverified">미인증</span>'}
+          ${u.is_active?'<span class="badge badge-active">활성</span>':'<span class="badge badge-inactive">정지</span>'}
+          ${levelBadge(u.level)}
+        </div>
+        <div class="user-card-row">
+          <label>플랜</label>
+          <select class="select-sm" onchange="changePlan(${u.id},this.value)">${planOptions(plan)}</select>
+          <label>유형</label>
+          <select class="select-sm" onchange="changeType(${u.id},this.value)">${typeOptions(utype)}</select>
+        </div>
+        <div class="user-card-row">
+          <label>권한</label>
+          <input type="number" class="level-input" value="${u.level}" min="0" max="255"
+            onchange="changeLevel(${u.id},this.value)">
+          <span style="font-size:0.7rem;color:var(--muted);">${formatDate(u.created_at)}</span>
+        </div>
+        <div class="user-card-actions">
+          ${u.is_active
+            ? `<button class="btn btn-danger" onclick="toggleActive(${u.id},0)">정지</button>`
+            : `<button class="btn btn-success" onclick="toggleActive(${u.id},1)">활성</button>`
+          }
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function changeLevel(userId, val) {
+    const v = parseInt(val);
+    if (isNaN(v)||v<0||v>255) return toast('0~255','error');
+    const fd = new FormData(); fd.append('level',v);
+    const res = await authFetch(`/api/auth/users/${userId}/level`,{method:'POST',body:fd});
+    if(res&&res.ok){toast('권한 변경 완료');loadUsers();}else toast('실패','error');
+  }
+
+  async function changePlan(userId, plan) {
+    const fd = new FormData(); fd.append('plan',plan);
+    const res = await authFetch(`/api/auth/users/${userId}/plan`,{method:'POST',body:fd});
+    if(res&&res.ok){toast(`플랜 → ${PLAN_LABELS[plan]}`);loadUsers();}else toast('실패','error');
+  }
+
+  async function changeType(userId, utype) {
+    const fd = new FormData(); fd.append('user_type',utype);
+    const res = await authFetch(`/api/auth/users/${userId}/user-type`,{method:'POST',body:fd});
+    if(res&&res.ok){toast(`유형 → ${TYPE_LABELS[utype]}`);loadUsers();}else toast('실패','error');
+  }
+
+  async function toggleActive(userId, active) {
+    const action = active ? '활성화' : '정지';
+    if (!confirm(`이 사용자를 ${action} 하시겠습니까?`)) return;
+    const fd = new FormData(); fd.append('is_active',active);
+    const res = await authFetch(`/api/auth/users/${userId}/status`,{method:'POST',body:fd});
+    if(res&&res.ok){toast(`${action} 완료`);loadUsers();}else toast('실패','error');
+  }
+
+  async function impersonate(userId) {
+    const u = allUsers.find(x => x.id === userId);
+    const displayName = u ? u.display_name : `#${userId}`;
+    if (!confirm(`"${displayName}" 사용자로 로그인하시겠습니까?\n\n돌아오려면 로그아웃 후 슈퍼관리자로 다시 로그인하세요.`)) return;
+    const res = await authFetch(`/api/auth/impersonate/${userId}`, { method: 'POST' });
+    if (!res || !res.ok) { toast('대리 로그인 실패', 'error'); return; }
+    const d = await res.json();
+    localStorage.setItem('access_token', d.access_token);
+    toast(`${displayName}(으)로 전환 완료!`);
+    setTimeout(() => { location.href = '/'; }, 800);
+  }
+
+  // INIT — checkAuth 완료 후 loadUsers 호출
+  checkAuth().then(() => loadUsers());
+</script>
+</body>
+</html>

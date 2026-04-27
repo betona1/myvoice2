@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>김나경 음성 비교 테스트</title>
+<style>
+body{font-family:sans-serif;background:#111;color:#eee;padding:2rem;max-width:600px;margin:0 auto;}
+h1{color:#7c6dfa;font-size:1.3rem;}
+.test{background:rgba(255,255,255,0.05);border:1px solid #333;border-radius:12px;padding:1rem;margin:1rem 0;}
+.test h3{color:#4fd1c5;font-size:0.9rem;margin-bottom:0.5rem;}
+.test p{color:#888;font-size:0.75rem;margin-bottom:0.5rem;}
+audio{width:100%;}
+</style>
+</head>
+<body>
+<h1>김나경 음성 비교 테스트</h1>
+<p style="color:#888;">같은 문장: "안녕하세요, 저는 김나경입니다. 오늘 하루도 행복하게 보내세요."</p>
+
+<div class="test">
+<h3>Test 1: 현재 설정 (EQ + temperature 0.65)</h3>
+<p>200Hz 저음부스트 +2dB, gpt_cond_len=24</p>
+<audio controls src="/static/test1_current.wav"></audio>
+</div>
+
+<div class="test">
+<h3>Test 2: 후처리 EQ 완전 제거</h3>
+<p>DC오프셋 제거 + 볼륨 정규화만, gpt_cond_len=24</p>
+<audio controls src="/static/test2_no_eq.wav"></audio>
+</div>
+
+<div class="test">
+<h3>Test 3: gpt_cond_len=30 (더 긴 참조)</h3>
+<p>EQ 없음, 30초 전체 참조로 음색 더 깊이 학습</p>
+<audio controls src="/static/test3_condlen30.wav"></audio>
+</div>
+
+<div class="test">
+<h3>Test 4: temperature=0.75 + gpt_cond_len=30</h3>
+<p>EQ 없음, 더 자연스러운 발화 + 긴 참조</p>
+<audio controls src="/static/test4_temp075.wav"></audio>
+</div>
+</body>
+</html>

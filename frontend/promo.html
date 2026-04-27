@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyVoice — AI 목소리 복원</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #07090f;
+      color: #eef0f8;
+      overflow: hidden;
+      width: 100vw; height: 100vh;
+    }
+
+    /* ═══ CANVAS ═══ */
+    .canvas {
+      position: relative;
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ═══ PARTICLES ═══ */
+    .particles {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: pFloat linear infinite;
+    }
+    @keyframes pFloat {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 0.8; }
+      90% { opacity: 0.8; }
+      100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+
+    /* ═══ BG GLOW ═══ */
+    .bg-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      transition: opacity 1s ease;
+    }
+    .bg-glow.g1 {
+      background:
+        radial-gradient(ellipse 600px 500px at 50% 40%, rgba(124,109,250,0.15) 0%, transparent 70%);
+    }
+    .bg-glow.g2 {
+      background:
+        radial-gradient(ellipse 600px 500px at 30% 50%, rgba(246,135,179,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 70% 60%, rgba(79,209,197,0.08) 0%, transparent 70%);
+    }
+    .bg-glow.g3 {
+      background:
+        radial-gradient(ellipse 500px 400px at 60% 40%, rgba(79,209,197,0.12) 0%, transparent 70%);
+    }
+    .bg-glow.g4 {
+      background:
+        radial-gradient(ellipse 500px 400px at 40% 50%, rgba(124,109,250,0.1) 0%, transparent 70%),
+        radial-gradient(ellipse 400px 300px at 70% 40%, rgba(246,135,179,0.08) 0%, transparent 70%);
+    }
+    .bg-glow.g5 {
+      background:
+        radial-gradient(ellipse 700px 500px at 50% 50%, rgba(124,109,250,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 500px 400px at 50% 60%, rgba(79,209,197,0.1) 0%, transparent 60%);
+    }
+
+    /* ═══ SCENES ═══ */
+    .scene {
+      position: absolute; inset: 0; z-index: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 2rem;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+      pointer-events: none;
+    }
+    .scene.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ═══ SCENE 1: INTRO ═══ */
+    .logo-huge {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(3.5rem, 10vw, 7rem);
+      font-weight: 900;
+      background: linear-gradient(135deg, #7c6dfa 0%, #4fd1c5 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.03em;
+      opacity: 0; transform: scale(0.8);
+      animation: none;
+    }
+    .scene.active .logo-huge {
+      animation: logoIn 1s ease-out 0.2s both;
+    }
+    @keyframes logoIn {
+      from { opacity: 0; transform: scale(0.7); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .tagline {
+      font-size: clamp(1rem, 3vw, 1.6rem);
+      font-weight: 700;
+      text-align: center;
+      margin-top: 0.8rem;
+      opacity: 0;
+    }
+    .scene.active .tagline { animation: fadeUp 0.7s ease 0.5s both; }
+    .tagline em {
+      font-style: normal;
+      background: linear-gradient(135deg, #f687b3, #7c6dfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sub-tag {
+      font-size: clamp(0.75rem, 1.8vw, 0.95rem);
+      color: #7a8299;
+      margin-top: 0.5rem;
+      text-align: center;
+      opacity: 0;
+    }
+    .scene.active .sub-tag { animation: fadeUp 0.7s ease 0.8s both; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(25px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Wave */
+    .wave-row {
+      display: flex; align-items: center; gap: 3px;
+      height: 50px; margin-top: 2rem;
+      opacity: 0;
+    }
+    .scene.active .wave-row { animation: fadeUp 0.6s ease 1s both; }
+    .wave-bar {
+      width: 4px; border-radius: 2px;
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      animation: wb 1.2s ease-in-out infinite;
+    }
+    @keyframes wb {
+      0%,100% { height: 15%; opacity: 0.4; }
+      50% { height: 100%; opacity: 1; }
+    }
+
+    /* ═══ SCENE 2: VOICE RESTORATION ═══ */
+    .section-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+    }
+    .scene.active .section-label { animation: fadeUp 0.6s ease 0.2s both; }
+
+    .scene-title {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.6rem, 5vw, 3rem);
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.25;
+      margin-bottom: 1rem;
+      opacity: 0;
+    }
+    .scene.active .scene-title { animation: fadeUp 0.7s ease 0.4s both; }
+    .highlight {
+      background: linear-gradient(135deg, #f687b3, #7c6dfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .scene-desc {
+      font-size: clamp(0.82rem, 1.8vw, 1rem);
+      color: #7a8299; text-align: center;
+      max-width: 550px; line-height: 1.7;
+      opacity: 0;
+    }
+    .scene.active .scene-desc { animation: fadeUp 0.6s ease 0.6s both; }
+
+    /* Voice cards */
+    .voice-cards {
+      display: flex; gap: 1rem; margin-top: 1.8rem;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .voice-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+      padding: 1.3rem 1.2rem;
+      width: 220px; text-align: center;
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      transition: all 0.4s ease;
+    }
+    .scene.active .voice-card:nth-child(1) { animation: cardIn 0.6s ease 0.8s both; }
+    .scene.active .voice-card:nth-child(2) { animation: cardIn 0.6s ease 1s both; }
+    .scene.active .voice-card:nth-child(3) { animation: cardIn 0.6s ease 1.2s both; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .vc-icon { font-size: 2.5rem; margin-bottom: 0.6rem; display: block; }
+    .vc-name { font-family: 'Syne'; font-size: 0.95rem; font-weight: 800; margin-bottom: 0.3rem; }
+    .vc-desc { font-size: 0.72rem; color: #7a8299; line-height: 1.5; }
+    .vc-tag {
+      display: inline-block; margin-top: 0.6rem;
+      padding: 0.2rem 0.6rem; border-radius: 15px;
+      font-size: 0.62rem; font-weight: 700;
+      background: rgba(124,109,250,0.15);
+      color: #7c6dfa;
+      border: 1px solid rgba(124,109,250,0.3);
+    }
+
+    /* ═══ SCENE 3: TECH UPGRADE ═══ */
+    .upgrade-list {
+      display: flex; flex-direction: column;
+      gap: 0.8rem; margin-top: 1.5rem;
+      max-width: 600px; width: 100%;
+    }
+    .up-item {
+      display: flex; gap: 0.8rem; align-items: center;
+      padding: 0.8rem 1rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      opacity: 0;
+    }
+    .scene.active .up-item:nth-child(1) { animation: slideIn 0.5s ease 0.3s both; }
+    .scene.active .up-item:nth-child(2) { animation: slideIn 0.5s ease 0.5s both; }
+    .scene.active .up-item:nth-child(3) { animation: slideIn 0.5s ease 0.7s both; }
+    .scene.active .up-item:nth-child(4) { animation: slideIn 0.5s ease 0.9s both; }
+    .scene.active .up-item:nth-child(5) { animation: slideIn 0.5s ease 1.1s both; }
+    .scene.active .up-item:nth-child(6) { animation: slideIn 0.5s ease 1.3s both; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-25px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .up-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .up-text { flex: 1; }
+    .up-title { font-weight: 700; font-size: 0.85rem; }
+    .up-desc { font-size: 0.72rem; color: #7a8299; margin-top: 0.1rem; }
+    .badge {
+      display: inline-block; padding: 0.1rem 0.4rem;
+      border-radius: 5px; font-size: 0.6rem; font-weight: 700;
+      margin-left: 0.3rem; vertical-align: middle;
+    }
+    .b-new { background: rgba(79,209,197,0.15); color: #4fd1c5; }
+    .b-up { background: rgba(124,109,250,0.15); color: #7c6dfa; }
+
+    /* ═══ SCENE 4: FEATURES ═══ */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem; margin-top: 1.5rem;
+      max-width: 700px; width: 100%;
+    }
+    .feat-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 1.2rem 0.8rem;
+      text-align: center;
+      opacity: 0;
+    }
+    .scene.active .feat-box { animation: popIn 0.5s ease both; }
+    .scene.active .feat-box:nth-child(1) { animation-delay: 0.3s; }
+    .scene.active .feat-box:nth-child(2) { animation-delay: 0.4s; }
+    .scene.active .feat-box:nth-child(3) { animation-delay: 0.5s; }
+    .scene.active .feat-box:nth-child(4) { animation-delay: 0.6s; }
+    .scene.active .feat-box:nth-child(5) { animation-delay: 0.7s; }
+    .scene.active .feat-box:nth-child(6) { animation-delay: 0.8s; }
+    .scene.active .feat-box:nth-child(7) { animation-delay: 0.9s; }
+    .scene.active .feat-box:nth-child(8) { animation-delay: 1.0s; }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .feat-icon { font-size: 1.8rem; margin-bottom: 0.5rem; display: block; }
+    .feat-name { font-weight: 700; font-size: 0.78rem; }
+    .feat-detail { font-size: 0.65rem; color: #7a8299; margin-top: 0.2rem; line-height: 1.4; }
+
+    /* ═══ SCENE 5: CLOSING ═══ */
+    .closing-text {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(1.5rem, 4vw, 2.8rem);
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.4;
+      opacity: 0;
+    }
+    .scene.active .closing-text { animation: fadeUp 0.8s ease 0.3s both; }
+    .grad-text {
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .closing-sub {
+      font-size: clamp(0.85rem, 2vw, 1.05rem);
+      color: #7a8299; text-align: center;
+      margin-top: 1rem; opacity: 0;
+    }
+    .scene.active .closing-sub { animation: fadeUp 0.7s ease 0.7s both; }
+
+    .cta-btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.9rem 2.2rem;
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      color: #fff; font-size: 1rem; font-weight: 700;
+      border: none; border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 0 40px rgba(124,109,250,0.4);
+      margin-top: 1.8rem; opacity: 0;
+      text-decoration: none;
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+    .scene.active .cta-btn { animation: fadeUp 0.6s ease 1s both; }
+
+    .tech-tags {
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+      justify-content: center; margin-top: 1.5rem;
+      opacity: 0;
+    }
+    .scene.active .tech-tags { animation: fadeUp 0.5s ease 1.3s both; }
+    .tech-tag {
+      padding: 0.25rem 0.7rem; border-radius: 15px;
+      font-size: 0.65rem; font-weight: 600;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #7a8299;
+    }
+
+    /* ═══ PLAY BUTTON OVERLAY ═══ */
+    .play-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(7,9,15,0.95);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.5s ease;
+    }
+    .play-overlay.hidden { opacity: 0; pointer-events: none; }
+    .play-circle {
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c6dfa, #4fd1c5);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 60px rgba(124,109,250,0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 40px rgba(124,109,250,0.4); transform: scale(1); }
+      50% { box-shadow: 0 0 70px rgba(124,109,250,0.6); transform: scale(1.05); }
+    }
+    .play-circle svg { width: 40px; height: 40px; fill: #fff; margin-left: 5px; }
+    .play-label {
+      margin-top: 1.2rem;
+      font-size: 0.9rem; color: #7a8299;
+      font-weight: 500;
+    }
+
+    /* ═══ PROGRESS BAR ═══ */
+    .progress-wrap {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 4px; z-index: 50;
+      background: rgba(255,255,255,0.05);
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7c6dfa, #4fd1c5);
+      width: 0%;
+      transition: width 0.3s linear;
+    }
+
+    /* ═══ SUBTITLE ═══ */
+    .subtitle-bar {
+      position: fixed;
+      bottom: 30px; left: 50%; transform: translateX(-50%);
+      z-index: 40;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(12px);
+      border-radius: 10px;
+      padding: 0.6rem 1.5rem;
+      font-size: clamp(0.85rem, 2vw, 1.05rem);
+      font-weight: 600;
+      text-align: center;
+      max-width: 90vw;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      border: 1px solid rgba(124,109,250,0.2);
+    }
+    .subtitle-bar.show { opacity: 1; }
+
+    /* ═══ MOBILE ═══ */
+    @media (max-width: 768px) {
+      .voice-cards { flex-direction: column; align-items: center; }
+      .voice-card { width: 85%; max-width: 260px; padding: 1rem; }
+      .feat-grid { grid-template-columns: repeat(2, 1fr); }
+      .feat-box { padding: 0.8rem 0.5rem; }
+      .upgrade-list { max-width: 95%; }
+      .up-item { padding: 0.6rem 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- BG Glows -->
+<div class="bg-glow g1" id="bgGlow" style="opacity:1;"></div>
+
+<!-- Play overlay -->
+<div class="play-overlay" id="playOverlay">
+  <div class="play-circle">
+    <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+  </div>
+  <div class="play-label">클릭하여 재생</div>
+</div>
+
+<!-- Progress -->
+<div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+
+<!-- Subtitle -->
+<div class="subtitle-bar" id="subtitle"></div>
+
+<!-- Audio -->
+<audio id="narration" src="/static/promo_narration.wav" preload="auto"></audio>
+
+<div class="canvas">
+
+  <!-- SCENE 1: INTRO -->
+  <div class="scene" id="scene1">
+    <div class="logo-huge">MyVoice</div>
+    <div class="tagline">AI로 복원하는 <em>잊을 수 없는 목소리</em></div>
+    <div class="sub-tag">XTTS v2 기반 음성 클로닝 &middot; 30초 샘플로 완벽 복원</div>
+    <div class="wave-row" id="waveRow"></div>
+  </div>
+
+  <!-- SCENE 2: VOICE RESTORATION -->
+  <div class="scene" id="scene2">
+    <div class="section-label">Voice Restoration</div>
+    <div class="scene-title">다시 들을 수 있습니다<br><span class="highlight">그분의 목소리</span></div>
+    <div class="scene-desc">역사 속 위대한 지도자들의 육성을 AI가 복원합니다<br>30초의 음성 샘플만으로 자연스러운 목소리를 재현합니다</div>
+    <div class="voice-cards">
+      <div class="voice-card">
+        <span class="vc-icon">🇰🇷</span>
+        <div class="vc-name">김대중 대통령</div>
+        <div class="vc-desc">민주화의 상징<br>따뜻하고 무게감 있는 목소리</div>
+        <span class="vc-tag">취임사 음성 복원</span>
+      </div>
+      <div class="voice-card">
+        <span class="vc-icon">🕊️</span>
+        <div class="vc-name">노무현 대통령</div>
+        <div class="vc-desc">국민과 소통했던<br>진솔하고 힘 있는 목소리</div>
+        <span class="vc-tag">연설 음성 복원</span>
+      </div>
+      <div class="voice-card">
+        <span class="vc-icon">🎙️</span>
+        <div class="vc-name">소중한 분의 목소리</div>
+        <div class="vc-desc">그리운 가족, 은사님의<br>목소리를 다시 들을 수 있습니다</div>
+        <span class="vc-tag">맞춤형 복원</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 3: TECH -->
+  <div class="scene" id="scene3">
+    <div class="section-label">Technology</div>
+    <div class="scene-title">끊임없는 <span class="highlight">기술 진화</span></div>
+    <div class="upgrade-list">
+      <div class="up-item">
+        <div class="up-icon">🔊</div>
+        <div class="up-text">
+          <div class="up-title">음질 대폭 개선 <span class="badge b-up">v2.1</span></div>
+          <div class="up-desc">5단계 파이프라인 — 모기 목소리에서 원음 수준까지</div>
+        </div>
+      </div>
+      <div class="up-item">
+        <div class="up-icon">🎚️</div>
+        <div class="up-text">
+          <div class="up-title">8가지 톤 프리셋 <span class="badge b-new">NEW</span></div>
+          <div class="up-desc">밝은톤, 정중한톤, 부모님, 시니어 등</div>
+        </div>
+      </div>
+      <div class="up-item">
+        <div class="up-icon">🎵</div>
+        <div class="up-text">
+          <div class="up-title">리샘플링 피치 시프트 <span class="badge b-up">개선</span></div>
+          <div class="up-desc">깡통 울림 없는 자연스러운 나이 효과</div>
+        </div>
+      </div>
+      <div class="up-item">
+        <div class="up-icon">📺</div>
+        <div class="up-text">
+          <div class="up-title">YouTube 음원 자동 추출 <span class="badge b-new">NEW</span></div>
+          <div class="up-desc">음성 에너지 분석으로 최적 구간 자동 추출</div>
+        </div>
+      </div>
+      <div class="up-item">
+        <div class="up-icon">✂️</div>
+        <div class="up-text">
+          <div class="up-title">CapCut 스타일 편집 <span class="badge b-new">NEW</span></div>
+          <div class="up-desc">앞/뒤 컷, 분리, 삭제 — 생성 후 바로 편집</div>
+        </div>
+      </div>
+      <div class="up-item">
+        <div class="up-icon">📱</div>
+        <div class="up-text">
+          <div class="up-title">모바일 반응형 UI <span class="badge b-new">NEW</span></div>
+          <div class="up-desc">핸드폰에서도 완벽한 사용 경험</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: FEATURES -->
+  <div class="scene" id="scene4">
+    <div class="section-label">Features</div>
+    <div class="scene-title">올인원 <span class="highlight">음성 스튜디오</span></div>
+    <div class="feat-grid">
+      <div class="feat-box"><span class="feat-icon">🎤</span><div class="feat-name">웹 녹음</div><div class="feat-detail">브라우저에서 바로</div></div>
+      <div class="feat-box"><span class="feat-icon">🧬</span><div class="feat-name">음성 클로닝</div><div class="feat-detail">XTTS v2 다국어</div></div>
+      <div class="feat-box"><span class="feat-icon">📝</span><div class="feat-name">SRT 자막</div><div class="feat-detail">자동 생성</div></div>
+      <div class="feat-box"><span class="feat-icon">🎭</span><div class="feat-name">톤 프리셋</div><div class="feat-detail">8가지 감정/나이</div></div>
+      <div class="feat-box"><span class="feat-icon">✂️</span><div class="feat-name">오디오 편집</div><div class="feat-detail">CapCut 스타일</div></div>
+      <div class="feat-box"><span class="feat-icon">🐳</span><div class="feat-name">Docker</div><div class="feat-detail">원클릭 배포</div></div>
+      <div class="feat-box"><span class="feat-icon">🔒</span><div class="feat-name">프라이빗</div><div class="feat-detail">로컬 서버 전용</div></div>
+      <div class="feat-box"><span class="feat-icon">📱</span><div class="feat-name">모바일</div><div class="feat-detail">어디서든 접속</div></div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: CLOSING -->
+  <div class="scene" id="scene5">
+    <div class="closing-text">목소리는 사라지지 않습니다<br><span class="grad-text">AI가 기억합니다</span></div>
+    <div class="closing-sub">소중한 분의 목소리를 영원히 간직하세요</div>
+    <a class="cta-btn" href="/">지금 시작하기 →</a>
+    <div class="tech-tags">
+      <span class="tech-tag">XTTS v2</span>
+      <span class="tech-tag">FastAPI</span>
+      <span class="tech-tag">CUDA GPU</span>
+      <span class="tech-tag">Docker</span>
+      <span class="tech-tag">Tailscale</span>
+      <span class="tech-tag">Python 3.11</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ═══ PARTICLES ═══
+  const pEl = document.getElementById('particles');
+  for (let i = 0; i < 25; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random()*100 + '%';
+    p.style.animationDuration = (8+Math.random()*12) + 's';
+    p.style.animationDelay = Math.random()*8 + 's';
+    const s = 2+Math.random()*3;
+    p.style.width = p.style.height = s + 'px';
+    p.style.background = ['rgba(124,109,250,0.3)','rgba(79,209,197,0.3)','rgba(246,135,179,0.3)'][~~(Math.random()*3)];
+    pEl.appendChild(p);
+  }
+
+  // ═══ WAVE BARS ═══
+  const wRow = document.getElementById('waveRow');
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement('div');
+    b.className = 'wave-bar';
+    b.style.animationDelay = (i*0.07) + 's';
+    wRow.appendChild(b);
+  }
+
+  // ═══ TIMELINE ═══
+  const audio = document.getElementById('narration');
+  const progressFill = document.getElementById('progressFill');
+  const subtitle = document.getElementById('subtitle');
+  const bgGlow = document.getElementById('bgGlow');
+
+  const SCENES = [
+    { id: 'scene1', start: 0,     end: 5.71,  bg: 'g1', text: '마이보이스, AI 목소리 복원 기술을 소개합니다.' },
+    { id: 'scene2', start: 5.71,  end: 12.06, bg: 'g2', text: '30초의 음성 샘플만으로, 소중한 분의 목소리를 되살립니다.' },
+    { id: 'scene3', start: 12.06, end: 18.35, bg: 'g3', text: '김대중 대통령, 노무현 대통령의 육성도 AI가 복원했습니다.' },
+    { id: 'scene4', start: 18.35, end: 25.28, bg: 'g4', text: '8가지 톤 프리셋으로, 밝은 톤부터 시니어 톤까지 자유롭게 표현합니다.' },
+    { id: 'scene5', start: 25.28, end: 30.07, bg: 'g5', text: '목소리는 사라지지 않습니다. 마이보이스가 기억합니다.' },
+  ];
+
+  let currentScene = -1;
+
+  function updateTimeline() {
+    const t = audio.currentTime;
+    const dur = audio.duration || 30;
+    progressFill.style.width = (t / dur * 100) + '%';
+
+    // 현재 씬 찾기
+    let idx = SCENES.findIndex(s => t >= s.start && t < s.end);
+    if (idx === -1 && t >= SCENES[SCENES.length-1].start) idx = SCENES.length - 1;
+
+    if (idx !== currentScene && idx >= 0) {
+      currentScene = idx;
+      const sc = SCENES[idx];
+
+      // 씬 전환
+      document.querySelectorAll('.scene').forEach(el => el.classList.remove('active'));
+      document.getElementById(sc.id).classList.add('active');
+
+      // BG 전환
+      bgGlow.className = 'bg-glow ' + sc.bg;
+
+      // 자막
+      subtitle.textContent = sc.text;
+      subtitle.classList.add('show');
+    }
+
+    if (!audio.paused) requestAnimationFrame(updateTimeline);
+  }
+
+  // ═══ PLAY ═══
+  const overlay = document.getElementById('playOverlay');
+  overlay.addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    audio.play();
+    requestAnimationFrame(updateTimeline);
+  });
+
+  audio.addEventListener('ended', () => {
+    subtitle.classList.remove('show');
+    progressFill.style.width = '100%';
+  });
+</script>
+</body>
+</html>
