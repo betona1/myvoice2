@@ -1,0 +1,3305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyVoice — AI 목소리 복제 TTS</title>
+
+  <!-- PWA & 홈 아이콘 -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MyVoice">
+  <meta name="theme-color" content="#7c6dfa">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════
+       DESIGN TOKENS
+    ══════════════════════════════ */
+    :root {
+      --bg:        #07090f;
+      --bg2:       #0d1020;
+      --surface:   rgba(255,255,255,0.04);
+      --surface2:  rgba(255,255,255,0.07);
+      --border:    rgba(255,255,255,0.09);
+      --border2:   rgba(124,109,250,0.35);
+      --text:      #eef0f8;
+      --muted:     #7a8299;
+      --muted2:    #4a5270;
+      --accent:    #7c6dfa;
+      --accent2:   #4fd1c5;
+      --accent3:   #f687b3;
+      --danger:    #f05252;
+      --success:   #34d399;
+      --grad:      linear-gradient(135deg, #7c6dfa 0%, #4fd1c5 100%);
+      --grad-r:    linear-gradient(135deg, #f687b3 0%, #7c6dfa 100%);
+      --glow:      0 0 30px rgba(124,109,250,0.2);
+      --glow2:     0 0 50px rgba(124,109,250,0.35);
+      --font-h:    'Syne', sans-serif;
+      --font-b:    'Noto Sans KR', sans-serif;
+      --radius:    16px;
+      --radius-sm: 10px;
+    }
+
+    /* ══════════════════════════════
+       BASE
+    ══════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-b);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* animated bg */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 600px 400px at 10% 20%, rgba(124,109,250,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 500px 400px at 90% 80%, rgba(79,209,197,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 400px 300px at 50% 50%, rgba(246,135,179,0.05) 0%, transparent 60%);
+      animation: bgShift 15s ease-in-out infinite alternate;
+    }
+    @keyframes bgShift {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0.8; transform: scale(1.05); }
+    }
+
+    /* ══════════════════════════════
+       HEADER
+    ══════════════════════════════ */
+    header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(7,9,15,0.85);
+      backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo {
+      font-family: var(--font-h);
+      font-size: 1.35rem; font-weight: 900;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+    }
+    .logo-sub { font-size: 0.75rem; color: var(--muted); margin-left: 0.5rem; font-family: var(--font-b); font-weight: 400; -webkit-text-fill-color: var(--muted); }
+    .header-wave { display: flex; align-items: center; gap: 2px; height: 28px; }
+    .hw { width: 3px; border-radius: 2px; background: var(--grad); animation: hw 1.1s ease-in-out infinite; }
+    .hw:nth-child(1){height:30%;animation-delay:0s} .hw:nth-child(2){height:55%;animation-delay:.1s} .hw:nth-child(3){height:80%;animation-delay:.2s} .hw:nth-child(4){height:100%;animation-delay:.3s} .hw:nth-child(5){height:80%;animation-delay:.4s} .hw:nth-child(6){height:55%;animation-delay:.5s} .hw:nth-child(7){height:30%;animation-delay:.6s}
+    @keyframes hw { 0%,100%{transform:scaleY(1);opacity:.6} 50%{transform:scaleY(1.6);opacity:1} }
+
+    /* ══════════════════════════════
+       3-PANEL LAYOUT
+    ══════════════════════════════ */
+    .app-layout {
+      position: relative; z-index: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr 340px;
+      min-height: calc(100vh - 60px);
+      gap: 0;
+    }
+
+    /* LEFT PANEL - Voice List */
+    .panel-left {
+      background: rgba(13,16,32,0.6);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 1rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-family: var(--font-h); font-size: 0.9rem; font-weight: 700;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .panel-body { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .panel-footer {
+      padding: 0.5rem;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 0.4rem; flex-shrink: 0;
+    }
+
+    /* CENTER PANEL */
+    .panel-center {
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* RIGHT PANEL - History */
+    .panel-right {
+      background: rgba(13,16,32,0.6);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ══════════════════════════════
+       VOICE ITEM (Left Panel)
+    ══════════════════════════════ */
+    .voice-item {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.7rem;
+      margin-bottom: 0.4rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .voice-item:hover { border-color: rgba(124,109,250,0.4); background: rgba(124,109,250,0.05); }
+    .voice-item.selected {
+      border-color: var(--accent);
+      background: rgba(124,109,250,0.12);
+      box-shadow: 0 0 12px rgba(124,109,250,0.15);
+    }
+    .vi-row { display: flex; align-items: center; gap: 0.5rem; }
+    .vi-name { font-weight: 600; font-size: 0.85rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vi-meta { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+    .vi-actions { display: flex; gap: 0.3rem; align-items: center; flex-shrink: 0; }
+
+    /* Heart favorite */
+    .vi-fav {
+      background: none; border: none; cursor: pointer;
+      font-size: 1rem; color: var(--muted2);
+      transition: all 0.2s; padding: 2px;
+      line-height: 1;
+    }
+    .vi-fav:hover { color: var(--accent3); transform: scale(1.2); }
+    .vi-fav.active { color: #f687b3; }
+
+    /* Fine-tune icon */
+    .vi-ft-icon {
+      background: none; border: none; cursor: pointer;
+      font-size: 0.85rem; color: var(--muted2);
+      transition: all 0.2s; padding: 2px;
+      position: relative;
+    }
+    .vi-ft-icon:hover { color: var(--accent); transform: scale(1.15); }
+    .vi-ft-icon .tooltip {
+      display: none; position: absolute; bottom: 100%; left: 50%;
+      transform: translateX(-50%); white-space: nowrap;
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 6px; padding: 4px 8px;
+      font-size: 0.7rem; color: var(--text);
+      pointer-events: none; z-index: 10;
+      margin-bottom: 4px;
+    }
+    .vi-ft-icon:hover .tooltip { display: block; }
+
+    /* Fine-tune toggle */
+    .vi-ft-toggle {
+      display: flex; align-items: center; gap: 0.3rem;
+      margin-top: 0.3rem;
+    }
+    .ft-switch {
+      position: relative; width: 32px; height: 18px;
+      background: var(--muted2); border-radius: 9px;
+      cursor: pointer; transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .ft-switch.on { background: var(--accent); }
+    .ft-switch::after {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #fff; top: 2px; left: 2px;
+      transition: transform 0.2s;
+    }
+    .ft-switch.on::after { transform: translateX(14px); }
+    .ft-label { font-size: 0.68rem; color: var(--muted); }
+
+    /* Backup button */
+    .vi-backup {
+      background: none; border: none; cursor: pointer;
+      font-size: 0.8rem; color: var(--muted2);
+      transition: color 0.2s; padding: 2px;
+    }
+    .vi-backup:hover { color: var(--accent2); }
+
+    /* Delete */
+    .vi-del {
+      background: none; border: none; cursor: pointer;
+      font-size: 0.8rem; color: var(--muted2);
+      transition: color 0.2s; padding: 2px;
+    }
+    .vi-del:hover { color: var(--danger); }
+
+    /* ══════════════════════════════
+       CARDS (Center Panel)
+    ══════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      backdrop-filter: blur(16px);
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--grad);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.5s ease;
+    }
+    .card:hover { border-color: rgba(124,109,250,0.3); box-shadow: var(--glow); }
+    .card:hover::before { transform: scaleX(1); }
+
+    .card-title {
+      font-family: var(--font-h);
+      font-size: 0.95rem; font-weight: 700;
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1.2rem;
+    }
+    .card-title .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 6px;
+      background: var(--grad);
+      font-size: 0.7rem; color: #fff; font-weight: 800;
+    }
+    .card-title .label {
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ══════════════════════════════
+       FORM ELEMENTS
+    ══════════════════════════════ */
+    label {
+      display: block; margin-bottom: 0.35rem;
+      font-size: 0.78rem; color: var(--muted);
+      font-weight: 500; letter-spacing: 0.03em;
+    }
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      font-family: var(--font-b);
+      margin-bottom: 0.8rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,109,250,0.15);
+    }
+    textarea { resize: vertical; min-height: 180px; line-height: 1.6; font-size: 0.95rem; }
+
+    /* file input */
+    input[type="file"] {
+      width: 100%;
+      background: rgba(0,0,0,0.2);
+      border: 1px dashed var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      padding: 0.6rem 0.8rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 0.8rem;
+    }
+    input[type="file"]:hover { border-color: var(--accent); }
+
+    /* divider */
+    .divider {
+      display: flex; align-items: center; gap: 0.8rem;
+      margin: 0.4rem 0 0.8rem;
+      color: var(--muted2); font-size: 0.75rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ══════════════════════════════
+       BUTTONS
+    ══════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+      padding: 0.55rem 1.1rem;
+      border: none; border-radius: var(--radius-sm);
+      font-family: var(--font-b); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    .btn-primary {
+      background: var(--grad); color: #fff;
+      box-shadow: 0 0 20px rgba(124,109,250,0.3);
+    }
+    .btn-primary:hover:not(:disabled) { box-shadow: 0 0 35px rgba(124,109,250,0.5); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+    .btn-danger {
+      background: rgba(240,82,82,0.12);
+      border: 1px solid rgba(240,82,82,0.3);
+      color: var(--danger);
+    }
+    .btn-danger:hover:not(:disabled) { background: rgba(240,82,82,0.2); }
+
+    .btn-teal {
+      background: rgba(79,209,197,0.12);
+      border: 1px solid rgba(79,209,197,0.3);
+      color: var(--accent2);
+    }
+    .btn-teal:hover:not(:disabled) { background: rgba(79,209,197,0.2); }
+
+    .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.72rem; border-radius: 7px; }
+    .btn-xs { padding: 0.2rem 0.5rem; font-size: 0.68rem; border-radius: 5px; }
+
+    /* ══════════════════════════════
+       REC BUTTON
+    ══════════════════════════════ */
+    .rec-wrap { text-align: center; margin: 0.8rem 0; }
+    .rec-btn {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--grad);
+      border: none; color: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(124,109,250,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 0.5rem;
+    }
+    .rec-btn:hover { transform: scale(1.07); box-shadow: 0 0 45px rgba(124,109,250,0.6); }
+    .rec-btn.recording {
+      background: linear-gradient(135deg, #f05252, #f687b3);
+      box-shadow: 0 0 30px rgba(240,82,82,0.5);
+      animation: recPulse 1s ease-in-out infinite;
+    }
+    @keyframes recPulse { 0%,100%{box-shadow:0 0 20px rgba(240,82,82,0.4)} 50%{box-shadow:0 0 50px rgba(240,82,82,0.7)} }
+    .rec-status { font-size: 0.78rem; color: var(--muted); }
+    .rec-status.active { color: #f87171; }
+
+    audio { width: 100%; margin-top: 0.5rem; border-radius: 8px; filter: invert(1) hue-rotate(180deg); }
+
+    /* ══════════════════════════════
+       PROGRESS
+    ══════════════════════════════ */
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.05);
+      border-radius: 100px;
+      height: 4px; margin-top: 0.5rem;
+      overflow: hidden; display: none;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--grad);
+      border-radius: 100px;
+      width: 0;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 0.78rem; color: var(--accent);
+      margin-top: 0.4rem; display: none;
+    }
+    @keyframes ftPulse {
+      0%,100% { opacity:0.6; }
+      50% { opacity:1; width:60%; }
+    }
+
+    /* multi result */
+    .multi-result { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.8rem; display: none; }
+    .mri {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.8rem;
+    }
+    .mri.success { border-color: rgba(124,109,250,0.3); }
+    .mri.error { border-color: rgba(240,82,82,0.3); }
+    .mri-label {
+      font-size: 0.78rem; font-weight: 700;
+      margin-bottom: 0.4rem;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .mri-dl { display: flex; gap: 0.4rem; margin-top: 0.4rem; flex-wrap: wrap; }
+
+    /* ══════════════════════════════
+       PREVIEW LINE-BY-LINE
+    ══════════════════════════════ */
+    .tone-selector {
+      display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.4rem;
+    }
+    .tone-btn {
+      padding: 0.25rem 0.6rem;
+      font-size: 0.72rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tone-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .tone-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .preview-lines { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.8rem; }
+    .preview-line-item {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.7rem;
+      transition: border-color 0.2s;
+    }
+    .preview-line-item:hover { border-color: rgba(124,109,250,0.25); }
+    .preview-line-header {
+      display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;
+    }
+    .line-num {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .preview-line-text {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.8rem;
+      padding: 0.4rem 0.6rem;
+      resize: none;
+      font-family: var(--font-b);
+      min-height: 2rem;
+    }
+    .preview-line-text:focus { border-color: var(--accent); outline: none; }
+    .preview-line-controls {
+      display: flex; align-items: center; gap: 0.3rem; margin-top: 0.4rem; flex-wrap: wrap;
+    }
+    .preview-line-tone {
+      display: flex; gap: 0.2rem; flex-wrap: wrap;
+    }
+    .preview-line-tone .tone-btn { font-size: 0.65rem; padding: 0.15rem 0.45rem; }
+
+    /* 오디오 플레이어 + 시크바 */
+    .audio-player-wrap {
+      width: 100%; margin-top: 0.3rem;
+    }
+    .audio-seekbar {
+      position: relative;
+      width: 100%; height: 40px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      cursor: pointer;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      touch-action: none; /* 모바일 터치 스크롤 방지 — 시크바 드래그 우선 */
+    }
+    .audio-seekbar canvas {
+      position: absolute; left: 0; top: 0;
+      width: 100%; height: 100%;
+      pointer-events: none; z-index: 0;
+    }
+    .audio-seekbar-fill {
+      position: absolute; left: 0; top: 0; bottom: 0; z-index: 1;
+      background: linear-gradient(90deg, rgba(124,109,250,0.25), rgba(79,209,197,0.25));
+      pointer-events: none;
+      transition: width 0.05s linear;
+    }
+    .audio-seekbar-head {
+      position: absolute; top: 0; bottom: 0; width: 3px; z-index: 2;
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(124,109,250,0.6);
+      pointer-events: none;
+      transition: left 0.05s linear;
+    }
+    .audio-time-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.65rem; color: var(--muted); margin-top: 2px;
+    }
+    .audio-play-btns {
+      display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;
+    }
+    .play-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent);
+      border: none; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem;
+      transition: transform 0.15s;
+    }
+    .play-btn:hover { transform: scale(1.1); }
+
+    /* 컷 편집 버튼 */
+    .cut-btns {
+      display: flex; gap: 0.25rem; margin-top: 0.3rem;
+    }
+    .cut-btn {
+      padding: 0.2rem 0.5rem;
+      font-size: 0.68rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cut-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+    .cut-btn:active { transform: scale(0.95); }
+
+    .finalize-result {
+      margin-top: 0.8rem;
+      background: rgba(124,109,250,0.08);
+      border: 1px solid rgba(124,109,250,0.3);
+      border-radius: var(--radius-sm);
+      padding: 0.8rem;
+      display: none;
+    }
+
+    /* ══════════════════════════════
+       HISTORY (Right Panel)
+    ══════════════════════════════ */
+    .history-search {
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 0.4rem;
+      flex-shrink: 0;
+    }
+    .history-search input, .history-search select {
+      margin-bottom: 0;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.78rem;
+    }
+    .history-search-row { display: flex; gap: 0.3rem; }
+    .history-search-row > * { flex: 1; }
+
+    .history-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+
+    .tts-item {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.7rem;
+      margin-bottom: 0.4rem;
+      transition: border-color 0.2s;
+    }
+    .tts-item:hover { border-color: rgba(124,109,250,0.3); }
+    .tts-preview {
+      font-size: 0.78rem; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .tts-meta { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+    .tts-meta .voice-name { color: var(--accent); font-weight: 600; }
+    .tts-actions { display: flex; gap: 0.3rem; align-items: center; margin-top: 0.3rem; flex-wrap: wrap; }
+    .tts-player { margin-top: 0.4rem; display: none; }
+    .tts-player.show { display: block; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.3rem; padding: 0.5rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .page-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      padding: 0.25rem 0.5rem;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info { font-size: 0.68rem; color: var(--muted); }
+
+    /* ══════════════════════════════
+       COLLAPSIBLE SECTIONS
+    ══════════════════════════════ */
+    .section-toggle {
+      display: flex; align-items: center; gap: 0.4rem;
+      cursor: pointer; user-select: none;
+      padding: 0.5rem 0;
+      font-size: 0.82rem; font-weight: 600; color: var(--muted);
+      transition: color 0.2s;
+    }
+    .section-toggle:hover { color: var(--text); }
+    .section-toggle .arrow {
+      display: inline-block; transition: transform 0.2s;
+      font-size: 0.7rem;
+    }
+    .section-toggle.open .arrow { transform: rotate(90deg); }
+    .section-content { display: none; }
+    .section-content.open { display: block; }
+
+    /* ══════════════════════════════
+       DIARIZE SECTION
+    ══════════════════════════════ */
+    .diarize-section {
+      margin-top: 0.5rem;
+      padding-top: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ══════════════════════════════
+       MODAL
+    ══════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      width: 100%; max-width: 700px;
+      max-height: 85vh;
+      display: flex; flex-direction: column;
+      box-shadow: var(--glow2);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h2 {
+      font-family: var(--font-h); font-size: 0.95rem; font-weight: 700;
+      background: var(--grad);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 1.5rem; cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 1rem 1.25rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 0.6rem; }
+    .modal-footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 0.4rem;
+    }
+
+    .sample-item {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.8rem;
+    }
+    .sample-item:hover { border-color: rgba(124,109,250,0.3); }
+    .sample-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; }
+    .sample-num { font-family: var(--font-h); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
+    .sample-actions { display: flex; gap: 0.3rem; }
+    .sample-text { font-size: 0.82rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: keep-all; }
+    .sample-edit {
+      width: 100%; min-height: 70px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      color: var(--text); padding: 0.6rem;
+      font-size: 0.82rem; line-height: 1.7;
+      font-family: var(--font-b);
+      resize: vertical; outline: none; display: none;
+    }
+
+    /* Speaker card (diarize modal) */
+    .speaker-card {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.8rem;
+      margin-bottom: 0.4rem;
+    }
+    .speaker-card:hover { border-color: rgba(124,109,250,0.3); }
+    .speaker-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem; }
+    .speaker-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 26px; height: 26px; border-radius: 8px;
+      background: var(--grad); color: #fff;
+      font-family: var(--font-h); font-size: 0.7rem; font-weight: 800;
+      padding: 0 5px;
+    }
+    .speaker-name-input {
+      flex: 1; background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); padding: 0.35rem 0.6rem;
+      font-size: 0.8rem; font-family: var(--font-b); outline: none;
+    }
+    .speaker-name-input:focus { border-color: var(--accent); }
+    .speaker-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.4rem; }
+    .speaker-check {
+      display: flex; align-items: center; gap: 0.3rem;
+      cursor: pointer; font-size: 0.75rem; color: var(--muted);
+    }
+    .speaker-check input { accent-color: var(--accent2); }
+
+    /* ══════════════════════════════
+       TOAST
+    ══════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999;
+      background: rgba(13,16,32,0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.7rem 1rem;
+      font-size: 0.82rem;
+      max-width: 280px;
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: rgba(52,211,153,0.5); }
+    .toast.error { border-color: rgba(240,82,82,0.5); color: #fca5a5; }
+
+    .spin {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-left: 4px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty {
+      text-align: center; padding: 1.5rem;
+      color: var(--muted2); font-size: 0.8rem;
+    }
+
+    /* ══════════════════════════════
+       LEFT PANEL COLLAPSED
+    ══════════════════════════════ */
+    .panel-left.collapsed { width: auto; min-width: 0; }
+    .panel-left.collapsed .panel-body { display: none; }
+    .panel-left.collapsed .panel-footer { display: none; }
+    .panel-left.collapsed .panel-header { flex-wrap: wrap; gap: 0.4rem; }
+    .voice-select-wrap { display: none; width: 100%; margin-top: 0.3rem; }
+    .panel-left.collapsed .voice-select-wrap { display: block; }
+    .voice-select-wrap select {
+      width: 100%; margin-bottom: 0;
+      padding: 0.4rem 0.6rem; font-size: 0.78rem;
+    }
+    .panel-toggle-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.85rem;
+      transition: color 0.2s, transform 0.2s;
+      padding: 2px 4px;
+    }
+    .panel-toggle-btn:hover { color: var(--accent); }
+    .panel-left.collapsed .panel-toggle-btn { transform: rotate(180deg); }
+    .fav-filter-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 5px; cursor: pointer;
+      color: var(--muted2); font-size: 0.8rem;
+      padding: 0.15rem 0.4rem;
+      transition: all 0.2s;
+    }
+    .fav-filter-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+    .fav-filter-btn.active { color: #f687b3; border-color: #f687b3; background: rgba(246,135,179,0.1); }
+
+    /* ══════════════════════════════
+       SCROLLBAR
+    ══════════════════════════════ */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    /* ══════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════ */
+    .app-layout.left-collapsed { grid-template-columns: auto 1fr 340px; }
+    @media (max-width: 1100px) {
+      .app-layout { grid-template-columns: 240px 1fr 280px; }
+      .app-layout.left-collapsed { grid-template-columns: auto 1fr 280px; }
+    }
+    @media (max-width: 900px) {
+      .app-layout { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .panel-left, .panel-right { max-height: 50vh; }
+    }
+
+    /* ══════════════════════════════
+       MOBILE (< 768px)
+    ══════════════════════════════ */
+    .mobile-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 60;
+      background: rgba(7,9,15,0.95);
+      backdrop-filter: blur(24px);
+      border-top: 1px solid var(--border);
+      padding: 0.4rem 0;
+      padding-bottom: env(safe-area-inset-bottom, 0.4rem);
+    }
+    .mobile-nav-inner {
+      display: flex; justify-content: space-around; align-items: center;
+    }
+    .mobile-nav-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.65rem; font-weight: 600;
+      display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+      padding: 0.3rem 0.8rem;
+      transition: color 0.2s;
+      font-family: var(--font-b);
+    }
+    .mobile-nav-btn svg { width: 22px; height: 22px; }
+    .mobile-nav-btn.active { color: var(--accent); }
+    .mobile-nav-btn:hover { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      .mobile-nav { display: block; }
+
+      header { padding: 0.6rem 1rem; }
+      .logo { font-size: 1.1rem; }
+      .logo-sub { font-size: 0.65rem; }
+
+      .app-layout {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: 1fr;
+        min-height: calc(100vh - 60px - 60px);
+        padding-bottom: 60px;
+      }
+      .app-layout.left-collapsed { grid-template-columns: 1fr !important; }
+
+      .panel-left, .panel-center, .panel-right {
+        display: none;
+        max-height: none;
+        border: none;
+        overflow-y: auto;
+      }
+      .panel-left.mobile-active,
+      .panel-center.mobile-active,
+      .panel-right.mobile-active {
+        display: flex;
+      }
+
+      /* 패널 조정 */
+      .panel-left { border-right: none; }
+      .panel-right { border-left: none; }
+      .panel-center { padding: 1rem; gap: 1rem; }
+
+      /* 카드 */
+      .card { padding: 1rem; }
+      .card-title { font-size: 0.85rem; margin-bottom: 0.8rem; }
+
+      /* 녹음 버튼 */
+      .rec-btn { width: 60px; height: 60px; }
+
+      /* 텍스트 영역 */
+      textarea { min-height: 120px; font-size: 0.88rem; }
+
+      /* 톤 선택 */
+      .tone-selector { gap: 0.25rem; }
+      .tone-btn { padding: 0.3rem 0.55rem; font-size: 0.7rem; }
+
+      /* 프리뷰 라인 */
+      .preview-line-controls { gap: 0.2rem; }
+      .preview-line-tone .tone-btn { font-size: 0.62rem; padding: 0.15rem 0.4rem; }
+
+      /* 버튼 */
+      .btn { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
+      .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
+
+      /* 히스토리 */
+      .history-search { padding: 0.5rem; }
+      .history-search-row { flex-wrap: wrap; }
+
+      /* 모달 */
+      .modal-overlay { padding: 0.5rem; }
+      .modal { max-width: 100%; max-height: 90vh; border-radius: 12px; }
+      .modal-header { padding: 0.8rem 1rem; }
+      .modal-body { padding: 0.8rem 1rem; }
+
+      /* 토스트 */
+      .toast { bottom: 70px; right: 1rem; left: 1rem; max-width: none; }
+
+      /* 패널 토글 숨김 (모바일에서는 하단 탭 사용) */
+      .panel-toggle-btn { display: none; }
+
+      /* YouTube 입력 */
+      #youtubeUrl { font-size: 0.8rem; }
+
+      /* 오디오 플레이어 */
+      .audio-seekbar { height: 56px; }
+      .cut-btns { flex-wrap: wrap; }
+      .cut-btn { font-size: 0.65rem; padding: 0.25rem 0.45rem; }
+    }
+
+    /* ══════════════════════════════
+       VOICE TUNING
+    ══════════════════════════════ */
+    .tuning-card { border-color: rgba(79,209,197,0.3); }
+    .tuning-card:hover { border-color: rgba(79,209,197,0.5); box-shadow: 0 0 30px rgba(79,209,197,0.15); }
+    .tuning-card::before { background: linear-gradient(135deg, #4fd1c5 0%, #7c6dfa 100%); }
+
+    .tuning-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 1rem;
+      margin-bottom: 0.8rem;
+    }
+    @media (max-width: 768px) { .tuning-grid { grid-template-columns: 1fr; } }
+
+    .tuning-param {
+      display: flex; flex-direction: column; gap: 0.15rem;
+    }
+    .tuning-param label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.72rem; color: var(--muted); margin-bottom: 0;
+    }
+    .tuning-param label .param-val {
+      color: var(--accent2); font-weight: 600; font-size: 0.75rem;
+      min-width: 36px; text-align: right;
+    }
+    .tuning-param input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.08);
+      outline: none; margin: 0; padding: 0;
+    }
+    .tuning-param input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--accent2); cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 6px rgba(79,209,197,0.5);
+    }
+    .tuning-param input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--accent2); cursor: pointer; border: 2px solid var(--bg);
+    }
+
+    .tuning-actions {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem;
+    }
+
+    .tuning-preview-area {
+      margin-top: 0.6rem; padding: 0.6rem;
+      background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); display: none;
+    }
+    .tuning-preview-area.show { display: block; }
+
+    .feedback-btns {
+      display: flex; gap: 0.4rem; align-items: center; margin-top: 0.4rem;
+    }
+    .fb-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid var(--border); background: var(--surface);
+      cursor: pointer; font-size: 1.1rem; display: flex;
+      align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .fb-btn:hover { transform: scale(1.15); }
+    .fb-btn.up { color: var(--success); }
+    .fb-btn.up:hover { border-color: var(--success); background: rgba(52,211,153,0.15); }
+    .fb-btn.down { color: var(--danger); }
+    .fb-btn.down:hover { border-color: var(--danger); background: rgba(240,82,82,0.15); }
+    .fb-btn.selected { transform: scale(1.2); }
+    .fb-btn.up.selected { border-color: var(--success); background: rgba(52,211,153,0.25); }
+    .fb-btn.down.selected { border-color: var(--danger); background: rgba(240,82,82,0.25); }
+
+    .checkpoint-bar {
+      display: flex; gap: 0.3rem; align-items: center; margin-top: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .checkpoint-bar select {
+      flex: 1; min-width: 140px; margin-bottom: 0;
+      padding: 0.35rem 0.5rem; font-size: 0.75rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div style="display:flex;align-items:center;gap:0.8rem">
+    <span class="logo">MyVoice</span>
+    <span class="logo-sub">AI TTS Studio</span>
+    <a href="/chinese" style="background:linear-gradient(135deg,#f05252,#f687b3);border:none;border-radius:10px;color:#fff;font-size:0.85rem;padding:0.45rem 0.9rem;cursor:pointer;font-family:var(--font-b);font-weight:700;text-decoration:none;transition:all 0.2s;box-shadow:0 0 12px rgba(240,82,82,0.3);white-space:nowrap;">🇨🇳 중국어</a>
+    <a href="/japanese" style="background:linear-gradient(135deg,#7c6dfa,#4fd1c5);border:none;border-radius:10px;color:#fff;font-size:0.85rem;padding:0.45rem 0.9rem;cursor:pointer;font-family:var(--font-b);font-weight:700;text-decoration:none;transition:all 0.2s;box-shadow:0 0 12px rgba(124,109,250,0.3);white-space:nowrap;">🇯🇵 일본어</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.8rem;">
+    <div class="header-wave">
+      <div class="hw"></div><div class="hw"></div><div class="hw"></div>
+      <div class="hw"></div><div class="hw"></div><div class="hw"></div>
+      <div class="hw"></div>
+    </div>
+    <div id="userArea" style="display:none;align-items:center;gap:0.6rem;">
+      <div style="display:flex;align-items:center;gap:0.4rem;background:rgba(124,109,250,0.1);border:1px solid rgba(124,109,250,0.25);border-radius:20px;padding:0.25rem 0.7rem;">
+        <span style="font-size:0.85rem;">&#128100;</span>
+        <span id="userName" style="font-size:0.78rem;color:var(--accent);font-weight:600;"></span>
+        <span id="userLevel" style="font-size:0.6rem;color:var(--accent2);background:rgba(79,209,197,0.15);border-radius:4px;padding:0.1rem 0.3rem;font-weight:700;cursor:pointer;" onclick="if(currentUser&&currentUser.level===0)location.href='/admin'"></span>
+      </div>
+      <a href="/library" style="background:rgba(79,209,197,0.15);border:1px solid rgba(79,209,197,0.3);border-radius:6px;color:#4fd1c5;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;font-family:var(--font-b);font-weight:700;text-decoration:none;transition:all 0.2s;">LIBRARY</a>
+      <a id="adminLink" href="/admin" style="display:none;background:linear-gradient(135deg,#f687b3,#7c6dfa);border-radius:6px;color:#fff;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;font-family:var(--font-b);font-weight:700;text-decoration:none;transition:all 0.2s;box-shadow:0 0 10px rgba(246,135,179,0.3);" onmouseover="this.style.boxShadow='0 0 20px rgba(246,135,179,0.5)'" onmouseout="this.style.boxShadow='0 0 10px rgba(246,135,179,0.3)'">ADMIN</a>
+      <button onclick="doLogout()" style="background:rgba(240,82,82,0.1);border:1px solid rgba(240,82,82,0.25);border-radius:6px;color:#fca5a5;font-size:0.7rem;padding:0.25rem 0.6rem;cursor:pointer;font-family:var(--font-b);transition:all 0.2s;" onmouseover="this.style.background='rgba(240,82,82,0.2)'" onmouseout="this.style.background='rgba(240,82,82,0.1)'">로그아웃</button>
+    </div>
+  </div>
+</header>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-btn active" data-panel="center" onclick="switchMobileTab('center')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span>TTS</span>
+    </button>
+    <button class="mobile-nav-btn" data-panel="left" onclick="switchMobileTab('left')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+      <span>음성</span>
+    </button>
+    <button class="mobile-nav-btn" data-panel="right" onclick="switchMobileTab('right')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      <span>기록</span>
+    </button>
+  </div>
+</nav>
+
+<!-- 3-PANEL LAYOUT -->
+<div class="app-layout">
+
+  <!-- ══ LEFT PANEL: Voice List ══ -->
+  <div class="panel-left" id="panelLeft">
+    <div class="panel-header">
+      <span class="panel-title">My Voices</span>
+      <div style="display:flex;gap:0.3rem;align-items:center;">
+        <button class="fav-filter-btn" id="favFilterBtn" onclick="toggleFavFilter()" title="즐겨찾기만 보기">&#9829;</button>
+        <button class="btn btn-xs btn-teal" onclick="backupAllVoices()" title="전체 백업 다운로드">ZIP</button>
+        <button class="btn btn-xs btn-secondary" onclick="loadVoices()">새로고침</button>
+        <button class="panel-toggle-btn" onclick="togglePanel()" title="접기/펼치기">&#9664;</button>
+      </div>
+      <!-- 접혔을 때 보이는 셀렉트 -->
+      <div class="voice-select-wrap">
+        <select id="voiceSelectCollapsed" onchange="selectVoiceFromDropdown(this.value)">
+          <option value="">-- 음색 선택 --</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel-body" id="voiceList">
+      <div class="empty">저장된 목소리가 없습니다</div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-xs btn-danger" onclick="deleteAllVoices()" style="flex:1;">전체 삭제</button>
+    </div>
+  </div>
+
+  <!-- ══ CENTER PANEL: Record + TTS ══ -->
+  <div class="panel-center">
+
+    <!-- 1. TTS 생성 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge">TTS</span>
+        <span class="label">TTS 생성</span>
+      </div>
+
+      <!-- 음성 선택 (셀렉트 드롭다운) -->
+      <label>음성 선택</label>
+      <div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.8rem;">
+        <select id="voiceSelect" onchange="selectVoiceFromSelect(this.value)" style="flex:1;"></select>
+        <span id="selectedVoiceDisplay" style="font-size:0.75rem;color:var(--accent);white-space:nowrap;"></span>
+      </div>
+
+      <label>변환할 텍스트 <span style="font-size:0.7rem;color:var(--muted);">(엔터로 구분)</span></label>
+      <textarea id="ttsText" placeholder="여기에 텍스트를 입력하세요.&#10;엔터로 줄을 나누면 각 줄별로&#10;미리듣기 및 개별 수정이 가능합니다."></textarea>
+
+      <!-- 이전 지문 검색 -->
+      <div style="position:relative;margin-top:0.4rem;">
+        <input type="text" id="textSearchInput" placeholder="이전 지문 검색... (클릭하면 최근 목록)"
+          oninput="searchPastTexts(this.value)" onfocus="searchPastTexts(this.value)"
+          style="width:100%;padding:0.4rem 0.6rem;font-size:0.75rem;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);">
+        <div id="textSearchResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;max-height:200px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);"></div>
+      </div>
+
+      <!-- 번역 TTS -->
+      <div style="margin-top:0.6rem;padding:0.6rem;background:rgba(124,109,250,0.05);border:1px solid rgba(124,109,250,0.15);border-radius:var(--radius-sm);">
+        <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.4rem;">
+          <span style="font-size:0.78rem;font-weight:600;color:var(--accent);">🌐 다국어 번역 TTS</span>
+          <select id="translateLang" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.2rem 0.4rem;font-size:0.75rem;">
+            <option value="zh">🇨🇳 중국어</option>
+            <option value="ja">🇯🇵 일본어</option>
+            <option value="en">🇺🇸 영어</option>
+          </select>
+          <button onclick="doTranslateTTS()" style="background:var(--grad);border:none;border-radius:6px;color:#fff;padding:0.3rem 0.7rem;font-size:0.75rem;cursor:pointer;font-weight:600;">번역+생성</button>
+        </div>
+        <div id="translateResult" style="display:none;font-size:0.8rem;margin-top:0.3rem;">
+          <div id="translateText" style="padding:0.4rem;background:var(--surface);border-radius:6px;margin-bottom:0.3rem;line-height:1.5;"></div>
+          <button id="translatePlayBtn" onclick="playTranslateAudio()" style="background:var(--accent);border:none;border-radius:6px;color:#fff;padding:0.3rem 0.8rem;font-size:0.8rem;cursor:pointer;">▶ 재생</button>
+        </div>
+      </div>
+
+      <label style="font-size:0.78rem;color:var(--muted);margin-top:0.6rem;">톤 효과 (전체 적용)</label>
+      <div class="tone-selector" id="globalToneSelector">
+        <button class="tone-btn active" data-tone="normal" onclick="selectGlobalTone(this)">기본</button>
+        <button class="tone-btn" data-tone="fast" onclick="selectGlobalTone(this)">빠르게</button>
+        <button class="tone-btn" data-tone="slow" onclick="selectGlobalTone(this)">느리게</button>
+        <button class="tone-btn" data-tone="bright" onclick="selectGlobalTone(this)">밝은톤</button>
+        <button class="tone-btn" data-tone="sad" onclick="selectGlobalTone(this)">우울한톤</button>
+        <button class="tone-btn" data-tone="polite" onclick="selectGlobalTone(this)">정중한톤</button>
+        <button class="tone-btn" data-tone="elderly" onclick="selectGlobalTone(this)">부모님</button>
+        <button class="tone-btn" data-tone="senior" onclick="selectGlobalTone(this)">시니어</button>
+        <button class="tone-btn" data-tone="child" onclick="selectGlobalTone(this)">어린이</button>
+        <button class="tone-btn" data-tone="child_calm" onclick="selectGlobalTone(this)">어린이(차분)</button>
+      </div>
+
+      <div style="display:flex;gap:0.5rem;margin-top:0.6rem;">
+        <button class="btn btn-primary" onclick="previewTTS()" id="previewBtn" style="flex:1;">
+          미리듣기 생성
+        </button>
+        <button class="btn btn-teal" onclick="finalizeTTS()" id="finalizeBtn" style="flex:0.6;" disabled>
+          최종 내려받기
+        </button>
+      </div>
+      <div style="display:flex;gap:0.4rem;margin-top:0.4rem;">
+        <button class="btn btn-secondary btn-xs" onclick="saveProject()" style="flex:1;">프로젝트 저장</button>
+        <button class="btn btn-secondary btn-xs" onclick="openProjectList()" style="flex:1;">프로젝트 불러오기</button>
+      </div>
+
+      <div class="progress-bar-wrap" id="progressWrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-label" id="progressLabel"></div>
+
+      <!-- 라인별 미리듣기 결과 -->
+      <div class="preview-lines" id="previewLines"></div>
+
+      <!-- 최종 결과 -->
+      <div class="finalize-result" id="finalizeResult"></div>
+    </div>
+
+    <!-- 1.5 음성 튜닝 -->
+    <div class="card tuning-card" id="tuningCard" style="display:none;">
+      <div class="card-title">
+        <span class="badge" style="background:linear-gradient(135deg,#4fd1c5,#7c6dfa);">T</span>
+        <span class="label" style="background:linear-gradient(135deg,#4fd1c5,#7c6dfa);-webkit-background-clip:text;background-clip:text;">음성 튜닝</span>
+        <button class="btn btn-xs btn-secondary" onclick="closeTuning()" style="margin-left:auto;">닫기</button>
+      </div>
+
+      <div id="tuningVoiceInfo" style="font-size:0.78rem;color:var(--accent);margin-bottom:0.6rem;"></div>
+
+      <div class="tuning-grid">
+        <div class="tuning-param">
+          <label>Temperature <span class="param-val" id="val_temperature">0.65</span></label>
+          <input type="range" id="tune_temperature" min="0.1" max="1.0" step="0.05" value="0.65" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Speed <span class="param-val" id="val_speed">1.0</span></label>
+          <input type="range" id="tune_speed" min="0.5" max="2.0" step="0.05" value="1.0" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Pitch Shift <span class="param-val" id="val_pitch_shift">0.0</span></label>
+          <input type="range" id="tune_pitch_shift" min="-5.0" max="5.0" step="0.5" value="0" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Top P <span class="param-val" id="val_top_p">0.85</span></label>
+          <input type="range" id="tune_top_p" min="0.5" max="1.0" step="0.05" value="0.85" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Top K <span class="param-val" id="val_top_k">50</span></label>
+          <input type="range" id="tune_top_k" min="10" max="100" step="5" value="50" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Repetition Penalty <span class="param-val" id="val_repetition_penalty">10.0</span></label>
+          <input type="range" id="tune_repetition_penalty" min="1.0" max="15.0" step="0.5" value="10.0" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Bass Boost (dB) <span class="param-val" id="val_bass_boost_db">2.0</span></label>
+          <input type="range" id="tune_bass_boost_db" min="-3.0" max="6.0" step="0.5" value="2.0" oninput="updateTuneVal(this)">
+        </div>
+        <div class="tuning-param">
+          <label>Bass Freq (Hz) <span class="param-val" id="val_bass_boost_freq">200</span></label>
+          <input type="range" id="tune_bass_boost_freq" min="100" max="400" step="10" value="200" oninput="updateTuneVal(this)">
+        </div>
+      </div>
+
+      <label style="font-size:0.72rem;color:var(--muted);">미리듣기 문장</label>
+      <input type="text" id="tunePreviewText" value="안녕하세요, 오늘 하루도 행복하게 보내세요." style="margin-bottom:0.4rem;">
+
+      <div class="tuning-actions">
+        <button class="btn btn-primary btn-sm" onclick="quickPreview()" id="tunePreviewBtn">미리듣기</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetTuneDefaults()">기본값</button>
+        <button class="btn btn-teal btn-sm" onclick="applyTuneToTTS()">TTS에 적용</button>
+      </div>
+
+      <!-- 미리듣기 결과 -->
+      <div class="tuning-preview-area" id="tunePreviewArea">
+        <audio id="tuneAudio" controls style="width:100%;"></audio>
+        <div class="feedback-btns">
+          <button class="fb-btn up" onclick="submitTuneFeedback(1)" title="좋아요">&#128077;</button>
+          <button class="fb-btn down" onclick="submitTuneFeedback(-1)" title="별로에요">&#128078;</button>
+          <span id="tuneFeedbackMsg" style="font-size:0.72rem;color:var(--muted);margin-left:0.4rem;"></span>
+        </div>
+      </div>
+
+      <!-- 체크포인트 -->
+      <div class="checkpoint-bar">
+        <select id="checkpointSelect" onchange="loadSelectedCheckpoint()">
+          <option value="">-- 체크포인트 선택 --</option>
+        </select>
+        <button class="btn btn-xs btn-teal" onclick="saveCheckpoint()">저장</button>
+        <button class="btn btn-xs btn-primary" onclick="activateCheckpoint()">적용</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteCheckpointUI()">삭제</button>
+      </div>
+    </div>
+
+    <!-- 2. 목소리 녹음 / 업로드 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge">&#127908;</span>
+        <span class="label">목소리 녹음 / 업로드</span>
+      </div>
+
+      <label>목소리 이름</label>
+      <input type="text" id="voiceName" placeholder="예: 내목소리, 발표용" value="내목소리">
+
+      <button class="btn btn-secondary btn-sm" onclick="openSampleModal()" style="width:100%;margin-bottom:0.8rem;">
+        샘플링 텍스트 보기
+      </button>
+
+      <div class="rec-wrap">
+        <button class="rec-btn" id="recBtn" onclick="toggleRecord()">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="1" width="6" height="11" rx="3"></rect>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </button>
+        <div class="rec-status" id="recStatus">마이크 버튼을 눌러 녹음하세요 (최소 30초)</div>
+        <audio id="recPreview" controls style="display:none;"></audio>
+      </div>
+
+      <div class="divider">또는 파일 업로드</div>
+      <input type="file" id="voiceFile" accept=".wav,.mp3,.webm,.ogg,.m4a,.flac">
+      <button class="btn btn-primary" onclick="saveVoice()" id="saveVoiceBtn" style="width:100%;">
+        목소리 저장
+      </button>
+
+      <div class="divider">또는 YouTube URL</div>
+      <div style="display:flex;gap:0.4rem;">
+        <input type="text" id="youtubeUrl" placeholder="YouTube URL 붙여넣기" style="flex:1;">
+        <button class="btn btn-secondary btn-sm" onclick="importYoutube()" id="ytBtn" style="white-space:nowrap;">가져오기</button>
+      </div>
+
+      <!-- 화자 분리 -->
+      <div class="diarize-section">
+        <div class="section-toggle" onclick="toggleSection(this)">
+          <span class="arrow">&#9654;</span> 다중 화자 분리
+        </div>
+        <div class="section-content">
+          <p style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;">
+            2~3명 대화 오디오를 업로드하면 화자별로 분리 저장합니다.
+          </p>
+          <input type="hidden" id="hfToken" value="">
+          <label>화자 수</label>
+          <select id="numSpeakers" style="margin-bottom:0.6rem;">
+            <option value="0">자동 감지</option>
+            <option value="2">2명</option>
+            <option value="3">3명</option>
+            <option value="4">4명</option>
+            <option value="5">5명</option>
+          </select>
+          <input type="file" id="diarizeFile" accept=".wav,.mp3,.webm,.ogg,.m4a,.flac">
+          <button class="btn btn-primary btn-sm" onclick="runDiarize()" id="diarizeBtn" style="width:100%;background:var(--grad-r);">
+            화자 분리 시작
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RIGHT PANEL: History ══ -->
+  <div class="panel-right">
+    <div class="panel-header">
+      <span class="panel-title">생성 이력</span>
+      <div style="display:flex;gap:0.3rem;">
+        <button class="btn btn-xs btn-secondary" onclick="searchHistory()">검색</button>
+        <button class="btn btn-xs btn-danger" onclick="deleteAllTTS()">전체삭제</button>
+      </div>
+    </div>
+
+    <!-- 검색 -->
+    <div class="history-search">
+      <input type="text" id="historySearch" placeholder="텍스트 내용 검색..." onkeydown="if(event.key==='Enter')searchHistory()">
+      <div class="history-search-row">
+        <select id="historyVoiceFilter" onchange="searchHistory()">
+          <option value="">전체 음색</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="history-list" id="historyList">
+      <div class="empty">생성 이력이 없습니다</div>
+    </div>
+
+    <div class="pagination" id="historyPagination"></div>
+  </div>
+
+</div><!-- /app-layout -->
+
+<!-- ══ 화자 분리 결과 모달 ══ -->
+<div class="modal-overlay" id="diarizeModal" onclick="if(event.target===this)closeDiarizeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>화자 분리 결과</h2>
+      <button class="modal-close" onclick="closeDiarizeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="diarizeResult"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeDiarizeModal()">취소</button>
+      <button class="btn btn-primary btn-sm" onclick="saveDiarizedSpeakers()" id="saveSpeakersBtn">선택한 화자 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 샘플링 텍스트 모달 ══ -->
+<div class="modal-overlay" id="sampleModal" onclick="if(event.target===this)closeSampleModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>목소리 샘플링 텍스트</h2>
+      <button class="modal-close" onclick="closeSampleModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="sampleList"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="resetSamples()">초기화</button>
+      <button class="btn btn-primary btn-sm" onclick="closeSampleModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 파인튜닝 모달 ══ -->
+<div class="modal-overlay" id="finetuneModal" onclick="if(event.target===this)closeFinetuneModal()">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2>음색 학습 (파인튜닝)</h2>
+      <button class="modal-close" onclick="closeFinetuneModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.78rem;color:var(--muted);margin-bottom:0.6rem;">
+        여러 목소리를 합쳐서 학습하면 음색 품질이 향상됩니다.<br>
+        최소 2분 이상 음성, 학습 10~30분 소요.
+      </p>
+      <!-- 음성 선택 영역 -->
+      <div style="margin-bottom:0.8rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+          <label style="font-size:0.8rem;font-weight:600;">학습할 음성 선택</label>
+          <div style="display:flex;gap:0.4rem;">
+            <button class="btn btn-xs btn-secondary" onclick="ftSelectAll()" style="font-size:0.7rem;padding:2px 8px;">전체선택</button>
+            <button class="btn btn-xs btn-secondary" onclick="ftDeselectAll()" style="font-size:0.7rem;padding:2px 8px;">해제</button>
+          </div>
+        </div>
+        <div id="ftVoiceList" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.4rem;display:flex;flex-direction:column;gap:0.3rem;"></div>
+        <div id="ftSelectionInfo" style="font-size:0.75rem;color:var(--accent);margin-top:0.4rem;"></div>
+      </div>
+      <!-- 모델 이름 -->
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-size:0.8rem;font-weight:600;">모델 이름</label>
+        <input type="text" id="ftModelName" placeholder="예: 황보태원_통합" style="width:100%;padding:0.4rem 0.6rem;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:0.82rem;">
+      </div>
+      <div style="display:flex;gap:0.6rem;margin-bottom:0.8rem;">
+        <div style="flex:1;">
+          <label>에포크</label>
+          <select id="ftEpochs">
+            <option value="6">6 (빠른)</option>
+            <option value="10" selected>10 (권장)</option>
+            <option value="15">15 (정밀)</option>
+            <option value="20">20 (최대)</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label>배치</label>
+          <select id="ftBatch">
+            <option value="1">1 (6GB)</option>
+            <option value="2" selected>2 (8GB)</option>
+            <option value="4">4 (10GB+)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="startFinetune()" id="finetuneBtn"
+              style="width:100%;background:linear-gradient(135deg,#f687b3,#7c6dfa);">
+        음색 학습 시작
+      </button>
+      <div id="finetuneProgress" style="display:none;margin-top:0.6rem;">
+        <div class="progress-bar-wrap" style="display:block;">
+          <div class="progress-bar" id="ftProgressBar" style="width:0%;animation:ftPulse 2s ease-in-out infinite;"></div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--accent);margin-top:0.4rem;" id="ftProgressLabel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 마이크 도움말 모달 ══ -->
+<div class="modal-overlay" id="micHelpModal" onclick="if(event.target===this)closeMicHelp()">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>마이크 사용 안내</h2>
+      <button class="modal-close" onclick="closeMicHelp()">&times;</button>
+    </div>
+    <div class="modal-body" style="font-size:0.82rem;line-height:1.7;color:var(--text);">
+      <p style="font-weight:600;color:var(--accent);margin-bottom:0.6rem;">원격 접속 (http://) 시 마이크가 차단됩니다!</p>
+      <p style="font-weight:600;margin-bottom:0.3rem;">Chrome 설정 방법:</p>
+      <ol style="padding-left:1.2rem;margin-bottom:0.8rem;">
+        <li>주소창에 입력: <code style="background:rgba(0,0,0,0.3);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.78rem;">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></li>
+        <li>입력란에 현재 접속 주소 입력 (예: <code style="background:rgba(0,0,0,0.3);padding:0.15rem 0.4rem;border-radius:4px;font-size:0.78rem;">http://100.94.106.3:9090</code>)</li>
+        <li><b>Enabled</b> 선택</li>
+        <li>브라우저 <b>재시작</b></li>
+      </ol>
+      <p style="font-weight:600;margin-bottom:0.3rem;">localhost 접속 시:</p>
+      <p>localhost에서는 별도 설정 없이 마이크가 바로 사용 가능합니다.</p>
+      <div style="margin-top:0.8rem;">
+        <label style="font-size:0.75rem;cursor:pointer;">
+          <input type="checkbox" id="micHelpDontShow" style="margin-right:0.3rem;">다시 보지 않기
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer" style="padding:0.8rem 1.2rem;text-align:right;">
+      <button class="btn btn-primary btn-sm" onclick="closeMicHelp()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 프로젝트 목록 모달 ══ -->
+<div class="modal-overlay" id="projectModal" onclick="if(event.target===this)closeProjectModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>프로젝트 목록</h2>
+      <button class="modal-close" onclick="closeProjectModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="projectList" style="max-height:400px;overflow-y:auto;">
+      <div class="empty">저장된 프로젝트가 없습니다</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ══════════════════════════
+     AUTH CHECK
+  ══════════════════════════ */
+  let currentUser = null;
+
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) { location.href = '/login'; return false; }
+      const d = await res.json();
+      currentUser = d.user;
+      document.getElementById('userName').textContent = currentUser.display_name;
+      const lvl = currentUser.level;
+      const lvlText = lvl === 0 ? 'ADMIN' : lvl <= 10 ? 'STAFF' : 'Lv.' + lvl;
+      document.getElementById('userLevel').textContent = lvlText;
+      document.getElementById('userArea').style.display = 'flex';
+      if (currentUser.level === 0) {
+        document.getElementById('adminLink').style.display = 'inline-block';
+      }
+      return true;
+    } catch(e) { location.href = '/login'; return false; }
+  }
+
+  // ── 번역 TTS ──
+  let translateAudioUrl = null;
+  async function doTranslateTTS() {
+    const text = document.getElementById('ttsText').value.trim();
+    if (!text) { toast('텍스트를 입력해주세요', 'error'); return; }
+    const lang = document.getElementById('translateLang').value;
+    const voiceId = document.getElementById('voiceSelect')?.value || '';
+    const langNames = {zh: '중국어', ja: '일본어', en: '영어'};
+
+    toast(`${langNames[lang]} 번역+생성 중...`);
+    try {
+      const res = await fetch('/api/tts/translate-generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${getToken()}`},
+        body: JSON.stringify({text, target_lang: lang, voice_id: voiceId || null})
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail); }
+      const data = await res.json();
+
+      const resultEl = document.getElementById('translateResult');
+      resultEl.style.display = 'block';
+      document.getElementById('translateText').innerHTML =
+        `<div style="color:var(--muted);font-size:0.7rem;">${langNames[lang]} 번역:</div>
+         <div style="font-size:1.1rem;font-weight:600;margin:0.2rem 0;">${data.translated}</div>`;
+
+      // 오디오 URL 저장
+      const filename = data.audio_path.split('/').pop();
+      translateAudioUrl = `/api/tts/translate-audio/${filename}`;
+      toast(`${langNames[lang]} TTS 생성 완료!`);
+
+      // 자동 재생
+      playTranslateAudio();
+    } catch(e) {
+      toast(e.message || '번역 실패', 'error');
+    }
+  }
+
+  function playTranslateAudio() {
+    if (!translateAudioUrl) return;
+    const audio = new Audio(translateAudioUrl + '?t=' + Date.now());
+    audio.play();
+  }
+
+  function getToken() {
+    const m = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
+    return m ? m[1] : '';
+  }
+
+  async function doLogout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    localStorage.removeItem('access_token');
+    location.href = '/login';
+  }
+
+  // 인증 포함 fetch 래퍼
+  async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('access_token');
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, { ...options, headers, credentials: 'include' });
+    if (res.status === 401) { location.href = '/login'; return null; }
+    return res;
+  }
+
+  /* ══════════════════════════
+     STATE
+  ══════════════════════════ */
+  let mediaRecorder = null, audioChunks = [], isRecording = false, recordedBlob = null;
+  let selectedVoice = null; // {id, name, is_favorite, has_finetune}
+  let allVoices = [];
+  let historyPage = 1;
+  let diarizeSession = null;
+  let finetuneVoiceId = null;
+  let panelCollapsed = JSON.parse(localStorage.getItem('panelCollapsed') || 'false');
+  let favFilterOn = false;
+
+  /* ══════════════════════════
+     LEFT PANEL COLLAPSE
+  ══════════════════════════ */
+  function togglePanel() {
+    panelCollapsed = !panelCollapsed;
+    localStorage.setItem('panelCollapsed', JSON.stringify(panelCollapsed));
+    applyPanelState();
+  }
+
+  function applyPanelState() {
+    const panel = document.getElementById('panelLeft');
+    const layout = document.querySelector('.app-layout');
+    if (panelCollapsed) {
+      panel.classList.add('collapsed');
+      layout.classList.add('left-collapsed');
+    } else {
+      panel.classList.remove('collapsed');
+      layout.classList.remove('left-collapsed');
+    }
+    updateCollapsedSelect();
+  }
+
+  function updateCollapsedSelect() {
+    const sel = document.getElementById('voiceSelectCollapsed');
+    let voices = favFilterOn ? allVoices.filter(v => v.is_favorite) : allVoices;
+    sel.innerHTML = '<option value="">-- 음색 선택 --</option>' +
+      voices.map(v => `<option value="${v.id}" ${selectedVoice && selectedVoice.id === v.id ? 'selected' : ''}>${v.name}</option>`).join('');
+  }
+
+  function selectVoiceFromDropdown(val) {
+    if (!val) { selectedVoice = null; updateSelectedDisplay(); return; }
+    const v = allVoices.find(x => x.id === parseInt(val));
+    if (v) {
+      selectedVoice = { id: v.id, name: v.name };
+      toast(`'${v.name}' 선택됨`);
+    }
+    updateSelectedDisplay();
+  }
+
+  function toggleFavFilter() {
+    favFilterOn = !favFilterOn;
+    const btn = document.getElementById('favFilterBtn');
+    btn.classList.toggle('active', favFilterOn);
+    loadVoices();
+  }
+
+  /* ══════════════════════════
+     SECTION TOGGLE
+  ══════════════════════════ */
+  function toggleSection(el) {
+    el.classList.toggle('open');
+    const content = el.nextElementSibling;
+    content.classList.toggle('open');
+  }
+
+  /* ══════════════════════════
+     TOAST
+  ══════════════════════════ */
+  function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.className = 'toast', 3000);
+  }
+
+  /* ══════════════════════════
+     SAMPLE TEXTS
+  ══════════════════════════ */
+  const DEFAULT_SAMPLES = [
+    "안녕하세요, 저는 2024년 3월 15일에 서울특별시 강남구에서 열린 제28회 AI 기술 컨퍼런스에 참석했습니다. 이번 행사에는 약 3,500명의 참가자가 모였고, 총 42개의 세션이 진행되었습니다. 특히 GPT-4와 DALL-E 3에 대한 발표가 인상적이었으며, 참가비는 1인당 150,000원이었습니다.",
+    "오늘의 날씨를 알려드리겠습니다. 서울 기온은 영하 3도에서 영상 7도 사이이며, 습도는 약 65%입니다. 미세먼지 농도는 PM2.5 기준 35마이크로그램으로 보통 수준이고요. 내일은 최고 12도까지 올라갈 예정이며, 강수 확률은 20% 정도입니다.",
+    "KTX 열차 안내 말씀드립니다. 서울역에서 부산역까지 소요 시간은 약 2시간 30분이며, KTX-산천 제127호 열차는 오후 3시 45분에 출발합니다. 요금은 일반실 59,800원, 특실 83,700원입니다.",
+    "주식 시장 동향을 전해드립니다. 코스피 지수는 전일 대비 1.8% 상승한 2,654.32포인트를 기록했고, 코스닥은 0.7% 하락한 871.45포인트입니다. 삼성전자는 주당 72,500원으로 3.2% 올랐으며, 원달러 환율은 1,328.50원입니다.",
+    "대한민국 인구 통계를 살펴보겠습니다. 2023년 기준 총인구는 약 5,175만 명이며, 65세 이상 고령 인구 비율은 18.4%로 사상 최고치를 기록했습니다. 합계 출산율은 0.72명으로 OECD 38개 회원국 중 최저입니다.",
+    "이번 분기 매출 보고입니다. 총매출은 전년 동기 대비 23.7% 증가한 1조 2,500억 원을 달성했습니다. 영업이익률은 15.3%이며, 해외 매출 비중이 전체의 41.2%를 차지합니다.",
+    "택배 배송 안내드립니다. 고객님의 주문번호 HD-20240315-78542 상품이 발송되었습니다. 배송 예정일은 3월 17일 월요일이며, CJ대한통운 송장번호는 6408-7215-9031입니다. 문의사항은 고객센터 1588-1234로 연락해주세요.",
+    "COVID-19 이후 원격 근무 비율이 크게 변화했습니다. 2019년 약 4.7%에 불과했던 재택근무 비율은 2023년에는 27.3%까지 상승했습니다. IT 업계의 경우 58.9%가 주 2회 이상 재택근무를 실시하고 있습니다.",
+    "레시피를 알려드릴게요. 김치찌개 4인분 기준입니다. 묵은지 300그램, 돼지고기 앞다리살 200그램, 두부 1모, 대파 2대가 필요합니다. 물은 800밀리리터를 넣고 센 불에서 15분, 중불에서 20분 끓여주세요.",
+    "마라톤 대회 결과를 알려드리겠습니다. 제103회 서울국제마라톤에서 김민수 선수가 2시간 8분 37초의 기록으로 우승했습니다. 총 참가자는 35,000명이며, 완주율은 87.6%였습니다."
+  ];
+
+  let sampleTexts = JSON.parse(localStorage.getItem('sampleTexts') || 'null') || [...DEFAULT_SAMPLES];
+  function saveSamples() { localStorage.setItem('sampleTexts', JSON.stringify(sampleTexts)); }
+  function openSampleModal() { renderSamples(); document.getElementById('sampleModal').classList.add('show'); }
+  function closeSampleModal() { document.getElementById('sampleModal').classList.remove('show'); }
+  function resetSamples() {
+    if (!confirm('샘플 텍스트를 초기화할까요?')) return;
+    sampleTexts = [...DEFAULT_SAMPLES]; saveSamples(); renderSamples(); toast('초기화됨');
+  }
+  function renderSamples() {
+    document.getElementById('sampleList').innerHTML = sampleTexts.map((txt, i) => `
+      <div class="sample-item">
+        <div class="sample-top">
+          <span class="sample-num"># ${i + 1}</span>
+          <div class="sample-actions">
+            <button class="btn btn-secondary btn-xs" onclick="toggleEditSample(${i})" id="editBtn-${i}">수정</button>
+            <button class="btn btn-teal btn-xs" onclick="copySample(${i})">복사</button>
+          </div>
+        </div>
+        <div class="sample-text" id="sampleText-${i}">${escHtml(txt)}</div>
+        <textarea class="sample-edit" id="sampleEdit-${i}" rows="3">${escHtml(txt)}</textarea>
+      </div>`).join('');
+  }
+  function toggleEditSample(i) {
+    const textEl = document.getElementById(`sampleText-${i}`);
+    const editEl = document.getElementById(`sampleEdit-${i}`);
+    const btn = document.getElementById(`editBtn-${i}`);
+    if (editEl.style.display === 'block') {
+      sampleTexts[i] = editEl.value.trim(); saveSamples();
+      textEl.textContent = sampleTexts[i]; textEl.style.display = 'block';
+      editEl.style.display = 'none'; btn.textContent = '수정'; btn.className = 'btn btn-secondary btn-xs';
+    } else {
+      editEl.value = sampleTexts[i]; textEl.style.display = 'none';
+      editEl.style.display = 'block'; editEl.focus(); btn.textContent = '저장'; btn.className = 'btn btn-primary btn-xs';
+    }
+  }
+  function copySample(i) {
+    navigator.clipboard.writeText(sampleTexts[i]).then(() => toast(`# ${i+1} 복사됨`)).catch(() => {
+      const ta = document.createElement('textarea'); ta.value = sampleTexts[i];
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      toast(`# ${i+1} 복사됨`);
+    });
+  }
+
+  /* ══════════════════════════
+     RECORDING
+  ══════════════════════════ */
+  async function toggleRecord() {
+    if (!isRecording) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          recordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          const p = document.getElementById('recPreview');
+          p.src = URL.createObjectURL(recordedBlob); p.style.display = 'block';
+          document.getElementById('recStatus').textContent = '녹음 완료! 재생 확인 후 저장';
+          document.getElementById('recStatus').className = 'rec-status';
+        };
+        mediaRecorder.start(); isRecording = true;
+        const recBtn = document.getElementById('recBtn');
+        recBtn.className = 'rec-btn recording';
+        recBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>';
+        document.getElementById('recStatus').innerHTML = '녹음 중... 다시 눌러서 정지';
+        document.getElementById('recStatus').className = 'rec-status active';
+      } catch(e) {
+        toast('마이크 권한이 필요합니다. 브라우저 설정에서 마이크를 허용해주세요.', 'error');
+        console.error('마이크 오류:', e);
+      }
+    } else {
+      mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(t => t.stop());
+      isRecording = false;
+      const recBtn = document.getElementById('recBtn');
+      recBtn.className = 'rec-btn';
+      recBtn.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="1" width="6" height="11" rx="3"></rect><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
+    }
+  }
+
+  /* ══════════════════════════
+     SAVE VOICE
+  ══════════════════════════ */
+  async function saveVoice() {
+    const name = document.getElementById('voiceName').value.trim();
+    if (!name) return toast('이름을 입력해주세요', 'error');
+    const fileInput = document.getElementById('voiceFile');
+    let blob = recordedBlob, filename = 'recording.wav';
+    if (fileInput.files[0]) { blob = fileInput.files[0]; filename = fileInput.files[0].name; }
+    if (!blob) return toast('녹음하거나 파일을 업로드해주세요', 'error');
+    const btn = document.getElementById('saveVoiceBtn');
+    btn.disabled = true; btn.innerHTML = '저장 중<span class="spin"></span>';
+    const fd = new FormData(); fd.append('name', name); fd.append('file', blob, filename);
+    try {
+      const res = await fetch('/api/voice/record', { method: 'POST', body: fd });
+      const d = await res.json();
+      toast(d.message || '저장 완료!'); loadVoices();
+      recordedBlob = null;
+      document.getElementById('recPreview').style.display = 'none';
+      document.getElementById('voiceFile').value = '';
+    } catch(e) { toast('저장 실패: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '목소리 저장'; }
+  }
+
+  /* ══════════════════════════
+     VOICE LIST (Left Panel)
+  ══════════════════════════ */
+  async function loadVoices() {
+    try {
+      const res = await fetch('/api/voice/list');
+      const d = await res.json();
+      allVoices = d.voices;
+      const el = document.getElementById('voiceList');
+
+      // 즐겨찾기 필터 적용
+      let filtered = favFilterOn ? d.voices.filter(v => v.is_favorite) : d.voices;
+
+      if (!filtered.length) {
+        el.innerHTML = favFilterOn
+          ? '<div class="empty">즐겨찾기가 없습니다</div>'
+          : '<div class="empty">저장된 목소리가 없습니다</div>';
+        updateCollapsedSelect();
+        return;
+      }
+
+      // 즐겨찾기 먼저 정렬
+      const sorted = [...filtered].sort((a, b) => (b.is_favorite || 0) - (a.is_favorite || 0));
+
+      el.innerHTML = sorted.map(v => {
+        const isSel = selectedVoice && selectedVoice.id === v.id;
+        const isFav = v.is_favorite;
+        return `
+        <div class="voice-item ${isSel ? 'selected' : ''}" onclick="selectVoice(${v.id}, '${esc(v.name)}')">
+          <div class="vi-row">
+            <button class="vi-fav ${isFav ? 'active' : ''}" onclick="event.stopPropagation();toggleFav(${v.id})" title="즐겨찾기">
+              ${isFav ? '&#9829;' : '&#9825;'}
+            </button>
+            <div style="flex:1;min-width:0;">
+              <div class="vi-name">${v.name}</div>
+              <div class="vi-meta">${(v.duration||0).toFixed(1)}초 &middot; ${fmt(v.created_at)}</div>
+            </div>
+            <div class="vi-actions" onclick="event.stopPropagation()">
+              <button class="vi-ft-icon" onclick="openTuning(${v.id},'${esc(v.name)}')" title="음성 튜닝" style="color:var(--accent2);">
+                &#9835;
+                <span class="tooltip">파라미터 튜닝</span>
+              </button>
+              <button class="vi-ft-icon" onclick="openFinetuneModal(${v.id},'${esc(v.name)}')" title="음색 학습">
+                &#9881;
+                <span class="tooltip">파인튜닝: 음색을 업그레이드 하세요</span>
+              </button>
+              <button class="vi-backup" onclick="backupVoice(${v.id})" title="백업 다운로드">&#8681;</button>
+              <button class="vi-del" onclick="deleteVoice(${v.id},'${esc(v.name)}')" title="삭제">&#10005;</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      updateSelectedDisplay();
+      updateCollapsedSelect();
+      updateVoiceSelect();
+
+      // 첫 로드 시 기본 음성 선택: 김준용
+      if (!selectedVoice && allVoices.length) {
+        const defaultVoice = allVoices.find(v => v.name === '김준용') || allVoices[0];
+        selectedVoice = { id: defaultVoice.id, name: defaultVoice.name };
+        updateSelectedDisplay();
+        updateVoiceSelect();
+        // 다시 렌더 (선택 표시)
+        loadVoices();
+        return;
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  function selectVoice(id, name) {
+    if (selectedVoice && selectedVoice.id === id) {
+      selectedVoice = null;
+      toast(`'${name}' 선택 해제`);
+    } else {
+      selectedVoice = { id, name };
+      toast(`'${name}' 선택됨`);
+    }
+    loadVoices();
+  }
+
+  function updateSelectedDisplay() {
+    const el = document.getElementById('selectedVoiceDisplay');
+    if (!selectedVoice) {
+      el.innerHTML = '';
+    } else {
+      el.innerHTML = `<span style="font-weight:600;">${selectedVoice.name}</span>`;
+    }
+    // 셀렉트 드롭다운 동기화
+    const sel = document.getElementById('voiceSelect');
+    if (sel && selectedVoice) sel.value = selectedVoice.id;
+  }
+
+  function updateVoiceSelect() {
+    const sel = document.getElementById('voiceSelect');
+    if (!sel) return;
+    // 즐겨찾기 먼저, 나머지 뒤에
+    const sorted = [...allVoices].sort((a, b) => (b.is_favorite || 0) - (a.is_favorite || 0));
+    sel.innerHTML = sorted.map(v =>
+      `<option value="${v.id}">${v.is_favorite ? '\u2665 ' : ''}${v.name} (${(v.duration||0).toFixed(0)}초)</option>`
+    ).join('');
+    if (selectedVoice) sel.value = selectedVoice.id;
+  }
+
+  function selectVoiceFromSelect(val) {
+    const id = parseInt(val);
+    const v = allVoices.find(v => v.id === id);
+    if (v) {
+      selectedVoice = { id: v.id, name: v.name };
+      updateSelectedDisplay();
+      loadVoices();  // 왼쪽 패널도 동기화
+    }
+  }
+
+  async function toggleFav(id) {
+    try {
+      const res = await fetch(`/api/voice/${id}/favorite`, { method: 'POST' });
+      const d = await res.json();
+      toast(d.is_favorite ? '즐겨찾기 추가' : '즐겨찾기 해제');
+      loadVoices();
+    } catch(e) { toast('실패', 'error'); }
+  }
+
+  function backupVoice(id) {
+    window.location.href = `/api/voice/${id}/download`;
+  }
+
+  function backupAllVoices() {
+    window.location.href = '/api/backup/voices';
+  }
+
+  async function deleteVoice(id, name) {
+    if (!confirm(`"${name}" 삭제?`)) return;
+    await fetch(`/api/voice/${id}`, { method: 'DELETE' });
+    if (selectedVoice && selectedVoice.id === id) selectedVoice = null;
+    toast('삭제됨'); loadVoices();
+  }
+  async function deleteAllVoices() {
+    if (!confirm('모든 목소리를 삭제할까요?')) return;
+    await fetch('/api/voice/all', { method: 'DELETE' });
+    selectedVoice = null; toast('전체 삭제됨'); loadVoices();
+  }
+
+  /* ══════════════════════════
+     TTS PREVIEW (라인별 미리듣기)
+  ══════════════════════════ */
+  let previewSession = null;  // { session_id, voice_id, lines: [{index, text, tone, audio_url}] }
+  let globalTone = 'normal';
+
+  function selectGlobalTone(btn) {
+    const tone = btn.dataset.tone;
+    if (tone === 'normal') {
+      // 기본 누르면 다른 효과 해제
+      document.querySelectorAll('#globalToneSelector .tone-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    } else {
+      // 기본 해제하고 토글
+      document.querySelector('#globalToneSelector .tone-btn[data-tone="normal"]').classList.remove('active');
+      btn.classList.toggle('active');
+    }
+    // 선택된 톤들 수집
+    const selected = [...document.querySelectorAll('#globalToneSelector .tone-btn.active')].map(b => b.dataset.tone);
+    globalTone = selected.length ? selected.join(',') : 'normal';
+    if (globalTone === 'normal') {
+      document.querySelector('#globalToneSelector .tone-btn[data-tone="normal"]').classList.add('active');
+    }
+  }
+
+  function applyGlobalToneToAll() {
+    if (!previewSession) return;
+    document.querySelectorAll('.preview-line-tone').forEach(container => {
+      container.querySelectorAll('.tone-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tone === globalTone);
+      });
+    });
+    previewSession.lines.forEach(l => l.tone = globalTone);
+  }
+
+  async function previewTTS() {
+    if (!selectedVoice) return toast('목소리를 먼저 선택해주세요', 'error');
+    const text = document.getElementById('ttsText').value.trim();
+    if (!text) return toast('텍스트를 입력해주세요', 'error');
+
+    const btn = document.getElementById('previewBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const progressLabel = document.getElementById('progressLabel');
+
+    btn.disabled = true;
+    btn.innerHTML = '생성 중<span class="spin"></span>';
+    progressWrap.style.display = 'block'; progressLabel.style.display = 'block';
+    progressBar.style.width = '5%';
+    document.getElementById('previewLines').innerHTML = '';
+    document.getElementById('finalizeResult').style.display = 'none';
+    document.getElementById('finalizeBtn').disabled = true;
+
+    // 라인 수 기반 예상 진행률 (라인당 약 5~10초 소요)
+    const lineCount = text.split('\n').filter(l => l.trim()).length;
+    let fakeProgress = 5;
+    const progressStep = 85 / Math.max(lineCount, 1);  // 5%~90% 사이를 라인 수로 분배
+    const progressTimer = setInterval(() => {
+      if (fakeProgress < 90) {
+        fakeProgress += progressStep * 0.1;  // 천천히 증가
+        progressBar.style.width = Math.min(fakeProgress, 90) + '%';
+      }
+      const cur = Math.floor(fakeProgress / progressStep);
+      progressLabel.innerHTML = `생성 중 (${Math.min(cur, lineCount)}/${lineCount}줄): <strong style="color:var(--text)">${selectedVoice.name}</strong><span class="spin"></span>`;
+    }, 500);
+
+    const fd = new FormData();
+    fd.append('voice_id', selectedVoice.id);
+    fd.append('text', text);
+    fd.append('tone', globalTone);
+    if (window._tuneParamsActive && window._tuneParamsJson) {
+      fd.append('params_json', window._tuneParamsJson);
+    }
+
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 600000);
+      const res = await fetch('/api/tts/preview', { method:'POST', body:fd, signal:ctrl.signal });
+      clearTimeout(tid);
+      clearInterval(progressTimer);
+      const d = await res.json();
+
+      progressBar.style.width = '100%';
+      progressLabel.innerHTML = `생성 완료! (${lineCount}/${lineCount}줄)`;
+      setTimeout(() => { progressWrap.style.display = 'none'; progressLabel.style.display = 'none'; }, 1000);
+
+      if (d.session_id) {
+        previewSession = {
+          session_id: d.session_id,
+          voice_id: selectedVoice.id,
+          lines: d.lines.map(l => ({ ...l, tone: globalTone }))
+        };
+        renderPreviewLines();
+        document.getElementById('finalizeBtn').disabled = false;
+        toast(`${d.lines.length}줄 미리듣기 생성 완료!`);
+      } else {
+        toast(d.detail || '미리듣기 생성 실패', 'error');
+      }
+    } catch(e) {
+      clearInterval(progressTimer);
+      toast('생성 실패: ' + e.message, 'error');
+      progressWrap.style.display = 'none'; progressLabel.style.display = 'none';
+    }
+    btn.disabled = false; btn.innerHTML = '미리듣기 생성';
+  }
+
+  const TONE_LABELS = {
+    normal: '기본', fast: '빠르게', slow: '느리게',
+    bright: '밝은톤', sad: '우울한톤', polite: '정중한톤', elderly: '부모님', senior: '시니어',
+    child: '어린이', child_calm: '어린이(차분)'
+  };
+
+  // 숨김 오디오 엘리먼트 관리
+  const lineAudios = {};
+
+  function fmtTime(sec) {
+    if (!sec || !isFinite(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s.toString().padStart(2,'0')}`;
+  }
+
+  function renderPreviewLines() {
+    if (!previewSession) return;
+    // 기존 오디오 정리
+    Object.values(lineAudios).forEach(a => { a.pause(); a.src = ''; });
+    for (const k in lineAudios) delete lineAudios[k];
+
+    const container = document.getElementById('previewLines');
+    container.innerHTML = previewSession.lines.map((line, i) => {
+      const toneButtons = Object.entries(TONE_LABELS).map(([key, label]) =>
+        `<button class="tone-btn ${(line.tone||'normal').split(',').includes(key) ? 'active' : ''}" data-tone="${key}" onclick="selectLineTone(${i}, this)">${label}</button>`
+      ).join('');
+
+      return `
+      <div class="preview-line-item" id="previewLine-${i}">
+        <div class="preview-line-header">
+          <span class="line-num">${i + 1}</span>
+          <textarea class="preview-line-text" id="lineText-${i}" rows="1" oninput="autoResizeTextarea(this);syncLineTextToMain()">${escHtml(line.text)}</textarea>
+        </div>
+        ${line.audio_url ? `
+        <div class="audio-player-wrap" id="playerWrap-${i}">
+          <div class="audio-seekbar" id="seekbar-${i}" onmousedown="seekStart(event,${i})" ontouchstart="seekStart(event,${i})">
+            <canvas id="waveCanvas-${i}"></canvas>
+            <div class="audio-seekbar-fill" id="seekFill-${i}"></div>
+            <div class="audio-seekbar-head" id="seekHead-${i}"></div>
+          </div>
+          <div class="audio-time-label">
+            <span id="timeCur-${i}">0:00</span>
+            <span id="timeDur-${i}">--</span>
+          </div>
+          <div class="audio-play-btns">
+            <button class="play-btn" id="playBtn-${i}" onclick="togglePlayLine(${i})">&#9654;</button>
+            <button class="btn btn-secondary btn-xs" onclick="regenerateLine(${i})" id="regenBtn-${i}">재생성</button>
+          </div>
+          <div class="cut-btns">
+            <button class="cut-btn" onclick="cutFront(${i})">&#9986; 앞부분컷</button>
+            <button class="cut-btn" onclick="splitLine(${i})">&#9995; 분리</button>
+            <button class="cut-btn" onclick="cutBack(${i})">&#9986; 뒷부분컷</button>
+            <button class="cut-btn" onclick="deleteLine(${i})" style="color:var(--danger);margin-left:auto;">&#10005; 삭제</button>
+          </div>
+        </div>
+        ` : `<span style="font-size:0.72rem;color:var(--danger);">생성 실패</span>`}
+        <div class="preview-line-tone">${toneButtons}</div>
+      </div>`;
+    }).join('');
+
+    // 텍스트영역 자동 높이 조절 + 오디오 초기화
+    container.querySelectorAll('.preview-line-text').forEach(ta => autoResizeTextarea(ta));
+    previewSession.lines.forEach((line, i) => {
+      if (line.audio_url) initLineAudio(i, line.audio_url);
+    });
+  }
+
+  function initLineAudio(i, url) {
+    const fullUrl = url + '?t=' + Date.now();
+    const audio = new Audio(fullUrl);
+    lineAudios[i] = audio;
+    drawWaveform(i, url);
+    audio.addEventListener('loadedmetadata', () => {
+      const durEl = document.getElementById(`timeDur-${i}`);
+      if (durEl) durEl.textContent = fmtTime(audio.duration);
+    });
+    audio.addEventListener('timeupdate', () => {
+      if (!audio.duration) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      const fill = document.getElementById(`seekFill-${i}`);
+      const head = document.getElementById(`seekHead-${i}`);
+      const cur = document.getElementById(`timeCur-${i}`);
+      if (fill) fill.style.width = pct + '%';
+      if (head) head.style.left = `calc(${pct}% - 1.5px)`;
+      if (cur) cur.textContent = fmtTime(audio.currentTime);
+    });
+    audio.addEventListener('ended', () => {
+      const btn = document.getElementById(`playBtn-${i}`);
+      if (btn) btn.innerHTML = '&#9654;';
+    });
+  }
+
+  function togglePlayLine(i) {
+    const audio = lineAudios[i];
+    if (!audio) return;
+    const btn = document.getElementById(`playBtn-${i}`);
+    // 다른 라인 정지
+    Object.entries(lineAudios).forEach(([k, a]) => {
+      if (parseInt(k) !== i && !a.paused) {
+        a.pause();
+        const ob = document.getElementById(`playBtn-${k}`);
+        if (ob) ob.innerHTML = '&#9654;';
+      }
+    });
+    if (audio.paused) {
+      audio.play().catch(()=>{});
+      btn.innerHTML = '&#10074;&#10074;';
+    } else {
+      audio.pause();
+      btn.innerHTML = '&#9654;';
+    }
+  }
+
+  function seekStart(e, i) {
+    e.preventDefault();
+    const audio = lineAudios[i];
+    if (!audio || !audio.duration) return;
+    const bar = document.getElementById(`seekbar-${i}`);
+
+    function doSeek(ev) {
+      const rect = bar.getBoundingClientRect();
+      const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      let pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      audio.currentTime = pct * audio.duration;
+    }
+    doSeek(e);
+
+    function onMove(ev) { ev.preventDefault(); doSeek(ev); }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  }
+
+  function autoResizeTextarea(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  function selectLineTone(index, btn) {
+    const container = btn.closest('.preview-line-tone');
+    const tone = btn.dataset.tone;
+    if (tone === 'normal') {
+      container.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    } else {
+      container.querySelector('.tone-btn[data-tone="normal"]').classList.remove('active');
+      btn.classList.toggle('active');
+    }
+    const selected = [...container.querySelectorAll('.tone-btn.active')].map(b => b.dataset.tone);
+    const combined = selected.length ? selected.join(',') : 'normal';
+    if (combined === 'normal') {
+      container.querySelector('.tone-btn[data-tone="normal"]').classList.add('active');
+    }
+    if (previewSession) previewSession.lines[index].tone = combined;
+  }
+
+  /* ── 컷 편집 ── */
+  async function cutFront(i) {
+    const audio = lineAudios[i];
+    if (!audio || !audio.duration) return toast('오디오를 먼저 로드해주세요', 'error');
+    const cur = audio.currentTime;
+    if (cur <= 0.05) return toast('시크바를 컷 위치로 이동해주세요', 'error');
+    if (cur >= audio.duration - 0.05) return toast('너무 끝에서 컷할 수 없습니다', 'error');
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('line_index', i);
+    fd.append('start_sec', cur);
+    fd.append('end_sec', -1);
+
+    try {
+      const res = await fetch('/api/tts/preview-trim', { method:'POST', body:fd });
+      const d = await res.json();
+      if (d.success) {
+        toast(`${i+1}번 줄 앞부분 ${cur.toFixed(1)}초 컷 완료`);
+        reloadLineAudio(i);
+      } else toast(d.detail || '실패', 'error');
+    } catch(e) { toast('컷 실패: ' + e.message, 'error'); }
+  }
+
+  async function cutBack(i) {
+    const audio = lineAudios[i];
+    if (!audio || !audio.duration) return toast('오디오를 먼저 로드해주세요', 'error');
+    const cur = audio.currentTime;
+    if (cur <= 0.05) return toast('시크바를 컷 위치로 이동해주세요', 'error');
+    if (cur >= audio.duration - 0.05) return toast('너무 끝에서 컷할 수 없습니다', 'error');
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('line_index', i);
+    fd.append('start_sec', 0);
+    fd.append('end_sec', cur);
+
+    try {
+      const res = await fetch('/api/tts/preview-trim', { method:'POST', body:fd });
+      const d = await res.json();
+      if (d.success) {
+        toast(`${i+1}번 줄 뒷부분 컷 완료 (${d.duration}초 남음)`);
+        reloadLineAudio(i);
+      } else toast(d.detail || '실패', 'error');
+    } catch(e) { toast('컷 실패: ' + e.message, 'error'); }
+  }
+
+  async function splitLine(i) {
+    const audio = lineAudios[i];
+    if (!audio || !audio.duration) return toast('오디오를 먼저 로드해주세요', 'error');
+    const cur = audio.currentTime;
+    if (cur <= 0.1 || cur >= audio.duration - 0.1) return toast('분리할 위치로 시크바를 이동해주세요', 'error');
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('line_index', i);
+    fd.append('split_sec', cur);
+
+    try {
+      const res = await fetch('/api/tts/preview-split', { method:'POST', body:fd });
+      const d = await res.json();
+      if (d.success) {
+        // 라인 배열 업데이트: i번을 둘로 나눔
+        const origLine = previewSession.lines[i];
+        const lineA = { ...origLine, index: d.part_a.index, audio_url: d.part_a.audio_url };
+        const lineB = { ...origLine, index: d.part_b.index, text: origLine.text, audio_url: d.part_b.audio_url };
+        // 뒤쪽 라인 인덱스 밀기
+        for (let j = i + 1; j < previewSession.lines.length; j++) {
+          previewSession.lines[j].index++;
+        }
+        previewSession.lines.splice(i, 1, lineA, lineB);
+        renderPreviewLines();
+        toast(`${i+1}번 줄이 ${cur.toFixed(1)}초 지점에서 분리됨`);
+      } else toast(d.detail || '분리 실패', 'error');
+    } catch(e) { toast('분리 실패: ' + e.message, 'error'); }
+  }
+
+  function reloadLineAudio(i) {
+    const audio = lineAudios[i];
+    if (!audio) return;
+    audio.pause();
+    const url = previewSession.lines[i].audio_url;
+    audio.src = url + '?t=' + Date.now();
+    audio.load();
+    drawWaveform(i, url);
+    const btn = document.getElementById(`playBtn-${i}`);
+    if (btn) btn.innerHTML = '&#9654;';
+    const fill = document.getElementById(`seekFill-${i}`);
+    const head = document.getElementById(`seekHead-${i}`);
+    if (fill) fill.style.width = '0%';
+    if (head) head.style.left = '0';
+  }
+
+  async function regenerateLine(index) {
+    if (!previewSession) return;
+    const line = previewSession.lines[index];
+    const newText = document.getElementById(`lineText-${index}`).value.trim();
+    if (!newText) return toast('텍스트가 비어있습니다', 'error');
+
+    const btn = document.getElementById(`regenBtn-${index}`);
+    btn.disabled = true; btn.innerHTML = '생성 중<span class="spin"></span>';
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('voice_id', previewSession.voice_id);
+    fd.append('line_index', line.index);
+    fd.append('text', newText);
+    fd.append('tone', line.tone || globalTone);
+    if (window._tuneParamsActive && window._tuneParamsJson) {
+      fd.append('params_json', window._tuneParamsJson);
+    }
+
+    try {
+      const res = await fetch('/api/tts/preview-line', { method:'POST', body:fd });
+      const d = await res.json();
+      if (d.success) {
+        line.text = newText;
+        line.audio_url = d.audio_url;
+        reloadLineAudio(index);
+        toast(`${index + 1}번 줄 재생성 완료`);
+      } else {
+        toast(d.detail || '재생성 실패', 'error');
+      }
+    } catch(e) {
+      toast('재생성 실패: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.innerHTML = '재생성';
+  }
+
+  /* ── 텍스트 동기화 ── */
+  function syncLineTextToMain() {
+    if (!previewSession) return;
+    const allTexts = previewSession.lines.map((line, i) => {
+      return document.getElementById(`lineText-${i}`)?.value || line.text;
+    });
+    document.getElementById('ttsText').value = allTexts.join('\n');
+  }
+
+  /* ── 라인 삭제 ── */
+  async function deleteLine(i) {
+    if (!previewSession) return;
+    if (!confirm(`${i + 1}번 줄을 삭제하시겠습니까?`)) return;
+    const line = previewSession.lines[i];
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('line_index', line.index);
+    await fetch('/api/tts/preview-delete', { method:'POST', body:fd }).catch(()=>{});
+
+    previewSession.lines.splice(i, 1);
+    if (previewSession.lines.length === 0) {
+      document.getElementById('finalizeBtn').disabled = true;
+    }
+    renderPreviewLines();
+    syncLineTextToMain();
+    toast(`${i + 1}번 줄 삭제됨`);
+  }
+
+  /* ── 파형 그래프 ── */
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  async function drawWaveform(i, url) {
+    try {
+      const ctx = getAudioCtx();
+      const res = await fetch(url + '?t=' + Date.now());
+      const buf = await res.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(buf);
+      const raw = decoded.getChannelData(0);
+
+      const canvas = document.getElementById(`waveCanvas-${i}`);
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const canvasCtx = canvas.getContext('2d');
+      canvasCtx.scale(dpr, dpr);
+      const w = rect.width, h = rect.height;
+
+      const step = Math.max(1, Math.floor(raw.length / w));
+      const mid = h / 2;
+      canvasCtx.clearRect(0, 0, w, h);
+
+      for (let x = 0; x < w; x++) {
+        const start = x * step;
+        let min = 0, max = 0;
+        for (let j = start; j < start + step && j < raw.length; j++) {
+          if (raw[j] < min) min = raw[j];
+          if (raw[j] > max) max = raw[j];
+        }
+        const top = mid + min * mid;
+        const bottom = mid + max * mid;
+        const grad = canvasCtx.createLinearGradient(0, top, 0, bottom);
+        grad.addColorStop(0, 'rgba(124,109,250,0.7)');
+        grad.addColorStop(1, 'rgba(79,209,197,0.7)');
+        canvasCtx.fillStyle = grad;
+        canvasCtx.fillRect(x, top, 1, Math.max(1, bottom - top));
+      }
+    } catch(e) { console.warn('파형 그리기 실패:', e); }
+  }
+
+  /* ── YouTube 가져오기 ── */
+  async function importYoutube() {
+    const url = document.getElementById('youtubeUrl').value.trim();
+    if (!url) return toast('YouTube URL을 입력해주세요', 'error');
+    const name = document.getElementById('voiceName').value.trim() || 'YouTube';
+
+    const btn = document.getElementById('ytBtn');
+    btn.disabled = true; btn.innerHTML = '다운로드 중<span class="spin"></span>';
+
+    const fd = new FormData();
+    fd.append('url', url);
+    fd.append('name', name);
+
+    try {
+      const res = await fetch('/api/voice/youtube', { method:'POST', body:fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || '실패');
+      toast(d.message);
+      loadVoices();
+      document.getElementById('youtubeUrl').value = '';
+    } catch(e) {
+      toast('YouTube 추출 실패: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.innerHTML = '가져오기';
+  }
+
+  /* ── 프로젝트 저장/불러오기 ── */
+  let currentProjectId = null;
+
+  async function saveProject() {
+    if (!previewSession) return toast('미리듣기를 먼저 생성해주세요', 'error');
+    const defaultName = selectedVoice ? selectedVoice.name + ' 프로젝트' : '새 프로젝트';
+    const name = prompt('프로젝트 이름:', currentProjectId ? '' : defaultName);
+    if (!name) return;
+
+    // 최신 텍스트 반영
+    previewSession.lines.forEach((line, i) => {
+      const ta = document.getElementById(`lineText-${i}`);
+      if (ta) line.text = ta.value.trim();
+    });
+
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('voice_id', previewSession.voice_id);
+    fd.append('input_text', document.getElementById('ttsText').value);
+    fd.append('session_id', previewSession.session_id);
+    fd.append('lines_json', JSON.stringify(previewSession.lines));
+    fd.append('global_tone', globalTone);
+
+    try {
+      let res;
+      if (currentProjectId) {
+        res = await fetch(`/api/project/${currentProjectId}`, { method:'PUT', body:fd });
+      } else {
+        res = await fetch('/api/project/save', { method:'POST', body:fd });
+      }
+      const d = await res.json();
+      if (d.success) {
+        if (d.project_id) currentProjectId = d.project_id;
+        if (d.session_id) previewSession.session_id = d.session_id;
+        toast(d.message);
+      } else toast(d.detail || '저장 실패', 'error');
+    } catch(e) { toast('프로젝트 저장 실패: ' + e.message, 'error'); }
+  }
+
+  function openProjectModal() { document.getElementById('projectModal').classList.add('show'); }
+  function closeProjectModal() { document.getElementById('projectModal').classList.remove('show'); }
+
+  async function openProjectList() {
+    try {
+      const res = await fetch('/api/project/list');
+      const d = await res.json();
+      const el = document.getElementById('projectList');
+      if (!d.projects.length) {
+        el.innerHTML = '<div class="empty">저장된 프로젝트가 없습니다</div>';
+      } else {
+        el.innerHTML = d.projects.map(p => {
+          const lines = p.lines_json ? JSON.parse(p.lines_json).length : 0;
+          return `
+          <div class="tts-item">
+            <div class="tts-preview"><strong>${escHtml(p.name)}</strong></div>
+            <div class="tts-meta">${p.voice_name || '삭제됨'} &middot; ${lines}줄 &middot; ${fmt(p.updated_at)}</div>
+            <div class="tts-actions">
+              <button class="btn btn-primary btn-xs" onclick="loadProject(${p.id})">불러오기</button>
+              <button class="btn btn-danger btn-xs" onclick="deleteProjectItem(${p.id})">삭제</button>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      openProjectModal();
+    } catch(e) { toast('프로젝트 목록 로드 실패', 'error'); }
+  }
+
+  async function loadProject(id) {
+    try {
+      const res = await fetch(`/api/project/${id}`);
+      const d = await res.json();
+      if (!d.success) return toast('불러오기 실패', 'error');
+
+      const proj = d.project;
+      currentProjectId = proj.id;
+      const lines = JSON.parse(proj.lines_json || '[]');
+
+      // 음색 URL 변환 (프로젝트 경로로)
+      lines.forEach(line => {
+        if (line.audio_url) {
+          line.audio_url = `/api/project/audio/${proj.session_id}/${line.index}`;
+        }
+      });
+
+      previewSession = {
+        session_id: proj.session_id,
+        voice_id: proj.voice_id,
+        lines: lines
+      };
+
+      document.getElementById('ttsText').value = proj.input_text || '';
+      globalTone = proj.global_tone || 'normal';
+      document.querySelectorAll('#globalToneSelector .tone-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tone === globalTone);
+      });
+
+      // 음색 선택
+      const voices = await (await fetch('/api/voice/list')).json();
+      const v = voices.voices?.find(v => v.id === proj.voice_id);
+      if (v) { selectedVoice = v; updateSelectedDisplay(); }
+
+      renderPreviewLines();
+      document.getElementById('finalizeBtn').disabled = false;
+      closeProjectModal();
+      toast(`프로젝트 '${proj.name}' 불러옴`);
+    } catch(e) { toast('프로젝트 불러오기 실패: ' + e.message, 'error'); }
+  }
+
+  async function deleteProjectItem(id) {
+    if (!confirm('프로젝트를 삭제하시겠습니까?')) return;
+    try {
+      await fetch(`/api/project/${id}`, { method:'DELETE' });
+      toast('프로젝트 삭제됨');
+      openProjectList();
+    } catch(e) { toast('삭제 실패', 'error'); }
+  }
+
+  async function finalizeTTS() {
+    if (!previewSession) return toast('미리듣기를 먼저 생성해주세요', 'error');
+
+    const btn = document.getElementById('finalizeBtn');
+    btn.disabled = true; btn.innerHTML = '저장 중<span class="spin"></span>';
+
+    // 최신 텍스트 반영 (분리 후 인덱스 변경 반영)
+    const linesData = previewSession.lines.map((line, i) => ({
+      index: line.index,
+      text: document.getElementById(`lineText-${i}`)?.value.trim() || line.text
+    }));
+
+    const fd = new FormData();
+    fd.append('session_id', previewSession.session_id);
+    fd.append('voice_id', previewSession.voice_id);
+    fd.append('lines_json', JSON.stringify(linesData));
+
+    try {
+      const res = await fetch('/api/tts/finalize', { method:'POST', body:fd });
+      const d = await res.json();
+      if (d.success) {
+        const resultEl = document.getElementById('finalizeResult');
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = `
+          <div class="mri-label">최종 완성 - ${selectedVoice ? selectedVoice.name : ''}</div>
+          <audio controls src="${d.audio_url}" style="width:100%;"></audio>
+          <div class="mri-dl">
+            <a href="${d.audio_url}" download="tts.wav"><button class="btn btn-teal btn-xs">WAV</button></a>
+            <a href="${d.srt_url}" download="subtitles.srt"><button class="btn btn-secondary btn-xs">SRT</button></a>
+          </div>`;
+        toast('TTS 최종 저장 완료!');
+        previewSession = null;
+        document.getElementById('previewLines').innerHTML = '';
+        searchHistory();
+      } else {
+        toast(d.detail || '저장 실패', 'error');
+      }
+    } catch(e) {
+      toast('저장 실패: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.innerHTML = '최종 내려받기';
+  }
+
+  /* ══════════════════════════
+     TTS HISTORY (Right Panel)
+  ══════════════════════════ */
+  async function searchHistory(page) {
+    if (page) historyPage = page;
+    const search = document.getElementById('historySearch').value.trim();
+    const voiceName = document.getElementById('historyVoiceFilter').value;
+
+    try {
+      const params = new URLSearchParams({
+        page: historyPage, per_page: 15,
+        search: search, voice_name: voiceName
+      });
+      const res = await fetch(`/api/tts/search?${params}`);
+      const d = await res.json();
+      renderHistory(d);
+    } catch(e) {
+      // fallback to old API
+      try {
+        const res = await fetch('/api/tts/list');
+        const d = await res.json();
+        renderHistory({ results: d.results, total: d.results.length, page: 1, total_pages: 1 });
+      } catch(e2) { console.error(e2); }
+    }
+  }
+
+  function renderHistory(data) {
+    const el = document.getElementById('historyList');
+    if (!data.results.length) {
+      el.innerHTML = '<div class="empty">생성 이력이 없습니다</div>';
+      document.getElementById('historyPagination').innerHTML = '';
+      return;
+    }
+
+    el.innerHTML = data.results.map(r => `
+      <div class="tts-item" id="tts-item-${r.id}">
+        <div class="tts-preview">${escHtml(r.input_text)}</div>
+        <div class="tts-meta">#${r.id} &middot; <span class="voice-name">${r.voice_name || '삭제됨'}</span> &middot; ${fmt(r.created_at)}</div>
+        <div class="tts-actions">
+          <button class="btn btn-secondary btn-xs" onclick="togglePlayer(${r.id})">&#9654; 재생</button>
+          <a href="/api/tts/download/${r.id}/audio" download><button class="btn btn-teal btn-xs">WAV</button></a>
+          <a href="/api/tts/download/${r.id}/srt" download><button class="btn btn-secondary btn-xs">SRT</button></a>
+          <button class="btn btn-danger btn-xs" onclick="deleteTTS(${r.id})">&#10005;</button>
+        </div>
+        <div class="tts-player" id="player-${r.id}">
+          <audio controls src="/api/tts/download/${r.id}/audio" style="width:100%;"></audio>
+        </div>
+      </div>`).join('');
+
+    // Pagination
+    const pg = document.getElementById('historyPagination');
+    if (data.total_pages <= 1) { pg.innerHTML = `<span class="page-info">${data.total}건</span>`; return; }
+    let html = '';
+    html += `<button class="page-btn" onclick="searchHistory(${data.page-1})" ${data.page<=1?'disabled':''}>&#9664;</button>`;
+    for (let i = 1; i <= data.total_pages; i++) {
+      if (data.total_pages > 7 && Math.abs(i - data.page) > 2 && i !== 1 && i !== data.total_pages) {
+        if (i === data.page - 3 || i === data.page + 3) html += '<span class="page-info">...</span>';
+        continue;
+      }
+      html += `<button class="page-btn ${i===data.page?'active':''}" onclick="searchHistory(${i})">${i}</button>`;
+    }
+    html += `<button class="page-btn" onclick="searchHistory(${data.page+1})" ${data.page>=data.total_pages?'disabled':''}>&#9654;</button>`;
+    html += `<span class="page-info">${data.total}건</span>`;
+    pg.innerHTML = html;
+  }
+
+  function togglePlayer(id) {
+    const p = document.getElementById(`player-${id}`);
+    const isOpen = p.classList.contains('show');
+    document.querySelectorAll('.tts-player.show').forEach(el => {
+      el.classList.remove('show'); el.querySelector('audio').pause();
+    });
+    if (!isOpen) { p.classList.add('show'); p.querySelector('audio').play().catch(()=>{}); }
+  }
+
+  async function deleteTTS(id) {
+    if (!confirm(`#${id} 삭제?`)) return;
+    await fetch(`/api/tts/${id}`, { method:'DELETE' });
+    toast('삭제됨'); searchHistory();
+  }
+  async function deleteAllTTS() {
+    if (!confirm('모든 TTS 결과를 삭제할까요?')) return;
+    await fetch('/api/tts/all', { method:'DELETE' });
+    toast('전체 삭제됨'); searchHistory();
+  }
+
+  /* ══════════════════════════
+     지문 검색 (이전 텍스트 재사용)
+  ══════════════════════════ */
+  let _textSearchTimer = null;
+  async function searchPastTexts(query) {
+    clearTimeout(_textSearchTimer);
+    const box = document.getElementById('textSearchResults');
+    if (!query || query.length < 1) {
+      // 빈 검색어면 최근 10개 보여주기
+      _textSearchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/tts/search?page=1&per_page=10&search=&voice_name=');
+          const d = await res.json();
+          showTextResults(d.results);
+        } catch(e) {}
+      }, 200);
+      return;
+    }
+    _textSearchTimer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ page:1, per_page:10, search: query, voice_name:'' });
+        const res = await fetch(`/api/tts/search?${params}`);
+        const d = await res.json();
+        showTextResults(d.results);
+      } catch(e) { box.style.display='none'; }
+    }, 300);
+  }
+
+  function showTextResults(results) {
+    const box = document.getElementById('textSearchResults');
+    if (!results || !results.length) {
+      box.innerHTML = '<div style="padding:0.5rem;font-size:0.73rem;color:var(--muted);">결과 없음</div>';
+      box.style.display = 'block';
+      return;
+    }
+    // 중복 텍스트 제거
+    const seen = new Set();
+    const unique = results.filter(r => {
+      const key = r.input_text.trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    box.innerHTML = unique.map(r => {
+      const preview = escHtml(r.input_text.replace(/\n/g, ' ').substring(0, 80));
+      const voiceName = r.voice_name || '';
+      return `<div onclick="selectPastText(${r.id})" style="padding:0.45rem 0.6rem;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.73rem;transition:background 0.15s;"
+        onmouseover="this.style.background='rgba(124,109,250,0.15)'" onmouseout="this.style.background='transparent'">
+        <div style="color:var(--text);line-height:1.3;">${preview}${r.input_text.length > 80 ? '...' : ''}</div>
+        <div style="color:var(--muted);font-size:0.65rem;margin-top:0.15rem;">${voiceName} · ${fmt(r.created_at)}</div>
+      </div>`;
+    }).join('');
+    box.style.display = 'block';
+  }
+
+  async function selectPastText(id) {
+    try {
+      const res = await fetch(`/api/tts/search?page=1&per_page=100&search=&voice_name=`);
+      const d = await res.json();
+      const item = d.results.find(r => r.id === id);
+      if (item) {
+        document.getElementById('ttsText').value = item.input_text;
+      }
+    } catch(e) {}
+    document.getElementById('textSearchResults').style.display = 'none';
+    document.getElementById('textSearchInput').value = '';
+  }
+
+  // 검색 결과 외부 클릭 시 닫기
+  document.addEventListener('click', (e) => {
+    const box = document.getElementById('textSearchResults');
+    const input = document.getElementById('textSearchInput');
+    if (box && !box.contains(e.target) && e.target !== input) {
+      box.style.display = 'none';
+    }
+  });
+
+  async function loadVoiceFilter() {
+    try {
+      const res = await fetch('/api/voice/names');
+      const d = await res.json();
+      const sel = document.getElementById('historyVoiceFilter');
+      sel.innerHTML = '<option value="">전체 음색</option>' +
+        d.names.map(n => `<option value="${escHtml(n)}">${n}</option>`).join('');
+    } catch(e) { /* ignore */ }
+  }
+
+  /* ══════════════════════════
+     DIARIZE
+  ══════════════════════════ */
+  async function runDiarize() {
+    const fileInput = document.getElementById('diarizeFile');
+    const hfToken = document.getElementById('hfToken').value.trim();
+    const numSpeakers = parseInt(document.getElementById('numSpeakers').value);
+    if (!fileInput.files[0]) return toast('파일을 선택해주세요', 'error');
+    if (hfToken) localStorage.setItem('hfToken', hfToken);
+
+    const btn = document.getElementById('diarizeBtn');
+    btn.disabled = true; btn.innerHTML = '분리 중<span class="spin"></span>';
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]); fd.append('hf_token', hfToken);
+    if (numSpeakers > 0) fd.append('num_speakers', numSpeakers);
+
+    try {
+      const res = await fetch('/api/voice/diarize', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || '실패');
+      diarizeSession = { session_id: d.session_id, speakers: d.speakers };
+      toast(d.message); openDiarizeModal();
+    } catch (e) { toast('화자 분리 실패: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '화자 분리 시작'; }
+  }
+
+  function openDiarizeModal() {
+    if (!diarizeSession) return;
+    const el = document.getElementById('diarizeResult');
+    el.innerHTML = diarizeSession.speakers.map((spk, i) => {
+      const isGood = spk.quality === 'good';
+      const qColor = isGood ? 'var(--success)' : 'var(--danger)';
+      return `
+      <div class="speaker-card">
+        <div class="speaker-header">
+          <span class="speaker-badge">${i + 1}</span>
+          <input type="text" class="speaker-name-input" id="speakerName-${i}" value="${spk.label}" placeholder="화자 이름">
+          <label class="speaker-check">
+            <input type="checkbox" id="speakerCheck-${i}" ${isGood ? 'checked' : ''}> 저장
+          </label>
+        </div>
+        <div class="speaker-meta">
+          전체 ${spk.total_duration}초 &middot;
+          TTS용 <strong style="color:${qColor}">${spk.tts_duration || spk.total_duration}초</strong>
+          (${spk.segment_count}개)
+        </div>
+        ${spk.preview_url ? `<audio controls src="${spk.preview_url}" id="speakerAudio-${i}" style="width:100%;"></audio>` : ''}
+        <button class="btn btn-teal btn-xs" onclick="extractAllSpeaker(${i})" id="extractBtn-${i}" style="margin-top:0.3rem;">
+          전체 추출 (${spk.total_duration}초)
+        </button>
+      </div>`;
+    }).join('');
+    document.getElementById('diarizeModal').classList.add('show');
+  }
+  function closeDiarizeModal() { document.getElementById('diarizeModal').classList.remove('show'); }
+
+  async function extractAllSpeaker(idx) {
+    if (!diarizeSession) return;
+    const spk = diarizeSession.speakers[idx];
+    const btn = document.getElementById(`extractBtn-${idx}`);
+    btn.disabled = true; btn.innerHTML = '추출 중<span class="spin"></span>';
+    const fd = new FormData();
+    fd.append('session_id', diarizeSession.session_id);
+    fd.append('speaker_idx', idx);
+    fd.append('segments_json', JSON.stringify(spk.all_segments || spk.segments));
+    try {
+      const res = await fetch('/api/voice/diarize/extract-all', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || '실패');
+      const audio = document.getElementById(`speakerAudio-${idx}`);
+      if (audio) { audio.src = d.preview_url; audio.load(); }
+      spk.segments = spk.all_segments || spk.segments;
+      spk.tts_duration = d.duration;
+      toast(`화자 ${idx+1} 전체 추출 (${d.duration}초)`);
+      btn.textContent = `추출됨 (${d.duration}초)`;
+    } catch (e) { toast('실패: ' + e.message, 'error'); btn.textContent = '재시도'; }
+    btn.disabled = false;
+  }
+
+  async function saveDiarizedSpeakers() {
+    if (!diarizeSession) return;
+    const toSave = [];
+    diarizeSession.speakers.forEach((spk, i) => {
+      if (!document.getElementById(`speakerCheck-${i}`).checked) return;
+      const name = document.getElementById(`speakerName-${i}`).value.trim() || `화자 ${i+1}`;
+      toSave.push({ index: i, name, segments: spk.segments });
+    });
+    if (!toSave.length) return toast('저장할 화자를 선택해주세요', 'error');
+    const btn = document.getElementById('saveSpeakersBtn');
+    btn.disabled = true; btn.innerHTML = '저장 중<span class="spin"></span>';
+    const fd = new FormData();
+    fd.append('session_id', diarizeSession.session_id);
+    fd.append('speakers_json', JSON.stringify(toSave));
+    try {
+      const res = await fetch('/api/voice/diarize/save', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || '실패');
+      toast(d.message); closeDiarizeModal(); loadVoices(); diarizeSession = null;
+    } catch (e) { toast('저장 실패: ' + e.message, 'error'); }
+    finally { btn.disabled = false; btn.innerHTML = '선택한 화자 저장'; }
+  }
+
+  // HF 토큰 로컬 복원
+  (function() {
+    const saved = localStorage.getItem('hfToken');
+    if (saved) document.getElementById('hfToken').value = saved;
+  })();
+
+  /* ══════════════════════════
+     FINETUNE
+  ══════════════════════════ */
+  let ftPollTimer = null;
+  let ftSelectedIds = new Set();
+
+  function openFinetuneModal(voiceId, voiceName) {
+    ftSelectedIds = new Set([voiceId]);
+    document.getElementById('ftModelName').value = voiceName;
+    renderFtVoiceList();
+    document.getElementById('finetuneModal').classList.add('show');
+  }
+  function closeFinetuneModal() {
+    document.getElementById('finetuneModal').classList.remove('show');
+  }
+
+  function renderFtVoiceList() {
+    const el = document.getElementById('ftVoiceList');
+    el.innerHTML = allVoices.map(v => {
+      const checked = ftSelectedIds.has(v.id) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border-radius:6px;cursor:pointer;transition:background 0.15s;${ftSelectedIds.has(v.id)?'background:rgba(124,109,250,0.12);':''}font-size:0.82rem;"
+        onmouseover="this.style.background='rgba(124,109,250,0.08)'" onmouseout="this.style.background='${ftSelectedIds.has(v.id)?'rgba(124,109,250,0.12)':''}'"
+      ><input type="checkbox" ${checked} onchange="ftToggleVoice(${v.id})" style="accent-color:var(--accent);width:16px;height:16px;">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.name}</span>
+        <span style="font-size:0.7rem;color:var(--muted);flex-shrink:0;">${(v.duration||0).toFixed(0)}초</span>
+      </label>`;
+    }).join('');
+    updateFtSelectionInfo();
+  }
+
+  function ftToggleVoice(id) {
+    if (ftSelectedIds.has(id)) ftSelectedIds.delete(id);
+    else ftSelectedIds.add(id);
+    renderFtVoiceList();
+  }
+  function ftSelectAll() {
+    allVoices.forEach(v => ftSelectedIds.add(v.id));
+    renderFtVoiceList();
+  }
+  function ftDeselectAll() {
+    ftSelectedIds.clear();
+    renderFtVoiceList();
+  }
+  function updateFtSelectionInfo() {
+    const voices = allVoices.filter(v => ftSelectedIds.has(v.id));
+    const totalSec = voices.reduce((s, v) => s + (v.duration || 0), 0);
+    const el = document.getElementById('ftSelectionInfo');
+    el.innerHTML = ftSelectedIds.size > 0
+      ? `${ftSelectedIds.size}개 선택 / 총 ${totalSec.toFixed(0)}초 (${(totalSec/60).toFixed(1)}분)`
+      : '음성을 선택해주세요';
+  }
+
+  async function startFinetune() {
+    if (ftSelectedIds.size === 0) return toast('학습할 음성을 선택해주세요', 'error');
+    const modelName = document.getElementById('ftModelName').value.trim();
+    if (!modelName) return toast('모델 이름을 입력해주세요', 'error');
+
+    const btn = document.getElementById('finetuneBtn');
+    btn.disabled = true; btn.innerHTML = '학습 준비 중<span class="spin"></span>';
+
+    const fd = new FormData();
+    fd.append('voice_ids', [...ftSelectedIds].join(','));
+    fd.append('model_name', modelName);
+    fd.append('epochs', document.getElementById('ftEpochs').value);
+    fd.append('batch_size', document.getElementById('ftBatch').value);
+
+    try {
+      const res = await fetch('/api/finetune/start', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.detail || '실패');
+      toast(d.message);
+      document.getElementById('finetuneProgress').style.display = 'block';
+      ftPollTimer = setInterval(pollFinetuneStatus, 5000);
+    } catch (e) {
+      toast('파인튜닝 실패: ' + e.message, 'error');
+      btn.disabled = false; btn.innerHTML = '음색 학습 시작';
+    }
+  }
+
+  async function pollFinetuneStatus() {
+    try {
+      const res = await fetch('/api/finetune/status');
+      const d = await res.json();
+      document.getElementById('ftProgressLabel').innerHTML = d.progress + (d.running ? '<span class="spin"></span>' : '');
+      if (!d.running) {
+        clearInterval(ftPollTimer); ftPollTimer = null;
+        document.getElementById('finetuneBtn').disabled = false;
+        document.getElementById('finetuneBtn').innerHTML = '음색 학습 시작';
+        if (d.result) {
+          toast('음색 학습 완료!');
+          document.getElementById('ftProgressBar').style.width = '100%';
+          document.getElementById('ftProgressBar').style.animation = 'none';
+        } else {
+          document.getElementById('finetuneProgress').style.display = 'none';
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ══════════════════════════
+     HELPERS
+  ══════════════════════════ */
+  function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+  function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function fmt(s) { return s ? s.replace('T', ' ').slice(0, 16) : ''; }
+
+  /* ══════════════════════════════
+     MOBILE TAB SWITCHING
+  ══════════════════════════════ */
+  function switchMobileTab(panel) {
+    if (window.innerWidth > 768) return;
+    const panels = {
+      left: document.querySelector('.panel-left'),
+      center: document.querySelector('.panel-center'),
+      right: document.querySelector('.panel-right')
+    };
+    // 모든 패널 비활성화
+    Object.values(panels).forEach(p => p.classList.remove('mobile-active'));
+    // 선택한 패널 활성화
+    if (panels[panel]) panels[panel].classList.add('mobile-active');
+    // 네비게이션 버튼 활성화
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.panel === panel);
+    });
+  }
+
+  function initMobileLayout() {
+    const isMobile = window.innerWidth <= 768;
+    const panels = {
+      left: document.querySelector('.panel-left'),
+      center: document.querySelector('.panel-center'),
+      right: document.querySelector('.panel-right')
+    };
+    if (isMobile) {
+      // 모바일: center 패널만 활성화
+      Object.values(panels).forEach(p => p.classList.remove('mobile-active'));
+      panels.center.classList.add('mobile-active');
+    } else {
+      // 데스크톱: mobile-active 클래스 제거 (CSS가 기본 display 처리)
+      Object.values(panels).forEach(p => p.classList.remove('mobile-active'));
+    }
+  }
+
+  window.addEventListener('resize', initMobileLayout);
+  initMobileLayout();
+
+  /* ══════════════════════════
+     마이크 도움말
+  ══════════════════════════ */
+  function showMicHelp() {
+    document.getElementById('micHelpModal').classList.add('show');
+  }
+  function closeMicHelp() {
+    const dontShow = document.getElementById('micHelpDontShow').checked;
+    if (dontShow) localStorage.setItem('micHelpDismissed', '1');
+    document.getElementById('micHelpModal').classList.remove('show');
+  }
+
+  /* ══════════════════════════
+     VOICE TUNING
+  ══════════════════════════ */
+  const TUNE_DEFAULTS = {
+    temperature: 0.65, speed: 1.0, pitch_shift: 0, top_p: 0.85,
+    top_k: 50, repetition_penalty: 10.0, bass_boost_db: 2.0, bass_boost_freq: 200
+  };
+  let tuneParams = { ...TUNE_DEFAULTS };
+  let tuneActiveCheckpointId = 0;
+  let lastTuneTempId = '';
+
+  function openTuning(voiceId, voiceName) {
+    const card = document.getElementById('tuningCard');
+    card.style.display = 'block';
+    card.dataset.voiceId = voiceId;
+    document.getElementById('tuningVoiceInfo').textContent = `${voiceName} 음성 파라미터 튜닝`;
+    tuneActiveCheckpointId = 0;
+    // 활성 체크포인트 로드
+    fetch(`/api/voice/${voiceId}/active-params`).then(r=>r.json()).then(d=>{
+      if (d.has_active && d.checkpoint) {
+        try {
+          const p = JSON.parse(d.checkpoint.params_json);
+          Object.assign(tuneParams, p);
+          tuneActiveCheckpointId = d.checkpoint.id;
+        } catch(e) {}
+      } else {
+        tuneParams = { ...TUNE_DEFAULTS };
+      }
+      syncTuneSliders();
+    }).catch(()=>{});
+    loadCheckpoints(voiceId);
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function closeTuning() {
+    document.getElementById('tuningCard').style.display = 'none';
+    document.getElementById('tunePreviewArea').classList.remove('show');
+  }
+
+  function updateTuneVal(el) {
+    const key = el.id.replace('tune_', '');
+    const v = parseFloat(el.value);
+    tuneParams[key] = v;
+    const display = Number.isInteger(v) ? v.toString() : v.toFixed(key === 'bass_boost_freq' ? 0 : (key === 'top_k' ? 0 : 2));
+    document.getElementById('val_' + key).textContent = display;
+  }
+
+  function syncTuneSliders() {
+    for (const [k, v] of Object.entries(tuneParams)) {
+      const el = document.getElementById('tune_' + k);
+      if (el) {
+        el.value = v;
+        const display = Number.isInteger(v) ? v.toString() : parseFloat(v).toFixed(k === 'bass_boost_freq' ? 0 : (k === 'top_k' ? 0 : 2));
+        document.getElementById('val_' + k).textContent = display;
+      }
+    }
+  }
+
+  function resetTuneDefaults() {
+    tuneParams = { ...TUNE_DEFAULTS };
+    syncTuneSliders();
+    toast('기본값으로 초기화');
+  }
+
+  function getTuneParamsJson() {
+    return JSON.stringify(tuneParams);
+  }
+
+  async function quickPreview() {
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+    if (!voiceId) return toast('음성을 선택해주세요', 'error');
+    const text = document.getElementById('tunePreviewText').value.trim();
+    if (!text) return toast('미리듣기 문장을 입력해주세요', 'error');
+
+    const btn = document.getElementById('tunePreviewBtn');
+    btn.disabled = true; btn.innerHTML = '생성 중<span class="spin"></span>';
+
+    const fd = new FormData();
+    fd.append('voice_id', voiceId);
+    fd.append('text', text);
+    fd.append('params_json', getTuneParamsJson());
+
+    try {
+      const res = await fetch('/api/tts/preview-params', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (d.audio_url) {
+        lastTuneTempId = d.temp_id;
+        const audio = document.getElementById('tuneAudio');
+        audio.src = d.audio_url + '?t=' + Date.now();
+        document.getElementById('tunePreviewArea').classList.add('show');
+        document.getElementById('tuneFeedbackMsg').textContent = '';
+        // 피드백 버튼 리셋
+        document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('selected'));
+        toast('미리듣기 생성 완료');
+      } else {
+        toast(d.detail || '생성 실패', 'error');
+      }
+    } catch(e) {
+      toast('생성 실패: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.innerHTML = '미리듣기';
+  }
+
+  async function submitTuneFeedback(score) {
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+    if (!voiceId) return;
+
+    const fd = new FormData();
+    fd.append('voice_id', voiceId);
+    fd.append('checkpoint_id', tuneActiveCheckpointId || 0);
+    fd.append('params_json', getTuneParamsJson());
+    fd.append('score', score);
+    fd.append('preview_text', document.getElementById('tunePreviewText').value);
+
+    try {
+      await fetch('/api/tts/feedback', { method: 'POST', body: fd });
+      // UI 반영
+      document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelector(`.fb-btn.${score > 0 ? 'up' : 'down'}`).classList.add('selected');
+      document.getElementById('tuneFeedbackMsg').textContent = score > 0 ? '좋아요 반영됨!' : '피드백 반영됨';
+    } catch(e) {}
+  }
+
+  function applyTuneToTTS() {
+    // TTS 생성 시 tuneParams를 params_json으로 전달하도록 플래그 설정
+    window._tuneParamsActive = true;
+    window._tuneParamsJson = getTuneParamsJson();
+    toast('TTS 생성에 튜닝 파라미터가 적용됩니다');
+  }
+
+  // 체크포인트 관련
+  async function loadCheckpoints(voiceId) {
+    if (!voiceId) {
+      const card = document.getElementById('tuningCard');
+      voiceId = card.dataset.voiceId;
+    }
+    if (!voiceId) return;
+
+    try {
+      const res = await fetch(`/api/voice/${voiceId}/checkpoints`);
+      const d = await res.json();
+      const sel = document.getElementById('checkpointSelect');
+      sel.innerHTML = '<option value="">-- 체크포인트 선택 --</option>';
+      (d.checkpoints || []).forEach(cp => {
+        const opt = document.createElement('option');
+        opt.value = cp.id;
+        opt.textContent = `${cp.name} (${cp.avg_score?.toFixed(1) || 0}점, ${cp.feedback_count || 0}회)${cp.is_active ? ' [활성]' : ''}`;
+        sel.appendChild(opt);
+      });
+    } catch(e) {}
+  }
+
+  function loadSelectedCheckpoint() {
+    const sel = document.getElementById('checkpointSelect');
+    const cpId = sel.value;
+    if (!cpId) return;
+
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+
+    fetch(`/api/voice/${voiceId}/checkpoints`).then(r=>r.json()).then(d=>{
+      const cp = (d.checkpoints || []).find(c => c.id == cpId);
+      if (cp) {
+        try {
+          const p = JSON.parse(cp.params_json);
+          Object.assign(tuneParams, p);
+          syncTuneSliders();
+          toast(`'${cp.name}' 체크포인트 로드됨`);
+        } catch(e) {}
+      }
+    }).catch(()=>{});
+  }
+
+  async function saveCheckpoint() {
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+    if (!voiceId) return toast('음성을 선택해주세요', 'error');
+
+    const name = prompt('체크포인트 이름을 입력하세요:');
+    if (!name) return;
+
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('params_json', getTuneParamsJson());
+
+    try {
+      const res = await fetch(`/api/voice/${voiceId}/checkpoint`, { method: 'POST', body: fd });
+      const d = await res.json();
+      toast(`체크포인트 '${name}' 저장됨`);
+      loadCheckpoints(voiceId);
+    } catch(e) {
+      toast('저장 실패', 'error');
+    }
+  }
+
+  async function activateCheckpoint() {
+    const sel = document.getElementById('checkpointSelect');
+    const cpId = sel.value;
+    if (!cpId) return toast('체크포인트를 선택해주세요', 'error');
+
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+
+    try {
+      await fetch(`/api/voice/${voiceId}/checkpoint/${cpId}/activate`, { method: 'POST' });
+      tuneActiveCheckpointId = parseInt(cpId);
+      toast('체크포인트 활성화 완료');
+      loadCheckpoints(voiceId);
+    } catch(e) {
+      toast('활성화 실패', 'error');
+    }
+  }
+
+  async function deleteCheckpointUI() {
+    const sel = document.getElementById('checkpointSelect');
+    const cpId = sel.value;
+    if (!cpId) return toast('삭제할 체크포인트를 선택해주세요', 'error');
+    if (!confirm('이 체크포인트를 삭제하시겠습니까?')) return;
+
+    const card = document.getElementById('tuningCard');
+    const voiceId = card.dataset.voiceId;
+
+    try {
+      await fetch(`/api/voice/checkpoint/${cpId}`, { method: 'DELETE' });
+      toast('체크포인트 삭제됨');
+      loadCheckpoints(voiceId);
+    } catch(e) {
+      toast('삭제 실패', 'error');
+    }
+  }
+
+  /* INIT */
+  (async () => {
+    const ok = await checkAuth();
+    if (!ok) return;
+    applyPanelState();
+    loadVoices();
+    searchHistory();
+    loadVoiceFilter();
+
+    // 첫 방문 시 마이크 도움말 표시 (localhost 제외)
+    if (!localStorage.getItem('micHelpDismissed') && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      setTimeout(showMicHelp, 1000);
+    }
+  })();
+</script>
+</body>
+</html>

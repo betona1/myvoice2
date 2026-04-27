@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyVoice — 음원 라이브러리</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#7c6dfa">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07090f;--bg2:#0d1020;
+      --surface:rgba(255,255,255,0.04);--surface2:rgba(255,255,255,0.07);
+      --border:rgba(255,255,255,0.09);--border2:rgba(124,109,250,0.35);
+      --text:#eef0f8;--muted:#7a8299;--muted2:#4a5270;
+      --accent:#7c6dfa;--accent2:#4fd1c5;--accent3:#f687b3;
+      --danger:#f05252;--success:#34d399;
+      --grad:linear-gradient(135deg,#7c6dfa 0%,#4fd1c5 100%);
+      --font-h:'Syne',sans-serif;--font-b:'Noto Sans KR',sans-serif;
+      --radius:16px;--radius-sm:10px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;}
+    body::before{
+      content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:radial-gradient(ellipse 600px 400px at 10% 20%,rgba(124,109,250,0.12) 0%,transparent 60%),
+        radial-gradient(ellipse 500px 400px at 90% 80%,rgba(79,209,197,0.08) 0%,transparent 60%);
+    }
+
+    header{
+      position:sticky;top:0;z-index:50;
+      background:rgba(7,9,15,0.85);backdrop-filter:blur(24px);
+      border-bottom:1px solid var(--border);padding:0.9rem 2rem;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .logo{font-family:var(--font-h);font-size:1.35rem;font-weight:900;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .logo-sub{font-size:0.75rem;color:var(--muted);margin-left:0.5rem;-webkit-text-fill-color:var(--muted);}
+
+    .container{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:1.5rem;}
+
+    /* 탭 */
+    .tabs{display:flex;gap:0;margin-bottom:1.2rem;border-bottom:2px solid var(--border);}
+    .tab{
+      padding:0.7rem 1.5rem;font-size:0.85rem;font-weight:600;
+      cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;
+      color:var(--muted);transition:all 0.2s;position:relative;
+    }
+    .tab:hover{color:var(--text);}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+    .tab .tab-count{
+      display:inline-block;background:var(--surface2);border-radius:10px;
+      padding:0.05rem 0.45rem;font-size:0.65rem;margin-left:0.4rem;
+    }
+    .tab.active .tab-count{background:rgba(124,109,250,0.2);color:var(--accent);}
+
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;}
+
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:0.3rem;
+      padding:0.45rem 0.8rem;border:none;border-radius:var(--radius-sm);
+      font-family:var(--font-b);font-size:0.78rem;font-weight:600;
+      cursor:pointer;transition:all 0.2s;
+    }
+    .btn:active{transform:scale(0.97);}
+    .btn-primary{background:var(--grad);color:#fff;box-shadow:0 0 15px rgba(124,109,250,0.2);}
+    .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+    .btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-danger{background:rgba(240,82,82,0.1);border:1px solid rgba(240,82,82,0.25);color:#fca5a5;}
+    .btn-danger:hover{background:rgba(240,82,82,0.2);}
+    .btn-success{background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);color:var(--success);}
+    .btn-sm{font-size:0.7rem;padding:0.3rem 0.6rem;}
+    .btn-accent2{background:rgba(79,209,197,0.15);border:1px solid rgba(79,209,197,0.3);color:var(--accent2);}
+    .btn-accent3{background:rgba(246,135,179,0.15);border:1px solid rgba(246,135,179,0.3);color:var(--accent3);}
+
+    .badge{
+      display:inline-block;padding:0.15rem 0.45rem;border-radius:4px;
+      font-size:0.65rem;font-weight:700;white-space:nowrap;
+    }
+    .badge-personal{background:rgba(124,109,250,0.2);color:var(--accent);}
+    .badge-shared{background:rgba(79,209,197,0.2);color:var(--accent2);}
+    .badge-published{background:rgba(52,211,153,0.2);color:var(--success);}
+    .badge-review{background:rgba(246,135,179,0.2);color:var(--accent3);}
+    .badge-gen{background:rgba(52,211,153,0.15);color:var(--success);}
+    .badge-nogen{background:rgba(255,255,255,0.06);color:var(--muted2);}
+    .badge-version{background:rgba(124,109,250,0.15);color:var(--accent);}
+
+    /* 음원 카드 그리드 */
+    .voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:0.8rem;}
+    .voice-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1rem;transition:border-color 0.2s;
+    }
+    .voice-card:hover{border-color:var(--border2);}
+    .voice-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.5rem;}
+    .voice-card-name{font-weight:700;font-size:0.9rem;word-break:break-all;}
+    .voice-card-meta{font-size:0.72rem;color:var(--muted);margin-bottom:0.6rem;}
+    .voice-card-desc{font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem;
+      overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+    .voice-card-badges{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.6rem;}
+    .voice-card-actions{display:flex;gap:0.3rem;flex-wrap:wrap;}
+    .voice-card audio{width:100%;height:32px;margin-bottom:0.5rem;}
+
+    /* 폴더 카드 */
+    .folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.8rem;margin-bottom:1rem;}
+    .folder-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1rem;cursor:pointer;transition:all 0.2s;
+    }
+    .folder-card:hover{border-color:var(--accent2);background:var(--surface2);}
+    .folder-card-name{font-weight:700;font-size:0.9rem;margin-bottom:0.3rem;}
+    .folder-card-meta{font-size:0.72rem;color:var(--muted);}
+
+    /* 폴더 상세 뷰 */
+    .folder-detail{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1.2rem;margin-bottom:1rem;
+    }
+    .folder-detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.5rem;}
+    .folder-detail-title{font-weight:800;font-size:1rem;}
+
+    /* 심사 카드 */
+    .review-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1rem;margin-bottom:0.6rem;
+    }
+    .review-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;}
+
+    /* 모달 */
+    .modal-overlay{
+      display:none;position:fixed;inset:0;z-index:100;
+      background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);
+      justify-content:center;align-items:center;
+    }
+    .modal-overlay.show{display:flex;}
+    .modal{
+      background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+      padding:1.5rem;width:90%;max-width:480px;max-height:80vh;overflow-y:auto;
+    }
+    .modal h3{font-family:var(--font-h);font-size:1rem;font-weight:800;margin-bottom:1rem;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .modal label{display:block;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;margin-top:0.8rem;}
+    .modal input,.modal textarea,.modal select{
+      width:100%;padding:0.5rem 0.8rem;font-size:0.82rem;
+      background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--radius-sm);
+      color:var(--text);outline:none;font-family:var(--font-b);
+    }
+    .modal input:focus,.modal textarea:focus,.modal select:focus{border-color:var(--accent);}
+    .modal textarea{min-height:60px;resize:vertical;}
+    .modal select option{background:#0d1020;color:var(--text);}
+    .modal-actions{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;}
+
+    .toolbar{display:flex;gap:0.5rem;margin-bottom:0.8rem;flex-wrap:wrap;align-items:center;}
+    .toolbar input{
+      flex:1;min-width:150px;padding:0.5rem 0.8rem;font-size:0.82rem;
+      background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:var(--radius-sm);
+      color:var(--text);outline:none;font-family:var(--font-b);
+    }
+
+    .empty{text-align:center;padding:2rem;color:var(--muted2);font-size:0.85rem;}
+
+    .toast{
+      position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;
+      background:rgba(13,16,32,0.95);backdrop-filter:blur(20px);
+      border:1px solid var(--border);border-radius:var(--radius-sm);
+      padding:0.7rem 1rem;font-size:0.82rem;max-width:300px;
+      opacity:0;transform:translateY(10px);transition:opacity 0.3s,transform 0.3s;
+      pointer-events:none;
+    }
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{border-color:rgba(52,211,153,0.5);}
+    .toast.error{border-color:rgba(240,82,82,0.5);color:#fca5a5;}
+
+    /* 멤버 리스트 */
+    .member-list{margin-top:0.5rem;}
+    .member-item{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.78rem;
+    }
+    .member-item:last-child{border-bottom:none;}
+
+    @media(max-width:768px){
+      header{padding:0.6rem 1rem;}
+      .container{padding:0.8rem;}
+      .tabs{overflow-x:auto;}
+      .tab{padding:0.5rem 1rem;font-size:0.78rem;white-space:nowrap;}
+      .voice-grid{grid-template-columns:1fr;}
+      .folder-grid{grid-template-columns:1fr;}
+      .btn{font-size:0.72rem;padding:0.35rem 0.6rem;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <a href="/" style="text-decoration:none;"><span class="logo">MyVoice</span></a>
+    <span class="logo-sub">음원 라이브러리</span>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <span id="userInfo" style="font-size:0.75rem;color:var(--muted);"></span>
+    <a href="/" class="btn btn-secondary" style="text-decoration:none;">TTS Studio</a>
+    <a href="/admin" class="btn btn-secondary" style="text-decoration:none;display:none;" id="adminBtn">Admin</a>
+    <button onclick="doLogout()" class="btn btn-danger btn-sm">Logout</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 탭 바 -->
+  <div class="tabs">
+    <div class="tab active" data-tab="personal" onclick="switchTab('personal')">
+      개인폴더 <span class="tab-count" id="countPersonal">-</span>
+    </div>
+    <div class="tab" data-tab="shared" onclick="switchTab('shared')">
+      공유폴더 <span class="tab-count" id="countShared">-</span>
+    </div>
+    <div class="tab" data-tab="published" onclick="switchTab('published')">
+      배포폴더 <span class="tab-count" id="countPublished">-</span>
+    </div>
+    <div class="tab" data-tab="reviews" onclick="switchTab('reviews')" id="reviewTab" style="display:none;">
+      심사 <span class="tab-count" id="countReviews">-</span>
+    </div>
+  </div>
+
+  <!-- 개인 폴더 -->
+  <div class="tab-panel active" id="panel-personal">
+    <div class="toolbar">
+      <input type="text" id="searchPersonal" placeholder="이름으로 검색..." oninput="filterPersonal()">
+      <button class="btn btn-accent2 btn-sm" onclick="showShareModal()">공유 폴더로 보내기</button>
+    </div>
+    <div class="voice-grid" id="personalGrid">
+      <div class="empty">로딩 중...</div>
+    </div>
+  </div>
+
+  <!-- 공유 폴더 -->
+  <div class="tab-panel" id="panel-shared">
+    <div class="toolbar">
+      <button class="btn btn-primary btn-sm" onclick="showCreateFolderModal()" id="createFolderBtn" style="display:none;">새 공유 폴더</button>
+    </div>
+    <!-- 폴더 목록 -->
+    <div id="sharedFolderList">
+      <div class="folder-grid" id="folderGrid">
+        <div class="empty">로딩 중...</div>
+      </div>
+    </div>
+    <!-- 폴더 상세 (숨김) -->
+    <div id="sharedFolderDetail" style="display:none;">
+      <div class="folder-detail">
+        <div class="folder-detail-header">
+          <div>
+            <span style="cursor:pointer;color:var(--accent);font-size:0.8rem;" onclick="backToFolders()">< 폴더 목록</span>
+            <div class="folder-detail-title" id="folderDetailName"></div>
+            <div style="font-size:0.72rem;color:var(--muted);" id="folderDetailDesc"></div>
+          </div>
+          <div style="display:flex;gap:0.3rem;">
+            <button class="btn btn-secondary btn-sm" onclick="showMembersModal()" id="manageMembersBtn">멤버 관리</button>
+            <button class="btn btn-accent3 btn-sm" onclick="requestPublishFromFolder()" id="publishReqBtn">배포 요청</button>
+          </div>
+        </div>
+      </div>
+      <div class="voice-grid" id="sharedVoiceGrid">
+        <div class="empty">로딩 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 배포 폴더 -->
+  <div class="tab-panel" id="panel-published">
+    <div class="toolbar">
+      <input type="text" id="searchPublished" placeholder="이름으로 검색..." oninput="filterPublished()">
+    </div>
+    <div class="voice-grid" id="publishedGrid">
+      <div class="empty">로딩 중...</div>
+    </div>
+  </div>
+
+  <!-- 심사 패널 (관리자) -->
+  <div class="tab-panel" id="panel-reviews">
+    <div id="reviewsList">
+      <div class="empty">로딩 중...</div>
+    </div>
+  </div>
+</div>
+
+<!-- 공유 폴더 생성 모달 -->
+<div class="modal-overlay" id="createFolderOverlay">
+  <div class="modal">
+    <h3>새 공유 폴더</h3>
+    <label>폴더 이름</label>
+    <input type="text" id="newFolderName" placeholder="예: 프로젝트 A 음원">
+    <label>설명</label>
+    <textarea id="newFolderDesc" placeholder="폴더 설명 (선택)"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('createFolderOverlay')">취소</button>
+      <button class="btn btn-primary" onclick="createFolder()">생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- 공유로 보내기 모달 -->
+<div class="modal-overlay" id="shareOverlay">
+  <div class="modal">
+    <h3>공유 폴더로 보내기</h3>
+    <label>음원 선택</label>
+    <select id="shareVoiceSelect"></select>
+    <label>대상 폴더</label>
+    <select id="shareFolderSelect"></select>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('shareOverlay')">취소</button>
+      <button class="btn btn-primary" onclick="doShareVoice()">보내기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 멤버 관리 모달 -->
+<div class="modal-overlay" id="membersOverlay">
+  <div class="modal">
+    <h3>멤버 관리</h3>
+    <div class="member-list" id="memberList"></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:0.8rem 0;">
+    <label>멤버 추가</label>
+    <div style="display:flex;gap:0.3rem;">
+      <select id="addMemberSelect" style="flex:1;"></select>
+      <select id="addMemberPerm" style="width:80px;">
+        <option value="view">조회</option>
+        <option value="edit">편집</option>
+        <option value="admin">관리</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="doAddMember()">추가</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('membersOverlay')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 음원 메타 수정 모달 -->
+<div class="modal-overlay" id="metaOverlay">
+  <div class="modal">
+    <h3>음원 정보 수정</h3>
+    <input type="hidden" id="metaVoiceId">
+    <label>이름</label>
+    <input type="text" id="metaName">
+    <label>설명</label>
+    <textarea id="metaDesc"></textarea>
+    <div id="metaGenWrapper" style="display:none;">
+      <label>음성 생성 권한</label>
+      <select id="metaCanGen">
+        <option value="0">불가</option>
+        <option value="1">허용</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('metaOverlay')">취소</button>
+      <button class="btn btn-primary" onclick="doUpdateMeta()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 배포 심사 모달 -->
+<div class="modal-overlay" id="reviewOverlay">
+  <div class="modal">
+    <h3 id="reviewModalTitle">배포 심사</h3>
+    <input type="hidden" id="reviewId">
+    <label>의견</label>
+    <textarea id="reviewNote" placeholder="심사 의견 (선택)"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('reviewOverlay')">취소</button>
+      <button class="btn btn-danger" onclick="doRejectReview()">거절</button>
+      <button class="btn btn-success" onclick="doApproveReview()">승인</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let currentUser = null;
+  let personalVoices = [];
+  let publishedVoices = [];
+  let sharedFolders = [];
+  let currentFolderId = null;
+  let currentFolderPerm = null;
+  let allUsersCache = [];
+
+  // ── 인증 ──
+  async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('access_token');
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, { ...options, headers, credentials: 'include' });
+    if (res.status === 401) { location.href = '/login'; return null; }
+    return res;
+  }
+
+  async function checkAuth() {
+    const res = await authFetch('/api/auth/me');
+    if (!res) return;
+    const d = await res.json();
+    currentUser = d.user;
+    document.getElementById('userInfo').textContent = `${currentUser.display_name}`;
+    if (currentUser.level <= 10) {
+      document.getElementById('adminBtn').style.display = '';
+      document.getElementById('reviewTab').style.display = '';
+      document.getElementById('createFolderBtn').style.display = '';
+    }
+    if (currentUser.level <= 50) {
+      document.getElementById('createFolderBtn').style.display = '';
+    }
+  }
+
+  async function doLogout() {
+    await authFetch('/api/auth/logout', { method: 'POST' });
+    localStorage.removeItem('access_token');
+    location.href = '/login';
+  }
+
+  // ── 유틸 ──
+  function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function toast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + type;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+  function fmtDur(s) { if (!s) return '-'; return s >= 60 ? `${Math.floor(s/60)}분 ${Math.round(s%60)}초` : `${Math.round(s)}초`; }
+
+  // ── 탭 전환 ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
+    if (tab === 'personal') loadPersonal();
+    else if (tab === 'shared') loadSharedFolders();
+    else if (tab === 'published') loadPublished();
+    else if (tab === 'reviews') loadReviews();
+  }
+
+  // ── 개인 폴더 ──
+  async function loadPersonal() {
+    const res = await authFetch('/api/library/personal');
+    if (!res) return;
+    const d = await res.json();
+    personalVoices = d.voices || [];
+    document.getElementById('countPersonal').textContent = personalVoices.length;
+    filterPersonal();
+  }
+
+  function filterPersonal() {
+    const q = (document.getElementById('searchPersonal').value || '').toLowerCase();
+    const filtered = q ? personalVoices.filter(v => (v.name||'').toLowerCase().includes(q)) : personalVoices;
+    renderVoiceGrid('personalGrid', filtered, 'personal');
+  }
+
+  // ── 배포 폴더 ──
+  async function loadPublished() {
+    const res = await authFetch('/api/library/published');
+    if (!res) return;
+    const d = await res.json();
+    publishedVoices = d.voices || [];
+    document.getElementById('countPublished').textContent = publishedVoices.length;
+    filterPublished();
+  }
+
+  function filterPublished() {
+    const q = (document.getElementById('searchPublished').value || '').toLowerCase();
+    const filtered = q ? publishedVoices.filter(v => (v.name||'').toLowerCase().includes(q)) : publishedVoices;
+    renderVoiceGrid('publishedGrid', filtered, 'published');
+  }
+
+  // ── 음원 카드 렌더링 ──
+  function renderVoiceGrid(gridId, voices, context) {
+    const grid = document.getElementById(gridId);
+    if (!voices.length) { grid.innerHTML = '<div class="empty">음원이 없습니다</div>'; return; }
+
+    grid.innerHTML = voices.map(v => {
+      const canGen = v.can_generate ? '<span class="badge badge-gen">생성가능</span>' : '<span class="badge badge-nogen">생성불가</span>';
+      const version = v.publish_version > 1 ? `<span class="badge badge-version">v${v.publish_version}</span>` : '';
+      const statusBadge = v.status === 'review' ? '<span class="badge badge-review">심사중</span>' : '';
+
+      let actions = '';
+      if (context === 'personal') {
+        actions = `
+          <button class="btn btn-secondary btn-sm" onclick="showMetaModal(${v.id},'${esc(v.name)}','${esc(v.description||'')}',${v.can_generate||0})">수정</button>
+          <button class="btn btn-accent2 btn-sm" onclick="shareOneVoice(${v.id})">공유</button>
+        `;
+      } else if (context === 'published') {
+        actions = `
+          <button class="btn btn-primary btn-sm" onclick="copyToPersonal(${v.id})">내 폴더로 복사</button>
+          ${currentUser && currentUser.level <= 10 ? `<button class="btn btn-accent3 btn-sm" onclick="updatePublished(${v.id})">업데이트</button>` : ''}
+        `;
+      } else if (context === 'shared') {
+        const canEdit = currentFolderPerm === 'admin' || currentFolderPerm === 'edit';
+        actions = `
+          <button class="btn btn-primary btn-sm" onclick="copyToPersonal(${v.id})">내 폴더로 복사</button>
+          ${canEdit ? `<button class="btn btn-secondary btn-sm" onclick="showMetaModal(${v.id},'${esc(v.name)}','${esc(v.description||'')}',${v.can_generate||0})">수정</button>` : ''}
+        `;
+      }
+
+      return `
+        <div class="voice-card">
+          <div class="voice-card-header">
+            <span class="voice-card-name">${esc(v.name)}</span>
+            ${version}
+          </div>
+          <div class="voice-card-meta">
+            ${v.owner_name ? esc(v.owner_name) + ' · ' : ''}${fmtDur(v.duration)} · ${v.created_at ? v.created_at.substring(0,10) : ''}
+          </div>
+          ${v.description ? `<div class="voice-card-desc">${esc(v.description)}</div>` : ''}
+          <div class="voice-card-badges">${canGen} ${statusBadge}</div>
+          <audio controls preload="none" src="/api/voice/${v.id}/download"></audio>
+          <div class="voice-card-actions">${actions}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── 공유 폴더 ──
+  async function loadSharedFolders() {
+    const res = await authFetch('/api/library/shared/folders');
+    if (!res) return;
+    const d = await res.json();
+    sharedFolders = d.folders || [];
+    document.getElementById('countShared').textContent = sharedFolders.length;
+    renderFolders();
+  }
+
+  function renderFolders() {
+    document.getElementById('sharedFolderList').style.display = '';
+    document.getElementById('sharedFolderDetail').style.display = 'none';
+    const grid = document.getElementById('folderGrid');
+    if (!sharedFolders.length) { grid.innerHTML = '<div class="empty">접근 가능한 공유 폴더가 없습니다</div>'; return; }
+
+    grid.innerHTML = sharedFolders.map(f => `
+      <div class="folder-card" onclick="openFolder(${f.id})">
+        <div class="folder-card-name">${esc(f.name)}</div>
+        <div class="folder-card-meta">
+          ${esc(f.owner_name || '')} · ${f.voice_count || 0}개 음원
+          ${f.permission ? ` · ${f.permission === 'admin' ? '관리자' : f.permission === 'edit' ? '편집' : '조회'}` : ''}
+        </div>
+        ${f.description ? `<div style="font-size:0.72rem;color:var(--muted2);margin-top:0.3rem;">${esc(f.description)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  async function openFolder(folderId) {
+    currentFolderId = folderId;
+    const res = await authFetch(`/api/library/shared/folders/${folderId}/voices`);
+    if (!res) return;
+    const d = await res.json();
+    currentFolderPerm = d.permission;
+    const folder = d.folder;
+    const voices = d.voices || [];
+
+    document.getElementById('sharedFolderList').style.display = 'none';
+    document.getElementById('sharedFolderDetail').style.display = '';
+    document.getElementById('folderDetailName').textContent = folder.name;
+    document.getElementById('folderDetailDesc').textContent = folder.description || '';
+
+    // 권한에 따른 버튼 표시
+    const isAdmin = currentFolderPerm === 'admin' || (currentUser && currentUser.level <= 10);
+    document.getElementById('manageMembersBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('publishReqBtn').style.display = (currentFolderPerm === 'admin' || currentFolderPerm === 'edit') ? '' : 'none';
+
+    renderVoiceGrid('sharedVoiceGrid', voices, 'shared');
+  }
+
+  function backToFolders() {
+    currentFolderId = null;
+    renderFolders();
+  }
+
+  // ── 공유 폴더 생성 ──
+  function showCreateFolderModal() {
+    document.getElementById('newFolderName').value = '';
+    document.getElementById('newFolderDesc').value = '';
+    document.getElementById('createFolderOverlay').classList.add('show');
+  }
+
+  async function createFolder() {
+    const name = document.getElementById('newFolderName').value.trim();
+    if (!name) return toast('폴더 이름을 입력하세요', 'error');
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('description', document.getElementById('newFolderDesc').value.trim());
+    const res = await authFetch('/api/library/shared/folders', { method: 'POST', body: fd });
+    if (res && res.ok) {
+      toast('공유 폴더 생성 완료!');
+      closeModal('createFolderOverlay');
+      loadSharedFolders();
+    } else {
+      const d = await res.json();
+      toast(d.detail || '생성 실패', 'error');
+    }
+  }
+
+  // ── 공유로 보내기 ──
+  function showShareModal() {
+    const sel = document.getElementById('shareVoiceSelect');
+    sel.innerHTML = personalVoices.map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+    loadFolderOptions();
+    document.getElementById('shareOverlay').classList.add('show');
+  }
+
+  function shareOneVoice(voiceId) {
+    document.getElementById('shareVoiceSelect').innerHTML = personalVoices
+      .filter(v => v.id === voiceId)
+      .map(v => `<option value="${v.id}">${esc(v.name)}</option>`).join('');
+    loadFolderOptions();
+    document.getElementById('shareOverlay').classList.add('show');
+  }
+
+  async function loadFolderOptions() {
+    if (!sharedFolders.length) {
+      const res = await authFetch('/api/library/shared/folders');
+      if (res) { const d = await res.json(); sharedFolders = d.folders || []; }
+    }
+    const sel = document.getElementById('shareFolderSelect');
+    const editable = sharedFolders.filter(f => f.permission === 'admin' || f.permission === 'edit' || (currentUser && currentUser.level <= 10));
+    sel.innerHTML = editable.length
+      ? editable.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('')
+      : '<option value="">편집 가능한 폴더 없음</option>';
+  }
+
+  async function doShareVoice() {
+    const voiceId = document.getElementById('shareVoiceSelect').value;
+    const folderId = document.getElementById('shareFolderSelect').value;
+    if (!voiceId || !folderId) return toast('음원과 폴더를 선택하세요', 'error');
+    const fd = new FormData();
+    fd.append('voice_id', voiceId);
+    fd.append('folder_id', folderId);
+    const res = await authFetch('/api/library/copy-to-shared', { method: 'POST', body: fd });
+    if (res && res.ok) { toast('공유 완료!'); closeModal('shareOverlay'); }
+    else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  // ── 멤버 관리 ──
+  async function showMembersModal() {
+    if (!currentFolderId) return;
+    const res = await authFetch(`/api/library/shared/folders/${currentFolderId}/members`);
+    if (!res) return;
+    const d = await res.json();
+    const members = d.members || [];
+    const list = document.getElementById('memberList');
+    const permLabel = {view:'조회', edit:'편집', admin:'관리'};
+
+    list.innerHTML = members.length ? members.map(m => `
+      <div class="member-item">
+        <span>${esc(m.display_name)} <span style="color:var(--muted);font-size:0.7rem;">${esc(m.email)}</span></span>
+        <span>
+          <span class="badge badge-${m.permission === 'admin' ? 'published' : m.permission === 'edit' ? 'shared' : 'personal'}">${permLabel[m.permission]||m.permission}</span>
+          <button class="btn btn-danger btn-sm" onclick="removeMember(${m.user_id})" style="margin-left:0.3rem;">X</button>
+        </span>
+      </div>
+    `).join('') : '<div class="empty">멤버가 없습니다</div>';
+
+    // 사용자 목록 로드
+    if (!allUsersCache.length) {
+      const ures = await authFetch('/api/library/users-list');
+      if (ures) { const ud = await ures.json(); allUsersCache = ud.users || []; }
+    }
+    const existingIds = new Set(members.map(m => m.user_id));
+    const addSel = document.getElementById('addMemberSelect');
+    const available = allUsersCache.filter(u => !existingIds.has(u.id));
+    addSel.innerHTML = available.length
+      ? available.map(u => `<option value="${u.id}">${esc(u.display_name)} (${esc(u.email)})</option>`).join('')
+      : '<option value="">추가 가능한 사용자 없음</option>';
+
+    document.getElementById('membersOverlay').classList.add('show');
+  }
+
+  async function doAddMember() {
+    const userId = document.getElementById('addMemberSelect').value;
+    const perm = document.getElementById('addMemberPerm').value;
+    if (!userId) return toast('사용자를 선택하세요', 'error');
+    const fd = new FormData();
+    fd.append('user_id', userId);
+    fd.append('permission', perm);
+    const res = await authFetch(`/api/library/shared/folders/${currentFolderId}/members`, { method: 'POST', body: fd });
+    if (res && res.ok) { toast('멤버 추가 완료!'); showMembersModal(); }
+    else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  async function removeMember(userId) {
+    if (!confirm('이 멤버를 제거하시겠습니까?')) return;
+    const res = await authFetch(`/api/library/shared/folders/${currentFolderId}/members/${userId}`, { method: 'DELETE' });
+    if (res && res.ok) { toast('멤버 제거 완료'); showMembersModal(); }
+    else toast('실패', 'error');
+  }
+
+  // ── 음원 메타 수정 ──
+  function showMetaModal(voiceId, name, desc, canGen) {
+    document.getElementById('metaVoiceId').value = voiceId;
+    document.getElementById('metaName').value = name;
+    document.getElementById('metaDesc').value = desc;
+    document.getElementById('metaCanGen').value = canGen;
+    document.getElementById('metaGenWrapper').style.display = (currentUser && currentUser.level <= 10) ? '' : 'none';
+    document.getElementById('metaOverlay').classList.add('show');
+  }
+
+  async function doUpdateMeta() {
+    const voiceId = document.getElementById('metaVoiceId').value;
+    const fd = new FormData();
+    fd.append('name', document.getElementById('metaName').value.trim());
+    fd.append('description', document.getElementById('metaDesc').value.trim());
+    if (currentUser && currentUser.level <= 10) {
+      fd.append('can_generate', document.getElementById('metaCanGen').value);
+    }
+    const res = await authFetch(`/api/library/voice/${voiceId}/meta`, { method: 'POST', body: fd });
+    if (res && res.ok) {
+      toast('수정 완료!');
+      closeModal('metaOverlay');
+      // 현재 탭 새로고침
+      const activeTab = document.querySelector('.tab.active').dataset.tab;
+      if (activeTab === 'personal') loadPersonal();
+      else if (activeTab === 'shared' && currentFolderId) openFolder(currentFolderId);
+      else if (activeTab === 'published') loadPublished();
+    } else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  // ── 복사/배포 ──
+  async function copyToPersonal(voiceId) {
+    const fd = new FormData();
+    fd.append('voice_id', voiceId);
+    const res = await authFetch('/api/library/copy-to-personal', { method: 'POST', body: fd });
+    if (res && res.ok) {
+      toast('개인 폴더로 복사 완료!');
+      loadPersonal();
+    } else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  async function requestPublishFromFolder() {
+    if (!currentFolderId) return;
+    // 폴더의 모든 음원에 대해 배포 요청 (선택 가능하게 할 수도 있지만 일단 간단하게)
+    const res = await authFetch(`/api/library/shared/folders/${currentFolderId}/voices`);
+    if (!res) return;
+    const d = await res.json();
+    const voices = (d.voices || []).filter(v => v.status === 'active');
+    if (!voices.length) return toast('배포 요청할 음원이 없습니다', 'error');
+
+    if (!confirm(`${voices.length}개 음원에 대해 배포 심사를 요청하시겠습니까?`)) return;
+
+    let ok = 0;
+    for (const v of voices) {
+      const fd = new FormData();
+      fd.append('voice_id', v.id);
+      const r = await authFetch('/api/library/publish/request', { method: 'POST', body: fd });
+      if (r && r.ok) ok++;
+    }
+    toast(`${ok}개 음원 배포 심사 요청 완료!`);
+    openFolder(currentFolderId);
+  }
+
+  // ── 배포 업데이트 ──
+  async function updatePublished(voiceId) {
+    if (!confirm('이 음원을 업데이트(버전 증가) 하시겠습니까?')) return;
+    const res = await authFetch(`/api/library/publish/update/${voiceId}`, { method: 'POST' });
+    if (res && res.ok) { toast('업데이트 완료!'); loadPublished(); }
+    else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  // ── 심사 ──
+  async function loadReviews() {
+    const res = await authFetch('/api/library/publish/reviews');
+    if (!res) return;
+    const d = await res.json();
+    const reviews = d.reviews || [];
+    document.getElementById('countReviews').textContent = reviews.length;
+    const list = document.getElementById('reviewsList');
+    if (!reviews.length) { list.innerHTML = '<div class="empty">대기 중인 심사가 없습니다</div>'; return; }
+
+    list.innerHTML = reviews.map(r => `
+      <div class="review-card">
+        <div class="review-card-header">
+          <div>
+            <span style="font-weight:700;">${esc(r.voice_name)}</span>
+            <span style="font-size:0.72rem;color:var(--muted);margin-left:0.5rem;">${fmtDur(r.duration)}</span>
+          </div>
+          <span class="badge badge-review">심사 대기</span>
+        </div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.5rem;">
+          요청자: ${esc(r.requester_name)} · 폴더: ${esc(r.folder_name || '-')} · ${r.created_at || ''}
+        </div>
+        <audio controls preload="none" src="/api/voice/${r.voice_id}/download" style="width:100%;height:32px;margin-bottom:0.5rem;"></audio>
+        <div style="display:flex;gap:0.3rem;">
+          <button class="btn btn-success btn-sm" onclick="showReviewModal(${r.id}, '${esc(r.voice_name)}')">승인</button>
+          <button class="btn btn-danger btn-sm" onclick="showReviewModal(${r.id}, '${esc(r.voice_name)}')">거절</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function showReviewModal(reviewId, voiceName) {
+    document.getElementById('reviewId').value = reviewId;
+    document.getElementById('reviewModalTitle').textContent = `심사: ${voiceName}`;
+    document.getElementById('reviewNote').value = '';
+    document.getElementById('reviewOverlay').classList.add('show');
+  }
+
+  async function doApproveReview() {
+    const reviewId = document.getElementById('reviewId').value;
+    const fd = new FormData();
+    fd.append('review_note', document.getElementById('reviewNote').value.trim());
+    const res = await authFetch(`/api/library/publish/approve/${reviewId}`, { method: 'POST', body: fd });
+    if (res && res.ok) { toast('승인 완료!'); closeModal('reviewOverlay'); loadReviews(); }
+    else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  async function doRejectReview() {
+    const reviewId = document.getElementById('reviewId').value;
+    const fd = new FormData();
+    fd.append('review_note', document.getElementById('reviewNote').value.trim());
+    const res = await authFetch(`/api/library/publish/reject/${reviewId}`, { method: 'POST', body: fd });
+    if (res && res.ok) { toast('거절 완료'); closeModal('reviewOverlay'); loadReviews(); }
+    else { const d = await res.json(); toast(d.detail || '실패', 'error'); }
+  }
+
+  // ── 초기화 ──
+  async function init() {
+    await checkAuth();
+    loadPersonal();
+    // 배포/공유 카운트 사전 로드
+    authFetch('/api/library/published').then(async r => {
+      if(r) { const d = await r.json(); document.getElementById('countPublished').textContent = (d.voices||[]).length; }
+    });
+    authFetch('/api/library/shared/folders').then(async r => {
+      if(r) { const d = await r.json(); sharedFolders = d.folders||[]; document.getElementById('countShared').textContent = sharedFolders.length; }
+    });
+    if (currentUser && currentUser.level <= 10) {
+      authFetch('/api/library/publish/reviews').then(async r => {
+        if(r) { const d = await r.json(); document.getElementById('countReviews').textContent = (d.reviews||[]).length; }
+      });
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

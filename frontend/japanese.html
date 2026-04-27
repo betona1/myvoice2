@@ -1,0 +1,3154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>MyVoice — 일본어 발음 연습</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#7c6dfa">
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+  <script>
+  // 일본어 한자 데이터 로더 (hanzi-writer-data-ja)
+  function jaCharDataLoader(char, onLoad, onError) {
+    // 먼저 일본어 전용 데이터 시도
+    fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data-jp@2.0/data/${char}.json`)
+      .then(r => { if (r.ok) return r.json(); throw new Error(); })
+      .then(data => onLoad(data))
+      .catch(() => {
+        // 없으면 중국어 데이터 폴백 (한자는 같은 글자)
+        fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@latest/${char}.json`)
+          .then(r => { if (r.ok) return r.json(); throw new Error(); })
+          .then(data => onLoad(data))
+          .catch(() => onError(new Error('No data for ' + char)));
+      });
+  }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#07090f;--bg2:#0d1020;--surface:rgba(255,255,255,0.04);
+      --surface2:rgba(255,255,255,0.07);--border:rgba(255,255,255,0.09);
+      --border2:rgba(124,109,250,0.35);--text:#eef0f8;--muted:#7a8299;
+      --muted2:#4a5270;--accent:#7c6dfa;--accent2:#4fd1c5;--accent3:#f687b3;
+      --danger:#f05252;--success:#34d399;
+      --grad:linear-gradient(135deg,#7c6dfa 0%,#4fd1c5 100%);
+      --grad-r:linear-gradient(135deg,#f687b3 0%,#7c6dfa 100%);
+      --glow:0 0 30px rgba(124,109,250,0.2);
+      --font-h:'NanumSquareRound','Noto Sans KR',sans-serif;
+      --font-b:'NanumSquareRound','Noto Sans KR',sans-serif;
+      --font-jp:'Noto Sans SC','NanumSquareRound',sans-serif;
+      --radius:16px;--radius-sm:10px;
+      --zoom:1;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-b);min-height:100vh;font-size:calc(14px * var(--zoom));}
+    body.zoom-2{--zoom:1.15;}
+    body.zoom-3{--zoom:1.3;}
+    body.zoom-4{--zoom:1.5;}
+    body.zoom-5{--zoom:1.75;}
+
+    /* 화이트 모드 */
+    body.light{
+      --bg:#f5f5f7;--bg2:#ffffff;--surface:rgba(0,0,0,0.04);
+      --surface2:rgba(0,0,0,0.06);--border:rgba(0,0,0,0.1);
+      --border2:rgba(124,109,250,0.3);--text:#1a1a2e;--muted:#666;
+      --muted2:#999;
+    }
+    body.light .header{background:#fff;border-color:rgba(0,0,0,0.08);}
+    body.light .sidebar{background:#fff;border-color:rgba(0,0,0,0.08);}
+    body.light .study-card{background:#fff;}
+    body.light .eval-result{background:#fff;}
+    body.light .records-section{background:#fff;}
+    body.light .modal{background:#fff;}
+    body.light .toast{background:rgba(255,255,255,0.95);}
+    body.light .back-btn{background:rgba(0,0,0,0.05);color:#555;}
+    body.light .back-btn:hover{color:#1a1a2e;border-color:var(--accent);}
+    body.light input,body.light select,body.light textarea{background:rgba(0,0,0,0.03);color:#1a1a2e;}
+    body.light .loading-overlay{background:rgba(245,245,247,0.8);}
+    body.light .card-item.active{background:rgba(124,109,250,0.08);border-color:rgba(124,109,250,0.2);}
+    body.light .card-item:hover{background:rgba(0,0,0,0.03);}
+    body.light .study-card{border-color:rgba(0,0,0,0.06);}
+    body.light .eval-result{border-color:rgba(0,0,0,0.06);}
+    body.light .records-section{border-color:rgba(0,0,0,0.06);}
+    body.light .char-card{border-width:2px;}
+    body.light .char-card.perfect{background:rgba(52,211,153,0.06);border-color:rgba(52,211,153,0.4);}
+    body.light .char-card.tone_wrong{background:rgba(251,191,36,0.06);border-color:rgba(251,191,36,0.4);}
+    body.light .char-card.wrong{background:rgba(240,82,82,0.06);border-color:rgba(240,82,82,0.4);}
+    body.light .week-btn:hover{background:rgba(0,0,0,0.04);}
+    body.light .week-btn.active{background:rgba(124,109,250,0.08);color:var(--accent);}
+    body.light .audio-btn{background:rgba(0,0,0,0.04);border-color:rgba(0,0,0,0.1);}
+    body.light .audio-btn:hover{border-color:var(--accent);}
+    body.light .audio-btn.primary{background:var(--grad);color:#fff;border-color:transparent;}
+    a{color:var(--accent);text-decoration:none;}
+
+    /* 헤더 */
+    .header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:1rem 1.5rem;border-bottom:1px solid var(--border);
+      background:var(--bg2);
+    }
+    .header-left{display:flex;align-items:center;gap:0.8rem;}
+    .header h1{font-family:var(--font-h);font-size:1.1rem;
+      background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+    .back-btn{
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      color:var(--muted);padding:0.4rem 0.7rem;font-size:0.8rem;cursor:pointer;
+      transition:all 0.2s;
+    }
+    .back-btn:hover{color:var(--text);border-color:var(--accent);}
+
+    /* 메인 레이아웃 */
+    .main{display:flex;height:calc(100vh - 57px);overflow:hidden;}
+
+    /* 사이드바 (카드 목록) */
+    .sidebar{
+      width:320px;min-width:280px;border-right:1px solid var(--border);
+      display:flex;flex-direction:column;background:var(--bg2);
+    }
+    .sidebar-header{
+      padding:1rem;border-bottom:1px solid var(--border);
+      display:flex;flex-direction:column;gap:0.6rem;
+    }
+    .sidebar-header h2{font-size:0.85rem;color:var(--muted);}
+    .add-card-btn{
+      background:var(--grad);border:none;border-radius:var(--radius-sm);
+      color:#fff;padding:0.6rem;font-size:0.82rem;font-weight:600;
+      cursor:pointer;transition:box-shadow 0.2s;width:100%;
+    }
+    .add-card-btn:hover{box-shadow:var(--glow);}
+
+    .card-list{flex:1;overflow-y:auto;padding:0.5rem;}
+    .card-item{
+      padding:0.8rem;border-radius:var(--radius-sm);
+      border:1px solid transparent;cursor:pointer;
+      transition:all 0.2s;margin-bottom:0.4rem;
+    }
+    .card-item:hover{background:var(--surface);border-color:var(--border);}
+    .card-item.active{background:var(--surface2);border-color:var(--border2);}
+    .card-chinese{font-family:var(--font-jp);font-size:1.2rem;font-weight:600;margin-bottom:0.2rem;}
+    .card-pinyin{font-size:0.78rem;color:var(--accent2);margin-bottom:0.15rem;}
+    .card-meaning{font-size:0.72rem;color:var(--muted);}
+    .card-score{
+      display:inline-block;font-size:0.65rem;padding:0.15rem 0.4rem;
+      border-radius:4px;margin-top:0.3rem;font-weight:600;
+    }
+    .card-score.high{background:rgba(52,211,153,0.15);color:var(--success);}
+    .card-score.mid{background:rgba(124,109,250,0.15);color:var(--accent);}
+    .card-score.low{background:rgba(240,82,82,0.15);color:var(--danger);}
+
+    /* 카테고리 필터 */
+    .cat-filter{display:flex;gap:0.3rem;flex-wrap:wrap;}
+    .cat-btn{
+      background:var(--surface);border:1px solid var(--border);
+      border-radius:6px;color:var(--muted);padding:0.25rem 0.5rem;
+      font-size:0.7rem;cursor:pointer;transition:all 0.2s;
+    }
+    .cat-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+    /* 메인 패널 */
+    .content{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+    /* 빈 상태 */
+    .empty-state{
+      flex:1;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;color:var(--muted2);gap:0.8rem;
+    }
+    .empty-state .icon{font-size:3rem;}
+    .empty-state p{font-size:0.85rem;}
+
+    /* 학습 카드 상세 */
+    .study-area{flex:1;overflow-y:auto;padding:2rem;display:none;}
+    .study-area.active{display:block;}
+
+    .study-card{
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:var(--radius);padding:2rem;margin-bottom:1.5rem;
+      text-align:center;
+    }
+    .study-chinese{
+      font-family:var(--font-jp);font-size:calc(2.8em);font-weight:700;
+      margin-bottom:0.5rem;letter-spacing:0.1em;
+    }
+    .study-pinyin{
+      font-size:calc(1.4em);color:var(--accent2);margin-bottom:0.3rem;
+      font-weight:500;
+    }
+    .study-tones{font-size:calc(1em);color:var(--muted);margin-bottom:0.5rem;}
+    .study-meaning{font-size:calc(1.1em);color:var(--muted);margin-bottom:1.2rem;}
+
+    .audio-controls{
+      display:flex;align-items:center;justify-content:center;gap:1rem;
+      flex-wrap:wrap;
+    }
+    .audio-btn{
+      display:flex;align-items:center;gap:0.4rem;
+      padding:0.7rem 1.2rem;border-radius:var(--radius-sm);
+      border:1px solid var(--border);background:var(--surface2);
+      color:var(--text);font-size:0.82rem;cursor:pointer;
+      transition:all 0.2s;font-family:var(--font-b);
+    }
+    .audio-btn:hover{border-color:var(--accent);box-shadow:var(--glow);}
+    .audio-btn.primary{background:var(--grad);border-color:transparent;color:#fff;font-weight:600;}
+    .audio-btn.recording{background:var(--danger);border-color:var(--danger);animation:pulse 1s infinite;}
+    .audio-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.6;}}
+
+    /* 녹음 타이머 */
+    .rec-timer{
+      font-family:var(--font-h);font-size:1.1rem;color:var(--danger);
+      font-weight:700;display:none;
+    }
+    .rec-timer.active{display:inline-block;}
+
+    /* 평가 결과 */
+    .eval-result{
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;
+      display:none;
+    }
+    .eval-result.active{display:block;}
+    .eval-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+    .eval-title{font-size:0.9rem;font-weight:600;}
+    .eval-score-big{
+      font-family:var(--font-h);font-size:2.2rem;font-weight:900;
+    }
+    .eval-score-big.high{color:var(--success);}
+    .eval-score-big.mid{color:var(--accent);}
+    .eval-score-big.low{color:var(--danger);}
+
+    .eval-details{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+    .eval-detail{
+      background:var(--surface);border-radius:var(--radius-sm);padding:0.8rem;
+    }
+    .eval-detail-label{font-size:0.7rem;color:var(--muted);margin-bottom:0.3rem;}
+    .eval-detail-value{font-size:0.9rem;font-weight:600;}
+    .eval-feedback{
+      font-size:0.82rem;color:var(--muted);line-height:1.5;
+      padding:0.8rem;background:var(--surface);border-radius:var(--radius-sm);
+    }
+
+    /* 녹음 이력 */
+    .records-section{
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1.2rem;
+    }
+    .records-title{font-size:0.85rem;font-weight:600;margin-bottom:0.8rem;color:var(--muted);}
+    .record-item{
+      display:flex;align-items:center;gap:0.8rem;
+      padding:0.6rem 0.5rem;border-bottom:1px solid var(--border);
+      font-size:0.8rem;
+    }
+    .record-item:last-child{border-bottom:none;}
+    .record-num{color:var(--muted2);font-size:0.7rem;min-width:1.5rem;}
+    .record-score{
+      font-family:var(--font-h);font-weight:700;min-width:2.5rem;text-align:right;
+    }
+    .record-score.high{color:var(--success);}
+    .record-score.mid{color:var(--accent);}
+    .record-score.low{color:var(--danger);}
+    .record-stt{flex:1;color:var(--muted);font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .record-date{color:var(--muted2);font-size:0.68rem;min-width:4rem;}
+    .record-actions{display:flex;gap:0.3rem;}
+    .record-btn{
+      background:none;border:none;cursor:pointer;color:var(--muted);
+      font-size:0.85rem;padding:0.2rem;transition:color 0.2s;
+    }
+    .record-btn:hover{color:var(--text);}
+    .record-btn.starred{color:#fbbf24;}
+    .record-btn.del:hover{color:var(--danger);}
+
+    /* 통계 바 */
+    .stats-bar{
+      display:flex;gap:1rem;padding:1rem;border-bottom:1px solid var(--border);
+      flex-wrap:wrap;
+    }
+    .stat{
+      display:flex;flex-direction:column;align-items:center;gap:0.15rem;
+      min-width:60px;
+    }
+    .stat-value{font-family:var(--font-h);font-size:1.1rem;font-weight:800;color:var(--accent);}
+    .stat-label{font-size:0.6rem;color:var(--muted);}
+
+    /* 모달 */
+    .modal-overlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);
+      display:none;align-items:center;justify-content:center;z-index:100;
+    }
+    .modal-overlay.active{display:flex;}
+    .modal{
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:var(--radius);padding:1.5rem;width:90%;max-width:420px;
+    }
+    .modal h3{font-size:1rem;margin-bottom:1rem;font-family:var(--font-h);}
+    .modal label{display:block;font-size:0.78rem;color:var(--muted);margin-bottom:0.3rem;}
+    .modal input,.modal select,.modal textarea{
+      width:100%;background:rgba(0,0,0,0.3);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);padding:0.6rem 0.8rem;
+      font-size:0.85rem;font-family:var(--font-b);margin-bottom:0.8rem;
+      outline:none;
+    }
+    .modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--accent);}
+    .modal textarea{resize:vertical;min-height:60px;}
+    .modal-actions{display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;}
+    .modal-btn{
+      padding:0.55rem 1.2rem;border-radius:8px;font-size:0.82rem;
+      cursor:pointer;border:1px solid var(--border);
+      background:var(--surface2);color:var(--text);transition:all 0.2s;
+    }
+    .modal-btn.primary{background:var(--grad);border-color:transparent;color:#fff;font-weight:600;}
+    .modal-btn:hover{box-shadow:var(--glow);}
+
+    /* 토스트 */
+    .toast{
+      position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;
+      background:rgba(13,16,32,0.95);backdrop-filter:blur(20px);
+      border:1px solid var(--border);border-radius:var(--radius-sm);
+      padding:0.7rem 1rem;font-size:0.82rem;max-width:280px;
+      opacity:0;transform:translateY(10px);
+      transition:opacity 0.3s,transform 0.3s;pointer-events:none;
+    }
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{border-color:rgba(52,211,153,0.5);}
+    .toast.error{border-color:rgba(240,82,82,0.5);color:#fca5a5;}
+
+    .spin{
+      display:inline-block;width:12px;height:12px;
+      border:2px solid rgba(255,255,255,0.2);border-top-color:var(--accent);
+      border-radius:50%;animation:spin 0.7s linear infinite;
+      vertical-align:middle;margin-left:4px;
+    }
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* 로딩 오버레이 */
+    .loading-overlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+      background:rgba(7,9,15,0.7);backdrop-filter:blur(4px);
+      display:none;align-items:center;justify-content:center;flex-direction:column;gap:1rem;
+    }
+    .loading-overlay.active{display:flex;}
+    .loading-spinner{
+      width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);
+      border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;
+    }
+    .loading-text{font-size:0.9rem;color:var(--muted);}
+    /* 상단 프로그래스 바 */
+    .top-progress{
+      position:fixed;top:0;left:0;height:3px;z-index:9998;
+      background:var(--grad);border-radius:0 2px 2px 0;
+      width:0%;transition:width 0.3s;display:none;
+    }
+    .top-progress.active{display:block;animation:progress-pulse 1.5s ease-in-out infinite;}
+    @keyframes progress-pulse{0%{width:10%}50%{width:80%}100%{width:10%}}
+
+    /* 글자별 평가 카드 */
+    .char-card{
+      display:flex;flex-direction:column;align-items:center;
+      padding:0.7rem 0.9rem;border-radius:12px;min-width:80px;
+      border:2.5px solid transparent;transition:all 0.3s;
+    }
+    .char-card.perfect{border-color:var(--success);background:rgba(52,211,153,0.1);}
+    .char-card.tone_wrong{border-color:#fbbf24;background:rgba(251,191,36,0.1);}
+    .char-card.wrong{border-color:var(--danger);background:rgba(240,82,82,0.1);}
+    .char-card.missing{border-color:var(--muted2);background:rgba(74,82,112,0.1);}
+    .char-card.extra{border-color:var(--muted2);background:rgba(74,82,112,0.05);opacity:0.6;}
+    .char-card .cc-char{font-family:var(--font-jp);font-size:2.2rem;font-weight:700;}
+    .char-card .cc-label{font-size:0.55em;color:var(--muted2);margin-top:0.3rem;letter-spacing:0.05em;}
+    .char-card .cc-expected{font-size:1rem;color:var(--accent2);font-weight:600;margin-top:0.1rem;}
+    .char-card .cc-divider{width:80%;height:1px;background:var(--border);margin:0.3rem 0;}
+    .char-card .cc-your-label{font-size:0.55em;color:var(--muted2);}
+    .char-card .cc-your{font-size:1rem;margin-top:0.1rem;font-weight:700;}
+    .char-card .cc-status{font-size:0.6em;margin-top:0.2rem;font-weight:600;letter-spacing:0.05em;}
+    .char-card.perfect .cc-your{color:var(--success);}
+    .char-card.perfect .cc-status{color:var(--success);}
+    .char-card.tone_wrong .cc-your{color:#fbbf24;}
+    .char-card.tone_wrong .cc-status{color:#fbbf24;}
+    .char-card.wrong .cc-your{color:var(--danger);}
+    .char-card.wrong .cc-status{color:var(--danger);}
+    .char-card.missing .cc-your{color:var(--muted2);}
+    .char-card.missing .cc-status{color:var(--muted2);}
+
+    /* 음성 비교 카드 */
+    .voice-item{
+      display:flex;align-items:center;gap:0.6rem;
+      padding:0.5rem;border-bottom:1px solid var(--border);
+      font-size:0.8em;cursor:pointer;transition:background 0.15s;border-radius:6px;
+    }
+    .voice-item:hover{background:var(--surface2);}
+    .voice-item.selected{background:rgba(124,109,250,0.1);border-color:var(--accent);}
+    .voice-item .vi-name{flex:1;font-weight:600;}
+    .voice-item .vi-dur{color:var(--muted);font-size:0.85em;min-width:3em;}
+    .voice-item .vi-btn{
+      background:none;border:1px solid var(--border);border-radius:6px;
+      color:var(--muted);padding:0.2rem 0.5rem;font-size:0.85em;cursor:pointer;
+      transition:all 0.15s;
+    }
+    .voice-item .vi-btn:hover{color:var(--accent);border-color:var(--accent);}
+
+    /* 실시간 평가 결과 */
+    .live-score{
+      display:inline-flex;align-items:center;gap:0.3rem;
+      padding:0.25rem 0.5rem;border-radius:6px;font-size:0.75em;
+      margin:0.15rem;animation:fadeIn 0.3s;
+    }
+    .live-score.perfect{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid rgba(52,211,153,0.3);}
+    .live-score.good{background:rgba(124,109,250,0.1);color:var(--accent);border:1px solid rgba(124,109,250,0.2);}
+    .live-score.bad{background:rgba(240,82,82,0.1);color:var(--danger);border:1px solid rgba(240,82,82,0.2);}
+    @keyframes fadeIn{from{opacity:0;transform:scale(0.8);}to{opacity:1;transform:scale(1);}}
+
+    /* 끊어읽기 바 */
+    .break-char{
+      font-family:var(--font-jp);font-size:1.5em;font-weight:700;
+      display:inline-block;cursor:default;
+    }
+    .break-gap{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:1.2em;cursor:pointer;position:relative;min-height:1.5em;
+      transition:all 0.15s;
+    }
+    .break-gap:hover{background:rgba(124,109,250,0.1);border-radius:4px;}
+    .break-gap .slash{
+      color:var(--danger);font-weight:900;font-size:1.2em;
+      opacity:0;transition:opacity 0.15s;user-select:none;
+    }
+    .break-gap.active .slash{opacity:1;}
+    .break-gap:not(.active):hover .slash{opacity:0.3;}
+
+    /* 주차/교시 퀵 네비 */
+    .wn-btn{
+      flex-shrink:0;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.7em;
+      border:1px solid var(--border);background:none;color:var(--muted);
+      cursor:pointer;font-family:var(--font-b);transition:all 0.15s;white-space:nowrap;
+    }
+    .wn-btn:hover{border-color:var(--accent);color:var(--text);}
+    .wn-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+    .wn-btn.cls{font-size:0.6em;padding:0.2rem 0.4rem;}
+    .wn-btn.cls.active{background:var(--accent2);border-color:var(--accent2);}
+    .wn-sep{color:var(--muted2);font-size:0.6em;flex-shrink:0;}
+
+    /* 교안 단어 목록 */
+    .tb-word{
+      display:flex;align-items:center;gap:0.8rem;
+      padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);
+      cursor:pointer;transition:background 0.15s;
+    }
+    .tb-word:hover{background:var(--surface);}
+    .tb-word:last-child{border-bottom:none;}
+    .tb-word .tw-num{color:var(--muted2);font-size:0.7em;min-width:1.5em;}
+    .tb-word .tw-chinese{font-family:var(--font-jp);font-size:1.3em;font-weight:700;min-width:3em;}
+    .tb-word .tw-pinyin{color:var(--accent2);font-size:0.9em;min-width:5em;}
+    .tb-word .tw-meaning{color:var(--muted);font-size:0.8em;flex:1;}
+    .tb-word .tw-play{
+      background:none;border:1px solid var(--border);border-radius:6px;
+      color:var(--muted);padding:0.2rem 0.5rem;font-size:0.75em;cursor:pointer;
+      transition:all 0.15s;
+    }
+    .tb-word .tw-play:hover{color:var(--accent);border-color:var(--accent);}
+
+    /* 성조 색상 */
+    .tone1{color:#f05252;}
+    .tone2{color:#34d399;}
+    .tone3{color:#7c6dfa;}
+    .tone4{color:#4fd1c5;}
+    .tone5{color:var(--muted);}
+
+    /* 과목/주차 트리 */
+    .subject-group{margin-bottom:0.3rem;}
+    .subject-name{
+      font-size:0.75rem;font-weight:700;color:var(--accent3);
+      padding:0.3rem 0.5rem;cursor:pointer;display:flex;align-items:center;gap:0.3rem;
+    }
+    .subject-name:hover{color:var(--text);}
+    .subject-name .arrow{transition:transform 0.2s;font-size:0.6rem;}
+    .subject-name .arrow.open{transform:rotate(90deg);}
+    .week-list{display:none;padding-left:0.5rem;}
+    .week-list.open{display:block;}
+    .week-btn{
+      display:flex;justify-content:space-between;align-items:center;
+      width:100%;background:none;border:none;color:var(--muted);
+      padding:0.3rem 0.5rem;font-size:0.72rem;cursor:pointer;
+      border-radius:4px;transition:all 0.15s;font-family:var(--font-b);
+    }
+    .week-btn:hover{background:var(--surface);color:var(--text);}
+    .week-btn.active{background:var(--surface2);color:var(--accent2);font-weight:600;}
+    .week-btn .count{
+      font-size:0.6rem;background:var(--surface2);border-radius:4px;
+      padding:0.1rem 0.3rem;color:var(--muted);
+    }
+
+    /* 삭제 확인 버튼 */
+    .delete-card-btn{
+      background:none;border:1px solid var(--border);border-radius:8px;
+      color:var(--muted);padding:0.4rem 0.7rem;font-size:0.75rem;
+      cursor:pointer;transition:all 0.2s;margin-top:0.8rem;
+    }
+    .delete-card-btn:hover{color:var(--danger);border-color:var(--danger);}
+
+    /* 모바일 */
+    /* ══════════════════════════════
+       MOBILE (max-width: 768px)
+    ══════════════════════════════ */
+    @media(max-width:768px){
+      /* 헤더 */
+      .header{padding:0.6rem 0.8rem;flex-wrap:wrap;gap:0.4rem;}
+      .header-left{gap:0.4rem;}
+      .header-left h1{font-size:0.9rem;}
+      .back-btn{padding:0.3rem 0.5rem;font-size:0.7rem;}
+      .stats-bar{gap:0.5rem;padding:0.5rem 0;border-bottom:none;}
+      .stat-value{font-size:0.9rem;}
+      .stat-label{font-size:0.5rem;}
+
+      .main{flex-direction:column;height:auto;min-height:calc(100vh - 100px);}
+      .sidebar{
+        position:fixed;left:-100%;top:0;bottom:0;width:85%;max-width:320px;
+        z-index:50;transition:left 0.3s ease;border-right:1px solid var(--border);
+        box-shadow:5px 0 30px rgba(0,0,0,0.3);height:100vh;overflow-y:auto;
+      }
+      .sidebar.open{left:0;}
+      .sidebar-overlay{
+        display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+        background:rgba(0,0,0,0.5);z-index:49;
+      }
+      .sidebar-overlay.open{display:block;}
+
+      /* 콘텐츠 풀 너비 */
+      .content{flex:1;width:100%;min-height:calc(100vh - 160px);overflow-y:visible;}
+      .empty-state{min-height:50vh;}
+      .study-area{padding:0.8rem;}
+      .study-card{padding:1.2rem;border-radius:12px;}
+      .study-chinese{font-size:calc(2.2em);}
+      .study-pinyin{font-size:calc(1.2em);}
+      .study-meaning{font-size:calc(0.95em);}
+
+      /* 평가 카드 가로 스크롤 */
+      #evalCharDetails{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;}
+      .char-card{min-width:70px;flex-shrink:0;}
+
+      /* 버튼 터치 최적화 */
+      .audio-btn{padding:0.7rem 1rem;font-size:0.9em;min-height:44px;}
+      .audio-btn.primary{padding:0.8rem 1.2rem;font-size:1em;}
+      .audio-controls{gap:0.5rem !important;}
+
+      /* 교안 뷰어 */
+      #textbookViewer{max-height:60vh;}
+
+      /* 녹음 이력 */
+      .record-item{font-size:0.75em;padding:0.5rem 0.3rem;}
+
+      /* 모달 */
+      .modal{width:95%;max-width:none;margin:0.5rem;}
+
+      /* 하단 모바일 네비 */
+      .mobile-nav{
+        display:flex !important;position:fixed;bottom:0;left:0;right:0;
+        background:var(--bg2);border-top:1px solid var(--border);
+        z-index:40;padding:0.3rem 0;padding-bottom:env(safe-area-inset-bottom, 0.3rem);
+      }
+      .mobile-nav button{
+        flex:1;display:flex;flex-direction:column;align-items:center;gap:0.15rem;
+        background:none;border:none;color:var(--muted);cursor:pointer;
+        padding:0.4rem 0;font-size:0.6rem;font-family:var(--font-b);
+        transition:color 0.2s;
+      }
+      .mobile-nav button.active{color:var(--accent);}
+      .mobile-nav button .nav-icon{font-size:1.2rem;}
+
+      /* 하단 네비 공간 확보 */
+      .content{padding-bottom:60px;}
+
+      /* 대시보드 모달 */
+      .modal{max-height:90vh;}
+
+      /* 음성 비교 패널 */
+      #voicePanel{max-height:200px;}
+      .voice-item{padding:0.6rem;font-size:0.85em;}
+    }
+
+    /* 화이트모드 + 모바일 */
+    body.light .sidebar{box-shadow:5px 0 30px rgba(0,0,0,0.1);}
+    body.light .mobile-nav{background:#fff;border-color:rgba(0,0,0,0.08);}
+
+    /* 슬라이드 토글 스위치 */
+    .toggle-sw{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0;}
+    .toggle-sw input{display:none;}
+    .toggle-sw .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--muted2);border-radius:12px;transition:0.3s;}
+    .toggle-sw .slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.3s;}
+    .toggle-sw input:checked + .slider{background:var(--accent);}
+    .toggle-sw input:checked + .slider::before{transform:translateX(20px);}
+
+    /* 모바일 네비 (기본 숨김, 모바일에서만 표시) */
+    .mobile-nav{display:none;}
+  </style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="header-left">
+    <a href="/chinese" class="back-btn" style="font-size:0.65rem;padding:0.2rem 0.4rem;text-decoration:none;">🇨🇳</a>
+    <h1 id="headerTitle" style="font-size:0.9rem;">일본어학습</h1>
+    <div style="display:flex;gap:2px;align-items:center;margin-left:0.3rem;">
+      <button class="back-btn" onclick="prevCard()" style="padding:0.25rem 0.4rem;font-size:0.8rem;" title="이전">◀</button>
+      <span id="cardPosition" style="font-size:0.65rem;color:var(--muted);min-width:2.5em;text-align:center;">-</span>
+      <button class="back-btn" onclick="nextCard()" style="padding:0.25rem 0.4rem;font-size:0.8rem;" title="다음">▶</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:0.4rem;">
+    <button class="back-btn" onclick="openGojuon()" style="padding:0.25rem 0.4rem;font-size:0.75rem;" title="50음도">あ</button>
+    <button class="back-btn" onclick="openSettings()" style="padding:0.25rem 0.4rem;font-size:0.85rem;" title="설정">⚙️</button>
+    <button class="back-btn" onclick="zoomOut()" style="padding:0.25rem 0.4rem;font-size:0.85rem;" title="축소">🔍−</button>
+    <span id="zoomLevel" style="font-size:0.6rem;color:var(--muted);min-width:1.5em;text-align:center;">1</span>
+    <button class="back-btn" onclick="zoomIn()" style="padding:0.25rem 0.4rem;font-size:0.85rem;" title="확대">🔍+</button>
+    <button class="back-btn" onclick="toggleTheme()" id="btnTheme" style="padding:0.25rem 0.4rem;font-size:0.95rem;" title="다크/라이트">🌙</button>
+    <button class="back-btn" onclick="toggleDashboard()" style="padding:0.25rem 0.4rem;font-size:0.85rem;" title="대시보드">📊</button>
+  </div>
+</div>
+<!-- 하단 통계 바 (작게) -->
+<div style="display:flex;justify-content:center;gap:1.5rem;padding:0.2rem 0.5rem;background:var(--bg2);border-bottom:1px solid var(--border);font-size:0.6rem;color:var(--muted);">
+  <span>오늘 <b id="statToday" style="color:var(--accent);">0</b></span>
+  <span>카드 <b id="statTotal" style="color:var(--accent2);">0</b></span>
+  <span>평균 <b id="statAvg" style="color:var(--success);">0</b>점</span>
+  <span>⭐ <b id="statStar" style="color:#fbbf24;">0</b></span>
+</div>
+
+<div class="main">
+  <!-- 사이드바: 학습 카드 목록 -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="cat-filter">
+        <button class="cat-btn active" data-cat="">전체</button>
+        <button class="cat-btn" data-cat="greeting">인사</button>
+        <button class="cat-btn" data-cat="daily">일상</button>
+        <button class="cat-btn" data-cat="business">비즈니스</button>
+        <button class="cat-btn" data-cat="idiom">성어</button>
+        <button class="cat-btn" data-cat="general">기타</button>
+      </div>
+      <div style="display:flex;gap:0.4rem;">
+        <button class="add-card-btn" onclick="openAddModal()" style="flex:1;">+ 카드 추가</button>
+        <button class="add-card-btn" onclick="document.getElementById('pdfInput').click()" style="flex:0.8;background:var(--grad-r);">PDF</button>
+        <input type="file" id="pdfInput" accept=".pdf" style="display:none;" onchange="uploadPdf(this)">
+        <button class="add-card-btn" onclick="importFromFolder()" style="flex:1;background:linear-gradient(135deg,#f687b3,#f05252);" id="btnImportFolder">교재 가져오기</button>
+      </div>
+      <!-- 과목/주차 트리 -->
+      <div id="subjectTree" style="margin-top:0.5rem;"></div>
+    </div>
+    <div class="card-list" id="cardList">
+      <!-- 카드 목록이 여기에 동적 삽입 -->
+    </div>
+  </div>
+
+  <!-- 메인: 학습 영역 -->
+  <div class="content">
+    <!-- 빈 상태 -->
+    <div class="empty-state" id="emptyState">
+      <div class="icon">🇨🇳</div>
+      <p>학습 카드를 선택하거나 새로 추가하세요</p>
+    </div>
+
+    <!-- 학습 카드 상세 -->
+    <div class="study-area" id="studyArea">
+      <!-- 주차/교시 퀵 네비 -->
+      <div id="weekNav" style="display:flex;align-items:center;gap:0.3rem;margin-bottom:0.6rem;overflow-x:auto;padding-bottom:0.3rem;-webkit-overflow-scrolling:touch;"></div>
+      <!-- 발음 카드 -->
+      <div class="study-card">
+        <div id="studyStatus" style="text-align:right;margin-bottom:0.3rem;"></div>
+        <div class="study-chinese" id="studyChinese"></div>
+        <!-- 끊어읽기 바 -->
+        <div id="breakBar" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;margin:0.3rem 0;min-height:1.5em;"></div>
+        <div class="study-pinyin" id="studyPinyin"></div>
+        <div class="study-tones" id="studyTones"></div>
+        <div class="study-meaning" id="studyMeaning"></div>
+        <!-- 번역 (접기/펼치기) -->
+        <div style="text-align:center;margin-bottom:0.5rem;">
+          <button onclick="toggleTrans()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75em;font-family:var(--font-b);">
+            <span id="transToggleIcon">▼</span> 번역 보기
+          </button>
+        </div>
+        <div id="studyTranslations" style="display:none;gap:0.8rem;justify-content:center;flex-wrap:wrap;margin-bottom:0.8rem;"></div>
+
+        <!-- 도구 버튼 (항상 표시) -->
+        <div style="display:flex;justify-content:center;gap:0.4rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <button class="audio-btn" onclick="startDrill()" id="btnDrill" style="padding:0.5rem 0.8rem;font-size:0.85em;background:var(--grad-r);color:#fff;border:none;">🔄 연속연습</button>
+          <button class="audio-btn" onclick="openHanzi()" style="padding:0.5rem 0.8rem;font-size:0.85em;">✍️ 쓰기</button>
+          <button class="audio-btn" onclick="openTextbook()" style="padding:0.5rem 0.8rem;font-size:0.85em;">📖 교안</button>
+          <button class="audio-btn" onclick="loadSummary()" style="padding:0.5rem 0.8rem;font-size:0.85em;">📝 요약</button>
+        </div>
+        <!-- 연속연습 상태 바 -->
+        <div id="drillStatus" style="display:none;text-align:center;margin-bottom:0.5rem;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:0.5rem;margin-bottom:0.3rem;">
+            <span style="font-size:0.75em;color:var(--accent);font-weight:700;" id="drillProgress">연속연습 1/25</span>
+            <button class="audio-btn" onclick="stopDrill()" style="padding:0.2rem 0.5rem;font-size:0.7em;background:var(--danger);color:#fff;border:none;">중지</button>
+          </div>
+          <div style="height:4px;background:var(--surface);border-radius:2px;margin:0 2rem;">
+            <div id="drillBar" style="height:100%;background:var(--grad);border-radius:2px;width:0%;transition:width 0.3s;"></div>
+          </div>
+        </div>
+
+        <!-- 음성 기능 (voiceArea) -->
+        <div id="voiceArea">
+          <div style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+            <!-- 속도 슬라이더 -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;width:40px;">
+              <input type="range" id="speedSlider" min="50" max="100" value="100" step="5"
+                style="writing-mode:vertical-lr;direction:rtl;height:60px;width:20px;accent-color:var(--accent);cursor:pointer;"
+                oninput="updateSpeed(this.value)" title="재생 속도">
+              <span id="speedLabel" style="font-size:0.55em;color:var(--muted);font-weight:700;">100%</span>
+            </div>
+            <!-- 듣기 -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;">
+              <button id="btnGenRef" onclick="generateRefAudio()" style="width:54px;height:54px;border-radius:50%;background:var(--grad);border:none;color:#fff;cursor:pointer;box-shadow:0 4px 15px rgba(124,109,250,0.3);transition:all 0.2s;display:flex;align-items:center;justify-content:center;" title="듣기">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+              </button>
+              <span style="font-size:0.6em;color:var(--muted);">듣기</span>
+            </div>
+            <!-- 발음하기 -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem;position:relative;">
+              <button id="btnRecord" onclick="toggleRecording()" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#f05252,#f687b3);border:none;color:#fff;cursor:pointer;box-shadow:0 4px 15px rgba(240,82,82,0.3);transition:all 0.2s;display:flex;align-items:center;justify-content:center;" title="발음하기">
+                <svg id="micIcon" width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+              </button>
+              <span style="font-size:0.6em;color:var(--muted);">발음하기</span>
+              <span class="rec-timer" id="recTimer" style="display:none;position:absolute;top:-1.2rem;font-size:0.7em;color:var(--danger);font-weight:700;">00:00</span>
+            </div>
+          </div>
+          <!-- 녹음 레벨 바 -->
+          <div id="recLevelBar" style="display:none;height:6px;background:var(--surface);border-radius:3px;margin:0 2rem 0.4rem;overflow:hidden;">
+            <div id="recLevelFill" style="height:100%;background:var(--danger);border-radius:3px;width:0%;transition:width 0.05s;"></div>
+          </div>
+          <div id="recTapHint" style="display:none;text-align:center;font-size:0.65em;color:var(--danger);margin-bottom:0.3rem;">터치하면 녹음 종료 + 평가</div>
+          <!-- 실시간 평가 결과 -->
+          <div id="liveResults" style="display:none;margin:0.3rem 0;display:flex;flex-wrap:wrap;gap:0.2rem;justify-content:center;"></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:0.3rem;">
+            <select id="voiceSelect" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.2rem 0.4rem;font-size:0.65em;font-family:var(--font-b);outline:none;">
+              <option value="8">김준용 (남)</option>
+              <option value="11">수민 (여)</option>
+            </select>
+          </div>
+          <button class="audio-btn" id="btnRefPlay" onclick="playRefAudio()" disabled style="display:none;">재생</button>
+        </div>
+
+        <!-- 교안 전용 (음성 OFF 과목) -->
+        <div id="textbookOnlyArea" style="display:none;"></div>
+
+        <button class="delete-card-btn" onclick="deleteCurrentCard()">이 카드 삭제</button>
+      </div>
+
+      <!-- 평가 결과 + 녹음이력 (음성 ON 과목만) -->
+      <div id="voiceResultArea">
+      <div class="eval-result" id="evalResult">
+        <div class="eval-header" style="margin-bottom:0.8rem;">
+          <span class="eval-title" style="font-size:1.1rem;">발음 평가</span>
+          <span class="eval-score-big" id="evalScoreBig" style="font-size:2.8rem;">0</span>
+        </div>
+        <!-- 점수 바 -->
+        <div style="display:flex;gap:1rem;margin-bottom:1.2rem;">
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--muted);margin-bottom:0.3rem;">
+              <span>ひらがな</span><span id="evalPronScore" style="font-weight:700;color:var(--accent2);">0</span>
+            </div>
+            <div style="height:10px;background:var(--surface);border-radius:5px;overflow:hidden;">
+              <div id="evalPronBar" style="height:100%;background:var(--accent2);border-radius:5px;width:0%;transition:width 0.5s;"></div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;font-size:0.85rem;color:var(--muted);margin-bottom:0.3rem;">
+              <span>ローマ字</span><span id="evalToneScore" style="font-weight:700;color:var(--accent3);">0</span>
+            </div>
+            <div style="height:10px;background:var(--surface);border-radius:5px;overflow:hidden;">
+              <div id="evalToneBar" style="height:100%;background:var(--accent3);border-radius:5px;width:0%;transition:width 0.5s;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- 글자별 하이라이트 -->
+        <div id="evalCharDetails" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-bottom:1rem;"></div>
+        <!-- 범례 -->
+        <div style="display:flex;gap:1rem;justify-content:center;font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--success);border-radius:3px;vertical-align:middle;"></span> 정확</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#fbbf24;border-radius:3px;vertical-align:middle;"></span> 성조 틀림</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:3px;vertical-align:middle;"></span> 발음 틀림</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--muted2);border-radius:3px;vertical-align:middle;"></span> 누락</span>
+        </div>
+        <div class="eval-feedback" id="evalFeedback" style="font-size:0.9rem;"></div>
+        <div style="margin-top:1rem;text-align:center;">
+          <button class="audio-btn" id="btnPlayLast" onclick="playLastRecord()" style="font-size:0.9rem;padding:0.7rem 1.5rem;">내 녹음 듣기</button>
+        </div>
+      </div>
+
+      <!-- 녹음 이력 -->
+      <div class="records-section">
+        <div class="records-title">연습 이력</div>
+        <div id="recordsList"></div>
+      </div>
+
+      <!-- 메모 -->
+      <div class="records-section" style="margin-top:1rem;">
+        <div class="records-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>메모</span>
+          <button class="audio-btn" style="padding:0.3rem 0.6rem;font-size:0.72rem;" onclick="openNoteInput()">+ 메모 추가</button>
+        </div>
+        <div id="noteInput" style="display:none;margin:0.5rem 0;">
+          <textarea id="noteContent" placeholder="메모를 입력하세요..." style="width:100%;min-height:60px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.5rem;font-size:0.8rem;font-family:var(--font-b);resize:vertical;outline:none;"></textarea>
+          <div style="display:flex;gap:0.3rem;margin-top:0.3rem;">
+            <button class="audio-btn" style="padding:0.3rem 0.8rem;font-size:0.72rem;" onclick="saveNote()">저장</button>
+            <button class="audio-btn" style="padding:0.3rem 0.8rem;font-size:0.72rem;" onclick="document.getElementById('noteInput').style.display='none'">취소</button>
+          </div>
+        </div>
+        <div id="notesList"></div>
+      </div>
+
+      <!-- 교안 뷰어 -->
+      </div><!-- /voiceResultArea -->
+
+      <!-- 도구 버튼은 카드 안에 있음 -->
+    </div>
+  </div>
+</div>
+
+<!-- 카드 추가 모달 -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h3>새 학습 카드</h3>
+    <label>중국어 (한자)</label>
+    <input type="text" id="inputChinese" placeholder="你好" style="font-family:var(--font-jp);font-size:1.1rem;">
+    <label>한국어 뜻 (선택)</label>
+    <input type="text" id="inputMeaning" placeholder="안녕하세요">
+    <label>카테고리</label>
+    <select id="inputCategory">
+      <option value="general">기타</option>
+      <option value="greeting">인사</option>
+      <option value="daily">일상</option>
+      <option value="business">비즈니스</option>
+      <option value="idiom">성어</option>
+    </select>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="closeAddModal()">취소</button>
+      <button class="modal-btn primary" onclick="addCard()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 대시보드 오버레이 -->
+<div class="modal-overlay" id="dashboardOverlay">
+  <div class="modal" style="max-width:700px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <h3 style="margin:0;">학습 대시보드</h3>
+      <button class="modal-btn" onclick="closeDashboard()">닫기</button>
+    </div>
+
+    <!-- 요약 카드 -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.6rem;margin-bottom:1.2rem;">
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:0.8rem;text-align:center;">
+        <div style="font-family:var(--font-h);font-size:1.5rem;font-weight:800;color:var(--accent);" id="dbToday">0</div>
+        <div style="font-size:0.65rem;color:var(--muted);">오늘 연습</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:0.8rem;text-align:center;">
+        <div style="font-family:var(--font-h);font-size:1.5rem;font-weight:800;color:var(--success);" id="dbAvg">0</div>
+        <div style="font-size:0.65rem;color:var(--muted);">평균 점수</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:0.8rem;text-align:center;">
+        <div style="font-family:var(--font-h);font-size:1.5rem;font-weight:800;color:var(--accent2);" id="dbTotal">0</div>
+        <div style="font-size:0.65rem;color:var(--muted);">총 연습</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:0.8rem;text-align:center;">
+        <div style="font-family:var(--font-h);font-size:1.5rem;font-weight:800;color:var(--accent3);" id="dbCards">0</div>
+        <div style="font-size:0.65rem;color:var(--muted);">학습 카드</div>
+      </div>
+    </div>
+
+    <!-- 날짜별 차트 -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">날짜별 학습 현황</div>
+      <div id="dailyChart" style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:0.5rem;background:var(--surface);border-radius:var(--radius-sm);overflow-x:auto;"></div>
+      <div id="dailyLabels" style="display:flex;gap:3px;padding:0 0.5rem;overflow-x:auto;"></div>
+    </div>
+
+    <!-- 최근 연습 기록 -->
+    <div>
+      <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;">최근 연습 기록</div>
+      <div id="recentRecords" style="max-height:250px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 교안 전체화면 모달 -->
+<div id="textbookModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:60;background:var(--bg);flex-direction:column;">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 1rem;border-bottom:1px solid var(--border);background:var(--bg2);">
+    <span id="textbookTitle" style="font-size:0.85em;font-weight:600;">교안</span>
+    <div style="display:flex;gap:0.4rem;align-items:center;">
+      <button class="audio-btn" onclick="tbPrev()" style="padding:0.4rem 0.8rem;">◀</button>
+      <span id="tbPageInfo" style="font-size:0.8em;color:var(--muted);min-width:4em;text-align:center;">-</span>
+      <button class="audio-btn" onclick="tbNext()" style="padding:0.4rem 0.8rem;">▶</button>
+      <button class="audio-btn" onclick="closeTextbook()" style="padding:0.4rem 0.8rem;">✕ 닫기</button>
+    </div>
+  </div>
+  <div id="textbookViewer" style="flex:1;overflow-y:auto;text-align:center;padding:0.5rem;-webkit-overflow-scrolling:touch;"></div>
+  <div id="textbookWords" style="display:none;max-height:30vh;overflow-y:auto;border-top:1px solid var(--border);padding:0.5rem;background:var(--bg2);"></div>
+</div>
+<script>
+// 교안 좌우 스와이프
+(function(){
+  let startX=0, startY=0;
+  const el = document.getElementById('textbookViewer');
+  if(!el) return;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, {passive:true});
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx > 0) tbPrev(); else tbNext();
+    }
+  }, {passive:true});
+})();
+</script>
+
+<!-- 한자 쓰기 모달 -->
+<div class="modal-overlay" id="hanziOverlay">
+  <div class="modal" style="max-width:90vw;width:auto;min-width:300px;">
+    <!-- 상단 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+      <div style="display:flex;gap:0.3rem;">
+        <button class="audio-btn" onclick="hanziAnimateAll()" style="padding:0.3rem 0.6rem;font-size:0.75em;">▶ 획순</button>
+        <button class="audio-btn" onclick="hanziQuizAll()" id="btnHanziAll" style="padding:0.3rem 0.6rem;font-size:0.75em;background:var(--grad);color:#fff;border:none;">✍️ 연속쓰기</button>
+        <button class="audio-btn" onclick="hanziResetAll()" style="padding:0.3rem 0.6rem;font-size:0.75em;">↺</button>
+      </div>
+      <button class="modal-btn" onclick="closeHanzi()" style="padding:0.25rem 0.5rem;font-size:0.8em;">닫기</button>
+    </div>
+
+    <!-- 병음/뜻 -->
+    <div id="hanziFullPinyin" style="text-align:center;font-size:1em;color:var(--accent2);font-weight:600;margin-bottom:0.2rem;"></div>
+    <div id="hanziFullMeaning" style="text-align:center;font-size:0.75em;color:var(--muted);margin-bottom:0.5rem;"></div>
+
+    <!-- 전체 글자 영역 (PC: flex-wrap, 모바일: 가로 스크롤) -->
+    <div id="hanziAllTargets" style="display:flex;gap:0.5rem;overflow-x:auto;padding-bottom:0.5rem;-webkit-overflow-scrolling:touch;justify-content:center;flex-wrap:wrap;"></div>
+
+    <div id="hanziResult" style="text-align:center;font-size:0.8em;color:var(--muted);margin-top:0.3rem;"></div>
+  </div>
+</div>
+<style>
+  @media(max-width:768px){
+    #hanziAllTargets{flex-wrap:nowrap !important;justify-content:flex-start !important;}
+  }
+</style>
+
+<!-- 요약 모달 -->
+<div class="modal-overlay" id="summaryOverlay">
+  <div class="modal" style="max-width:600px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
+      <h3 style="margin:0;font-size:1em;" id="summaryTitle">교안 요약</h3>
+      <button class="modal-btn" onclick="document.getElementById('summaryOverlay').classList.remove('active')">닫기</button>
+    </div>
+    <div id="summaryContent" style="font-size:0.85em;line-height:1.7;"></div>
+  </div>
+</div>
+
+<!-- 50음도 차트 모달 -->
+<div class="modal-overlay" id="gojuonOverlay">
+  <div class="modal" style="max-width:95vw;max-height:90vh;overflow-y:auto;padding:0.8rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+      <h3 style="margin:0;font-size:1em;">五十音図 (50음도)</h3>
+      <div style="display:flex;gap:0.3rem;">
+        <button class="audio-btn" onclick="showGojuon('hira')" id="gTab1" style="padding:0.2rem 0.5rem;font-size:0.75em;">ひらがな</button>
+        <button class="audio-btn" onclick="showGojuon('kata')" id="gTab2" style="padding:0.2rem 0.5rem;font-size:0.75em;">カタカナ</button>
+        <button class="audio-btn" onclick="showGojuon('both')" id="gTab3" style="padding:0.2rem 0.5rem;font-size:0.75em;">両方</button>
+        <button class="modal-btn" onclick="document.getElementById('gojuonOverlay').classList.remove('active')" style="padding:0.2rem 0.5rem;">닫기</button>
+      </div>
+    </div>
+    <div id="gojuonChart"></div>
+  </div>
+</div>
+<style>
+.goj-table{border-collapse:collapse;width:100%;margin-bottom:1rem;}
+.goj-table td{text-align:center;padding:0.4rem 0.2rem;border:1px solid var(--border);cursor:pointer;transition:background 0.15s;border-radius:4px;}
+.goj-table td:hover{background:var(--surface2);}
+.goj-table td.empty{border:none;cursor:default;}
+.goj-table td .g-main{font-size:1.3em;font-weight:700;}
+.goj-table td .g-sub{font-size:0.6em;color:var(--muted);}
+.goj-table td .g-roma{font-size:0.55em;color:var(--accent2);}
+.goj-header{font-size:0.8em;font-weight:700;color:var(--accent3);padding:0.5rem 0 0.2rem;}
+</style>
+
+<!-- 사이드바 오버레이 (모바일) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- 하단 모바일 네비 -->
+<div class="mobile-nav" id="mobileNav">
+  <button onclick="openSidebar()" id="navList">
+    <span class="nav-icon">📚</span>목록
+  </button>
+  <button onclick="closeSidebar();" id="navStudy" class="active">
+    <span class="nav-icon">✏️</span>학습
+  </button>
+  <button onclick="closeSidebar();toggleDashboard();" id="navDash">
+    <span class="nav-icon">📊</span>통계
+  </button>
+  <button onclick="closeSidebar();openSettings();" id="navSettings">
+    <span class="nav-icon">⚙️</span>설정
+  </button>
+</div>
+
+<!-- 설정 모달 -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:500px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <h3 style="margin:0;">설정</h3>
+      <button class="modal-btn" onclick="closeSettings()">닫기</button>
+    </div>
+
+    <!-- 테마 -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.8em;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">화면 테마</div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="modal-btn" onclick="setTheme('dark')" id="setDark" style="flex:1;">🌙 다크</button>
+        <button class="modal-btn" onclick="setTheme('light')" id="setLight" style="flex:1;">🌞 라이트</button>
+      </div>
+    </div>
+
+    <!-- 글씨 크기 -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.8em;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">글씨 크기 (현재: <span id="settingsZoom">1</span>단계)</div>
+      <div style="display:flex;gap:0.3rem;align-items:center;">
+        <button class="modal-btn" onclick="zoomOut();updateSettingsZoom();" style="padding:0.4rem 0.8rem;">🔍−</button>
+        <div style="flex:1;height:6px;background:var(--surface);border-radius:3px;overflow:hidden;position:relative;">
+          <div id="zoomBar" style="height:100%;background:var(--accent);border-radius:3px;width:20%;transition:width 0.2s;"></div>
+        </div>
+        <button class="modal-btn" onclick="zoomIn();updateSettingsZoom();" style="padding:0.4rem 0.8rem;">🔍+</button>
+      </div>
+    </div>
+
+    <!-- 과목별 음성기능 설정 -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.8em;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">과목별 학습 모드</div>
+      <div style="font-size:0.7em;color:var(--muted2);margin-bottom:0.4rem;">음성 연습이 필요 없는 이론 과목은 OFF</div>
+      <div id="subjectModeList"></div>
+    </div>
+
+    <!-- TTS 목소리 -->
+    <div style="margin-bottom:1.2rem;">
+      <div style="font-size:0.8em;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">TTS 목소리</div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+        <select id="voiceSelectSettings" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0.4rem 0.6rem;font-size:0.85em;font-family:var(--font-b);outline:none;">
+        </select>
+      </div>
+      <div style="font-size:0.7em;color:var(--muted);margin-bottom:0.5rem;">★ 즐겨찾기한 목소리만 학습화면에 표시됩니다</div>
+      <div id="voiceSettingsList" style="max-height:200px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- 테스트 발음 -->
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:0.8em;font-weight:700;color:var(--muted);margin-bottom:0.5rem;">목소리 테스트</div>
+      <div id="voiceTestSamples" style="display:flex;flex-direction:column;gap:0.3rem;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 로딩 -->
+<div class="top-progress" id="topProgress"></div>
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">처리 중...</div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+const PAGE_LANG = 'ja';
+const PAGE_SUBJECTS = ['50음도', '기초여행일본어', '초급일본어문형연습'];
+const SESSION_KEY = 'cn_session_ja';
+const CARD_KEY = 'cn_card_id_ja';
+let cards = [];
+let currentCardId = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recInterval = null;
+let recStartTime = 0;
+let lastRecordId = null;
+
+// ── 설정 모달 ──
+function openSettings() {
+  document.getElementById('settingsOverlay').classList.add('active');
+  updateSettingsZoom();
+  renderSubjectModeList();
+  renderVoiceSettings();
+  renderTestSamples();
+  // 테마 버튼 상태
+  const isLight = document.body.classList.contains('light');
+  document.getElementById('setDark').style.borderColor = isLight ? 'var(--border)' : 'var(--accent)';
+  document.getElementById('setLight').style.borderColor = isLight ? 'var(--accent)' : 'var(--border)';
+}
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('active');
+  // 메인 음성 드롭다운 동기화
+  syncMainVoiceSelect();
+}
+
+function setTheme(mode) {
+  if (mode === 'light') {
+    document.body.classList.add('light');
+  } else {
+    document.body.classList.remove('light');
+  }
+  document.getElementById('btnTheme').textContent = mode === 'light' ? '🌞' : '🌙';
+  const navIcon = document.getElementById('navThemeIcon');
+  if (navIcon) navIcon.textContent = mode === 'light' ? '🌞' : '🌙';
+  localStorage.setItem('cn_theme', mode);
+  document.getElementById('setDark').style.borderColor = mode === 'dark' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('setLight').style.borderColor = mode === 'light' ? 'var(--accent)' : 'var(--border)';
+}
+
+function updateSettingsZoom() {
+  const el = document.getElementById('settingsZoom');
+  const bar = document.getElementById('zoomBar');
+  if (el) el.textContent = currentZoom;
+  if (bar) bar.style.width = (currentZoom * 20) + '%';
+}
+
+// 목소리 즐겨찾기 설정
+function renderVoiceSettings() {
+  const cnFavs = getCnFavVoices();
+  const list = document.getElementById('voiceSettingsList');
+  if (!allVoices.length) {
+    list.innerHTML = '<div style="padding:0.5rem;color:var(--muted2);font-size:0.8em;">음성을 불러오는 중...</div>';
+    return;
+  }
+
+  list.innerHTML = allVoices.map(v => {
+    const isFav = cnFavs.includes(v.id);
+    return `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem;border-bottom:1px solid var(--border);font-size:0.82em;">
+      <button onclick="toggleCnFavVoice(${v.id});renderVoiceSettings();" style="background:none;border:none;cursor:pointer;font-size:1.1em;color:${isFav ? '#fbbf24' : 'var(--muted2)'};">${isFav ? '★' : '☆'}</button>
+      <span style="flex:1;font-weight:${isFav ? '700' : '400'};">${v.name}</span>
+      <span style="color:var(--muted);font-size:0.8em;">${Math.round(v.duration||0)}s</span>
+    </div>`;
+  }).join('');
+}
+
+// 메인 화면 음성 드롭다운 동기화
+function syncMainVoiceSelect() {
+  const cnFavs = getCnFavVoices();
+  const sel = document.getElementById('voiceSelect');
+  const saved = localStorage.getItem('cn_voice_id') || '8';
+
+  if (cnFavs.length > 0) {
+    const favVoices = allVoices.filter(v => cnFavs.includes(v.id));
+    sel.innerHTML = favVoices.map(v =>
+      `<option value="${v.id}" ${v.id == saved ? 'selected' : ''}>${v.name}</option>`
+    ).join('');
+  } else {
+    sel.innerHTML = '<option value="8">김준용 (남)</option><option value="11">수민 (여)</option>';
+  }
+  sel.value = saved;
+}
+
+// 테스트용 긴 문장 5개
+function renderTestSamples() {
+  const samples = [
+    {id: 'test1', text: '你好，很高兴认识你。', label: '안녕, 만나서 반가워요'},
+    {id: 'test2', text: '请问，这个多少钱？', label: '이거 얼마예요?'},
+    {id: 'test3', text: '今天天气真好，我们一起去散步吧。', label: '오늘 날씨 좋다, 산책하자'},
+    {id: 'test4', text: '我是韩国人，我在学习中文。', label: '한국인이에요, 중국어 배우는 중'},
+    {id: 'test5', text: '非常感谢你的帮助，再见！', label: '도움 감사합니다, 안녕!'},
+  ];
+  const el = document.getElementById('voiceTestSamples');
+  el.innerHTML = samples.map(s => `
+    <div style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem;background:var(--surface);border-radius:8px;font-size:0.8em;">
+      <span style="flex:1;font-family:var(--font-jp);">${s.text}<br><span style="font-size:0.8em;color:var(--muted);">${s.label}</span></span>
+      <button class="audio-btn" onclick="testVoiceSample('${s.text}')" style="padding:0.3rem 0.6rem;font-size:0.8em;white-space:nowrap;">▶ 듣기</button>
+    </div>
+  `).join('');
+}
+
+async function testVoiceSample(text) {
+  const voiceId = document.getElementById('voiceSelect').value || '8';
+  showLoading('테스트 음성 생성 중...');
+  try {
+    const res = await fetch(`${API}/api/chinese/tts-test`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice_id: voiceId, language: PAGE_LANG })
+    });
+    if (!res.ok) throw new Error();
+    hideLoading();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.play();
+    audio.onended = () => URL.revokeObjectURL(url);
+  } catch(e) {
+    hideLoading();
+    showToast('테스트 실패', 'error');
+  }
+}
+
+// ── 한자 쓰기 연습 (hanzi-writer) ──
+let hanziWriters = [];
+let hanziChars = [];
+let hanziPinyinList = [];
+let hanziQuizIdx = 0;
+
+function openHanzi() {
+  const card = cards.find(c => c.id === currentCardId);
+  if (!card) { showToast('카드를 선택해주세요', 'error'); return; }
+
+  // 일본어: 한자 + 히라가나 + 가타카나 전부 포함
+  hanziChars = (card.chinese || '').split('').filter(ch =>
+    (ch >= '\u4e00' && ch <= '\u9fff') ||  // 한자(CJK)
+    (ch >= '\u3040' && ch <= '\u309f') ||  // 히라가나
+    (ch >= '\u30a0' && ch <= '\u30ff')     // 가타카나
+  );
+  if (hanziChars.length === 0) { showToast('쓰기 연습할 글자가 없습니다', 'error'); return; }
+
+  hanziPinyinList = (card.pinyin || '').split(/\s+/).filter(p => p && !p.match(/^[，。！？、；：]$/));
+  hanziWriters = [];
+
+  document.getElementById('hanziOverlay').classList.add('active');
+  document.getElementById('hanziFullPinyin').textContent = card.pinyin || '';
+  document.getElementById('hanziFullMeaning').textContent = card.meaning_ko || '';
+  document.getElementById('hanziResult').textContent = '';
+
+  // 모든 글자 한꺼번에 생성
+  const container = document.getElementById('hanziAllTargets');
+  container.innerHTML = '';
+  const isMobile = window.innerWidth <= 768;
+  const size = isMobile ? Math.min(150, window.innerWidth / 2.5) : Math.min(160, 600 / hanziChars.length - 10);
+
+  hanziChars.forEach((ch, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex-shrink:0;';
+    wrap.innerHTML = `
+      <div id="hz_${i}" style="border:2px solid var(--border);border-radius:10px;background:var(--surface);width:${size}px;height:${size}px;"></div>
+      <div style="font-size:0.8em;color:var(--accent2);margin-top:0.2rem;font-weight:600;">${hanziPinyinList[i] || ''}</div>
+      <div style="font-family:var(--font-jp);font-size:0.7em;color:var(--muted);">${ch}</div>
+    `;
+    container.appendChild(wrap);
+
+    try {
+      const w = HanziWriter.create(`hz_${i}`, ch, {
+        width: size, height: size, padding: 8,
+        showOutline: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 200,
+        strokeColor: '#7c6dfa', outlineColor: '#ddd',
+        drawingColor: '#f05252', radicalColor: '#4fd1c5', showCharacter: true,
+        charDataLoader: jaCharDataLoader,
+      });
+      hanziWriters.push(w);
+    } catch(e) {
+      hanziWriters.push(null);
+    }
+  });
+
+  // 모바일: 첫 글자로 스크롤
+  if (isMobile) container.scrollLeft = 0;
+}
+
+// 전체 획순 애니메이션
+function hanziAnimateAll() {
+  let delay = 0;
+  hanziWriters.forEach((w, i) => {
+    if (!w) return;
+    setTimeout(() => w.animateCharacter(), delay);
+    delay += 1500;
+  });
+}
+
+// 전체 리셋
+function hanziResetAll() {
+  hanziWriters.forEach(w => { if (w) { w.hideCharacter(); w.showCharacter(); } });
+  document.getElementById('hanziResult').textContent = '';
+}
+
+// 연속쓰기 퀴즈
+function hanziQuizAll() {
+  hanziQuizIdx = 0;
+  document.getElementById('hanziResult').innerHTML = '<span style="color:var(--accent);">순서대로 쓰세요!</span>';
+  // 첫 글자 하이라이트
+  highlightHanziIdx(0);
+  startQuizAt(0);
+}
+
+function highlightHanziIdx(idx) {
+  document.querySelectorAll('#hanziAllTargets > div').forEach((el, i) => {
+    const border = el.querySelector('div:first-child');
+    if (border) border.style.borderColor = i === idx ? 'var(--accent)' : 'var(--border)';
+  });
+  // 모바일: 해당 글자로 스크롤
+  const container = document.getElementById('hanziAllTargets');
+  const target = container.children[idx];
+  if (target && window.innerWidth <= 768) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+}
+
+function startQuizAt(idx) {
+  if (idx >= hanziWriters.length) {
+    document.getElementById('hanziResult').innerHTML =
+      '<span style="color:var(--success);font-weight:700;font-size:1.1em;">🎉 모든 글자 완료!</span>';
+    return;
+  }
+  const w = hanziWriters[idx];
+  if (!w) { startQuizAt(idx + 1); return; }
+
+  hanziQuizIdx = idx;
+  highlightHanziIdx(idx);
+
+  w.quiz({
+    onCorrectStroke: (data) => {
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--success);">${hanziChars[idx]} ${data.strokeNum + 1}/${data.totalStrokes}획</span>`;
+    },
+    onMistake: (data) => {
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--danger);">${hanziChars[idx]} 다시! (${data.totalMistakes})</span>`;
+    },
+    onComplete: (data) => {
+      const msg = data.totalMistakes === 0 ? '✓' : `✓(${data.totalMistakes})`;
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--success);">${hanziChars[idx]} ${msg}</span>`;
+      // 다음 글자
+      setTimeout(() => startQuizAt(idx + 1), 600);
+    }
+  });
+}
+
+// 단일 글자 획순 (버튼 제거했으므로 사용 안 함)
+function hanziAnimate() { if (hanziWriters[0]) hanziWriters[0].animateCharacter(); }
+function hanziQuiz() { hanziQuizAll(); }
+function hanziReset() { hanziResetAll(); }
+
+function hanziAnimate() {
+  if (!hanziWriter) return;
+  hanziWriter.animateCharacter();
+}
+
+function hanziQuiz() {
+  if (!hanziWriter) return;
+  document.getElementById('hanziResult').textContent = '획순대로 쓰세요!';
+  hanziWriter.quiz({
+    onCorrectStroke: (data) => {
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--success);">✓ ${data.strokeNum + 1}획 정확!</span> (총 ${data.totalStrokes}획)`;
+    },
+    onMistake: (data) => {
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--danger);">✗ 다시 시도 (실수 ${data.totalMistakes}회)</span>`;
+    },
+    onComplete: (data) => {
+      const msg = data.totalMistakes === 0 ? '🎉 완벽!' : `완료! (실수 ${data.totalMistakes}회)`;
+      document.getElementById('hanziResult').innerHTML =
+        `<span style="color:var(--success);font-weight:700;font-size:1.1em;">${msg}</span>`;
+    }
+  });
+}
+
+function hanziReset() {
+  if (hanziCurrentChar) selectHanziChar(hanziCurrentChar);
+}
+
+function closeHanzi() {
+  document.getElementById('hanziOverlay').classList.remove('active');
+  hanziWriter = null;
+}
+
+// ── 과목별 음성 모드 설정 ──
+function getVoiceOffSubjects() {
+  try { return JSON.parse(localStorage.getItem('cn_voice_off') || '[]'); } catch(e) { return []; }
+}
+function toggleSubjectVoice(subject) {
+  let offs = getVoiceOffSubjects();
+  if (offs.includes(subject)) {
+    offs = offs.filter(s => s !== subject);
+  } else {
+    offs.push(subject);
+  }
+  localStorage.setItem('cn_voice_off', JSON.stringify(offs));
+  renderSubjectModeList();
+  updateVoiceUI();
+  debounceSaveSettings();
+}
+
+function isVoiceOff(subject) {
+  return getVoiceOffSubjects().includes(subject);
+}
+
+function updateVoiceUI() {
+  const off = isVoiceOff(currentSubject);
+  document.getElementById('voiceArea').style.display = off ? 'none' : '';
+  document.getElementById('textbookOnlyArea').style.display = off ? '' : 'none';
+  document.getElementById('voiceResultArea').style.display = off ? 'none' : '';
+}
+
+function renderSubjectModeList() {
+  const el = document.getElementById('subjectModeList');
+  if (!el) return;
+  const offs = getVoiceOffSubjects();
+  const subjects = [...new Set((navSubjectsData || []).map(s => s.subject))];
+  if (!subjects.length) {
+    el.innerHTML = '<div style="font-size:0.75em;color:var(--muted2);">과목 데이터 로딩 중...</div>';
+    return;
+  }
+  el.innerHTML = subjects.map(s => {
+    const isOn = !offs.includes(s);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82em;">
+      <div>
+        <div style="font-weight:600;">${s}</div>
+        <div style="font-size:0.75em;color:${isOn ? 'var(--accent)' : 'var(--muted2)'};">${isOn ? '음성 연습 ON' : '교안만 보기'}</div>
+      </div>
+      <label class="toggle-sw">
+        <input type="checkbox" ${isOn ? 'checked' : ''} onchange="toggleSubjectVoice('${s}')">
+        <span class="slider"></span>
+      </label>
+    </div>`;
+  }).join('');
+}
+
+// 교안 요약 로드
+async function loadSummary() {
+  if (!currentSubject || !currentWeek) { showToast('주차를 선택해주세요', 'error'); return; }
+  const cls = currentClassNum || 1;
+  showLoading('교안 요약 생성 중...');
+  try {
+    const res = await fetch(`${API}/api/chinese/textbook/summary?subject=${encodeURIComponent(currentSubject)}&week=${currentWeek}&class_num=${cls}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    hideLoading();
+
+    document.getElementById('summaryTitle').textContent = `📝 ${data.subject} ${data.week}주 ${data.class_num}교시 — ${data.title}`;
+    const content = document.getElementById('summaryContent');
+
+    // 텍스트를 섹션별로 정리
+    let html = `<div style="font-size:0.7em;color:var(--muted);margin-bottom:0.5rem;">${data.page_count}페이지 · ${data.lines.length}줄</div>`;
+    html += '<div style="background:var(--surface);border-radius:8px;padding:0.8rem;line-height:1.8;">';
+    data.lines.forEach(line => {
+      // 제목/키워드 강조
+      if (line.match(/^\d+[.)]\s/) || line.match(/^[①②③④⑤⑥]/)) {
+        html += `<div style="font-weight:700;margin-top:0.5rem;color:var(--accent);">${line}</div>`;
+      } else if (line.match(/^[▶►•●○■□]/) || line.match(/^Q\d/)) {
+        html += `<div style="font-weight:600;margin-top:0.3rem;color:var(--accent2);">${line}</div>`;
+      } else {
+        html += `<div>${line}</div>`;
+      }
+    });
+    html += '</div>';
+
+    content.innerHTML = html;
+    document.getElementById('summaryOverlay').classList.add('active');
+  } catch(e) {
+    hideLoading();
+    showToast('요약 생성 실패', 'error');
+  }
+}
+
+// ── 주차/교시 퀵 네비 ──
+let navSubjectsData = null;
+
+async function renderWeekNav() {
+  const nav = document.getElementById('weekNav');
+  if (!currentSubject || !nav) { if(nav) nav.innerHTML = ''; return; }
+
+  // subjects 데이터 캐싱
+  if (!navSubjectsData) {
+    try {
+      const res = await fetch(`${API}/api/chinese/subjects`, { headers: authHeaders() });
+      if (res.ok) navSubjectsData = (await res.json()).subjects || [];
+    } catch(e) { return; }
+  }
+
+  // 현재 과목의 주차/교시만 필터
+  const items = navSubjectsData.filter(s => s.subject === currentSubject);
+  if (!items.length) { nav.innerHTML = ''; return; }
+
+  // 주차별 그룹핑
+  const weeks = {};
+  items.forEach(s => {
+    if (!weeks[s.week]) weeks[s.week] = [];
+    weeks[s.week].push(s);
+  });
+
+  let html = '';
+  const sortedWeeks = Object.keys(weeks).map(Number).sort((a,b) => a-b);
+
+  sortedWeeks.forEach((wk, i) => {
+    const isActiveWeek = wk === currentWeek;
+    // 주차 버튼
+    html += `<button class="wn-btn ${isActiveWeek ? 'active' : ''}" onclick="jumpWeek(${wk})">${wk}주</button>`;
+
+    // 현재 주차면 교시 버튼도 표시
+    if (isActiveWeek) {
+      weeks[wk].sort((a,b) => a.class_num - b.class_num).forEach(cls => {
+        const isActiveCls = cls.class_num === currentClassNum;
+        html += `<button class="wn-btn cls ${isActiveCls ? 'active' : ''}" onclick="jumpClass(${wk},${cls.class_num})">${cls.class_num}교시</button>`;
+      });
+    }
+
+    if (i < sortedWeeks.length - 1) html += '<span class="wn-sep">›</span>';
+  });
+
+  nav.innerHTML = html;
+
+  // 현재 주차가 보이도록 스크롤
+  setTimeout(() => {
+    const activeBtn = nav.querySelector('.wn-btn.active');
+    if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, 100);
+}
+
+function jumpWeek(week) {
+  // 해당 주차의 첫 번째 교시로 점프
+  const items = (navSubjectsData || []).filter(s => s.subject === currentSubject && s.week === week);
+  const firstClass = items.length > 0 ? Math.min(...items.map(s => s.class_num)) : 1;
+  selectWeek(currentSubject, week, firstClass, null);
+  renderWeekNav();
+}
+
+function jumpClass(week, classNum) {
+  selectWeek(currentSubject, week, classNum, null);
+  renderWeekNav();
+}
+
+// ── 번역 접기/펼치기 ──
+function toggleTrans() {
+  const el = document.getElementById('studyTranslations');
+  const icon = document.getElementById('transToggleIcon');
+  const isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? 'flex' : 'none';
+  icon.textContent = isHidden ? '▲' : '▼';
+}
+
+// ── 모바일 사이드바 ──
+function openSidebar() {
+  document.querySelector('.sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('open');
+}
+
+// ── 다크/화이트 모드 ──
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  document.getElementById('btnTheme').textContent = isLight ? '🌞' : '🌙';
+  const navIcon = document.getElementById('navThemeIcon');
+  if (navIcon) navIcon.textContent = isLight ? '🌞' : '🌙';
+  localStorage.setItem('cn_theme', isLight ? 'light' : 'dark');
+  debounceSaveSettings();
+}
+(function(){
+  if (localStorage.getItem('cn_theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('btnTheme').textContent = '🌞';
+    const navIcon = document.getElementById('navThemeIcon');
+    if (navIcon) navIcon.textContent = '🌞';
+  }
+})();
+
+// ── 서버 설정 동기화 ──
+let serverSettings = {};
+
+async function loadServerSettings() {
+  try {
+    const res = await fetch(`${API}/api/chinese/settings`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    serverSettings = data.settings || {};
+
+    // 서버 설정을 로컬에 적용
+    if (serverSettings.zoom) setZoom(serverSettings.zoom);
+    if (serverSettings.theme) {
+      if (serverSettings.theme === 'light') document.body.classList.add('light');
+      else document.body.classList.remove('light');
+      document.getElementById('btnTheme').textContent = serverSettings.theme === 'light' ? '🌞' : '🌙';
+    }
+    if (serverSettings.voice_id) {
+      localStorage.setItem('cn_voice_id', serverSettings.voice_id);
+      const sel = document.getElementById('voiceSelect');
+      if (sel) sel.value = serverSettings.voice_id;
+    }
+    if (serverSettings.voice_off) {
+      localStorage.setItem('cn_voice_off', JSON.stringify(serverSettings.voice_off));
+    }
+    if (serverSettings.fav_voices) {
+      localStorage.setItem('cn_fav_voices', JSON.stringify(serverSettings.fav_voices));
+    }
+    if (serverSettings.session) {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(serverSettings.session));
+    }
+    if (serverSettings.card_id) {
+      localStorage.setItem(CARD_KEY, serverSettings.card_id);
+    }
+    if (serverSettings.speed) {
+      localStorage.setItem('cn_speed', serverSettings.speed);
+      playbackSpeed = parseInt(serverSettings.speed) / 100;
+      const slider = document.getElementById('speedSlider');
+      if (slider) slider.value = serverSettings.speed;
+      const label = document.getElementById('speedLabel');
+      if (label) label.textContent = serverSettings.speed + '%';
+    }
+    if (serverSettings.pass_goal) {
+      passGoal = parseInt(serverSettings.pass_goal);
+      localStorage.setItem('cn_pass_goal', passGoal);
+    }
+    if (serverSettings.pass_total) {
+      passTotal = parseInt(serverSettings.pass_total);
+      localStorage.setItem('cn_pass_total', passTotal);
+    }
+  } catch(e) { console.error('설정 로드 실패:', e); }
+}
+
+function saveSettingsToServer() {
+  // 현재 모든 설정을 서버에 저장
+  const settings = {
+    zoom: currentZoom,
+    theme: document.body.classList.contains('light') ? 'light' : 'dark',
+    voice_id: document.getElementById('voiceSelect')?.value || '8',
+    voice_off: getVoiceOffSubjects(),
+    fav_voices: getCnFavVoices(),
+    session: (() => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) { return null; } })(),
+    card_id: localStorage.getItem(CARD_KEY) || '',
+    speed: localStorage.getItem('cn_speed') || '100',
+    pass_goal: passGoal,
+    pass_total: passTotal,
+  };
+  fetch(`${API}/api/chinese/settings`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings })
+  }).catch(() => {});
+}
+
+// 설정 변경될 때마다 디바운스로 서버 저장
+let saveTimer = null;
+function debounceSaveSettings() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSettingsToServer, 1000);
+}
+
+// ── 글씨 확대/축소 (5단계) ──
+let currentZoom = 1;
+function setZoom(level) {
+  level = Math.max(1, Math.min(5, level));
+  currentZoom = level;
+  document.body.classList.remove('zoom-2', 'zoom-3', 'zoom-4', 'zoom-5');
+  if (level >= 2) document.body.classList.add('zoom-' + level);
+  const el = document.getElementById('zoomLevel');
+  if (el) el.textContent = level;
+  localStorage.setItem('cn_zoom', level);
+  debounceSaveSettings();
+}
+function zoomIn() { setZoom(currentZoom + 1); }
+function zoomOut() { setZoom(currentZoom - 1); }
+(function(){
+  const saved = parseInt(localStorage.getItem('cn_zoom') || '1');
+  setZoom(saved);
+})();
+
+// ── 로딩 표시 ──
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || '처리 중...';
+  document.getElementById('loadingOverlay').classList.add('active');
+  document.getElementById('topProgress').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('active');
+  document.getElementById('topProgress').classList.remove('active');
+}
+function showProgress() {
+  document.getElementById('topProgress').classList.add('active');
+}
+function hideProgress() {
+  document.getElementById('topProgress').classList.remove('active');
+}
+
+// 쿠키에서 토큰 가져오기
+function getToken() {
+  const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
+  return match ? match[1] : null;
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+// 토스트
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+// 점수 클래스
+function scoreClass(s) {
+  if (s >= 80) return 'high';
+  if (s >= 50) return 'mid';
+  return 'low';
+}
+
+// 카테고리 한글
+const catNames = {greeting:'인사', daily:'일상', business:'비즈니스', idiom:'성어', general:'기타'};
+
+let currentSubject = '';
+let currentWeek = 0;
+
+// ── 음성 설정 ──
+let allVoices = [];
+async function loadVoices() {
+  const sel = document.getElementById('voiceSelect');
+  const saved = localStorage.getItem('cn_voice_id') || '8';
+  sel.value = saved;
+  sel.onchange = () => { localStorage.setItem('cn_voice_id', sel.value); lastGenKey = ''; };
+  // 전체 목록도 로드 (비교 패널용)
+  try {
+    const res = await fetch(`${API}/api/chinese/voices`, { headers: authHeaders() });
+    if (res.ok) { const data = await res.json(); allVoices = data.voices || []; }
+  } catch(e) {}
+}
+
+// 미리듣기: 선택한 음성으로 현재 카드 TTS 생성 + 재생
+async function previewVoice() {
+  if (!currentCardId) { showToast('카드를 선택해주세요', 'error'); return; }
+  showLoading('미리듣기 생성 중...');
+  const voiceId = document.getElementById('voiceSelect').value;
+  try {
+    const res = await fetch(`${API}/api/chinese/card/${currentCardId}/ref-audio`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_id: voiceId || null })
+    });
+    if (!res.ok) throw new Error();
+    hideLoading();
+    const audio = new Audio(`${API}/api/chinese/audio/${currentCardId}/ref?t=${Date.now()}`);
+    audio.play();
+    document.getElementById('btnRefPlay').disabled = false;
+    document.getElementById('btnRefPlay').textContent = '발음 듣기';
+  } catch(e) {
+    hideLoading();
+    showToast('미리듣기 실패', 'error');
+  }
+}
+
+// 중국어 전용 즐겨찾기 (localStorage)
+function getCnFavVoices() {
+  try { return JSON.parse(localStorage.getItem('cn_fav_voices') || '[]'); } catch(e) { return []; }
+}
+function toggleCnFavVoice(voiceId) {
+  let favs = getCnFavVoices();
+  if (favs.includes(voiceId)) {
+    favs = favs.filter(id => id !== voiceId);
+  } else {
+    favs.push(voiceId);
+  }
+  localStorage.setItem('cn_fav_voices', JSON.stringify(favs));
+  updateVoiceDropdown();
+  openVoicePanel();
+  debounceSaveSettings();
+}
+
+function updateVoiceDropdown() {
+  const cnFavs = getCnFavVoices();
+  const sel = document.getElementById('voiceSelect');
+  const saved = localStorage.getItem('cn_voice_id') || '';
+  const favVoices = allVoices.filter(v => cnFavs.includes(v.id));
+  const listToShow = favVoices.length > 0 ? favVoices : allVoices.slice(0, 5);
+  sel.innerHTML = '<option value="">기본</option>' +
+    listToShow.map(v =>
+      `<option value="${v.id}" ${v.id == saved ? 'selected' : ''}>${v.name}</option>`
+    ).join('');
+}
+
+function voiceItemHtml(v, selected) {
+  const cnFavs = getCnFavVoices();
+  const isFav = cnFavs.includes(v.id);
+  return `<div class="voice-item ${v.id == selected ? 'selected' : ''}">
+    <button class="vi-btn" onclick="toggleCnFavVoice(${v.id})" style="font-size:1em;${isFav ? 'color:#fbbf24;' : ''}" title="즐겨찾기">${isFav ? '★' : '☆'}</button>
+    <span class="vi-name">${v.name}</span>
+    <span class="vi-dur">${Math.round(v.duration||0)}s</span>
+    <button class="vi-btn" onclick="testVoice(${v.id}, '${v.name}')">듣기</button>
+    <button class="vi-btn" onclick="selectVoice(${v.id})" style="${v.id == selected ? 'color:var(--accent);border-color:var(--accent);' : ''}">
+      ${v.id == selected ? '✓' : '선택'}
+    </button>
+  </div>`;
+}
+
+// 음성 비교 패널 열기
+function openVoicePanel() {
+  const panel = document.getElementById('voicePanel');
+  const list = document.getElementById('voicePanelList');
+  const selected = document.getElementById('voiceSelect').value;
+
+  const cnFavs = getCnFavVoices();
+  const favs = allVoices.filter(v => cnFavs.includes(v.id));
+  const others = allVoices.filter(v => !cnFavs.includes(v.id));
+
+  let html = '';
+  if (favs.length > 0) {
+    html += '<div style="font-size:0.7em;color:#fbbf24;font-weight:700;padding:0.3rem 0;">★ 중국어용 즐겨찾기</div>';
+    html += favs.map(v => voiceItemHtml(v, selected)).join('');
+  }
+  html += '<div style="font-size:0.7em;color:var(--muted2);font-weight:700;padding:0.3rem 0;margin-top:0.3rem;">전체 음성 (★로 즐겨찾기 추가)</div>';
+  html += others.map(v => voiceItemHtml(v, selected)).join('');
+  list.innerHTML = html;
+
+  panel.style.display = 'block';
+}
+
+// 음성 비교 듣기: 해당 음성으로 현재 카드 TTS
+async function testVoice(voiceId, name) {
+  if (!currentCardId) { showToast('카드를 선택해주세요', 'error'); return; }
+  showLoading(`${name} 음성 생성 중...`);
+  try {
+    const res = await fetch(`${API}/api/chinese/card/${currentCardId}/ref-audio`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_id: voiceId, language: "ja" })
+    });
+    if (!res.ok) throw new Error();
+    hideLoading();
+    const audio = new Audio(`${API}/api/chinese/audio/${currentCardId}/ref?t=${Date.now()}`);
+    audio.play();
+    showToast(`${name} 음성 재생`);
+  } catch(e) {
+    hideLoading();
+    showToast('생성 실패', 'error');
+  }
+}
+
+// 음성 선택 확정
+function selectVoice(voiceId) {
+  document.getElementById('voiceSelect').value = voiceId;
+  localStorage.setItem('cn_voice_id', voiceId);
+  lastVoiceId = ''; // 강제 재생성
+  document.getElementById('voicePanel').style.display = 'none';
+  const v = allVoices.find(v => v.id === voiceId);
+  showToast(`${v ? v.name : ''} 선택됨 — "발음 듣기"를 누르면 새 목소리로 재생됩니다`);
+}
+
+// ── 초기 로드 ──
+window.addEventListener('DOMContentLoaded', async () => {
+  // 서버 설정 먼저 로드 (zoom/theme/session 등 복원)
+  await loadServerSettings();
+
+  loadStats();
+  loadSubjects();
+  loadVoices();
+
+  // 저장된 세션 복원
+  const savedSession = (() => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e) { return null; }
+  })();
+  const savedCardId = parseInt(localStorage.getItem(CARD_KEY) || '0');
+
+  // 일본어 페이지는 일본어 과목만 복원
+  const isValidForPage = savedSession && savedSession.subject &&
+    PAGE_SUBJECTS.includes(savedSession.subject);
+
+  if (isValidForPage && savedSession.week) {
+    showProgress();
+    selectWeek(savedSession.subject, savedSession.week, savedSession.classNum || 0, null)
+      .then(() => {
+        hideProgress();
+        if (savedCardId) {
+          const found = cards.find(c => c.id === savedCardId);
+          if (found) selectCard(savedCardId);
+          else if (cards.length > 0) selectCard(cards[0].id);
+        }
+      }).catch(() => hideProgress());
+  } else {
+    loadCards();
+  }
+
+  // 카테고리 필터
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSubject = '';
+      currentWeek = 0;
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(CARD_KEY);
+      document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+      loadCards(btn.dataset.cat || null);
+    });
+  });
+});
+
+// ── 카드 목록 로드 ──
+async function loadCards(category = null) {
+  showProgress();
+  try {
+    let url = `${API}/api/chinese/cards`;
+    if (category) url += `?category=${category}`;
+    const res = await fetch(url, { headers: authHeaders() });
+    if (res.status === 401) { location.href = '/login'; return; }
+    const data = await res.json();
+    cards = data.cards || [];
+    renderCardList();
+  } catch (e) {
+    console.error('카드 로드 실패:', e);
+    showToast('카드 로드 실패', 'error');
+  } finally {
+    hideProgress();
+  }
+}
+
+// 통과 기준 (N번 시도 중 M번 100점)
+let passGoal = parseInt(localStorage.getItem('cn_pass_goal') || '8'); // 필요 100점 수
+let passTotal = parseInt(localStorage.getItem('cn_pass_total') || '10'); // 총 시도 중
+
+function isPassed(c) {
+  return (c.perfect_count || 0) >= passGoal;
+}
+
+function cardBadge(c) {
+  const pc = c.perfect_count || 0;
+  const att = c.attempts || 0;
+  if (att === 0 || c.best_score === null) return '<span style="font-size:0.55em;color:var(--muted2);">미학습</span>';
+  if (pc >= passGoal) return `<span style="font-size:0.55em;color:var(--success);font-weight:700;">✓ 💯${pc}/${att}회</span>`;
+  if (pc > 0) return `<span style="font-size:0.55em;color:var(--accent);font-weight:700;">💯${pc}/${att}회</span>`;
+  return `<span style="font-size:0.55em;color:var(--danger);">${c.best_score}점 ${att}회</span>`;
+}
+
+function renderCardList() {
+  const el = document.getElementById('cardList');
+  if (cards.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted2);font-size:0.8rem;">학습 카드가 없습니다</div>';
+    return;
+  }
+  const total = cards.length;
+  const passed = cards.filter(c => isPassed(c)).length;
+  const inProgress = cards.filter(c => c.attempts > 0 && !isPassed(c)).length;
+
+  let header = `<div style="padding:0.4rem 0.5rem;font-size:0.6em;color:var(--muted);display:flex;gap:0.3rem;align-items:center;border-bottom:1px solid var(--border);margin-bottom:0.3rem;flex-wrap:wrap;">
+    <button onclick="changePassGoal(-1)" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;padding:0 0.2rem;">◀</button>
+    <b style="color:var(--accent);">${passGoal}/${passTotal}</b>
+    <button onclick="changePassGoal(1)" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--muted);cursor:pointer;padding:0 0.2rem;">▶</button>
+    <span>|</span>
+    <span style="color:var(--success);">✓${passed}</span>
+    <span style="color:var(--accent);">학${inProgress}</span>
+    <span style="color:var(--muted2);">미${total - passed - inProgress}</span>
+  </div>`;
+
+  el.innerHTML = header + cards.map(c => {
+    const bg = isPassed(c) ? 'rgba(52,211,153,0.04)' :
+               (c.attempts > 0 && c.best_score < 80) ? 'rgba(240,82,82,0.04)' : '';
+    return `<div class="card-item ${c.id === currentCardId ? 'active' : ''}" data-id="${c.id}" onclick="selectCard(${c.id})" style="background:${bg};">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="card-chinese">${c.chinese}</div>
+        ${cardBadge(c)}
+      </div>
+      <div class="card-pinyin">${c.pinyin}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateStudyStatus(card) {
+  const statusEl = document.getElementById('studyStatus');
+  if (!statusEl || !card) return;
+  const pc = card.perfect_count || 0;
+  const att = card.attempts || 0;
+  if (isPassed(card)) {
+    statusEl.innerHTML = `<span style="background:rgba(52,211,153,0.15);color:var(--success);padding:0.3rem 0.6rem;border-radius:6px;font-size:0.75em;font-weight:700;">✓ 통과! 반복 ${att}회 · 정확 ${pc}회</span>`;
+  } else if (pc > 0) {
+    statusEl.innerHTML = `<span style="background:rgba(124,109,250,0.1);color:var(--accent);padding:0.3rem 0.6rem;border-radius:6px;font-size:0.75em;font-weight:700;">반복 ${att}회 · 정확 ${pc}/${passGoal}회</span>`;
+  } else if (att > 0) {
+    statusEl.innerHTML = `<span style="background:rgba(240,82,82,0.1);color:var(--danger);padding:0.3rem 0.6rem;border-radius:6px;font-size:0.75em;font-weight:700;">반복 ${att}회 · 최고 ${card.best_score}점 · 정확 0/${passGoal}회</span>`;
+  } else {
+    statusEl.innerHTML = `<span style="color:var(--muted2);font-size:0.7em;">목표: 정확 ${passGoal}회</span>`;
+  }
+}
+
+function changePassGoal(delta) {
+  passGoal = Math.max(1, Math.min(20, passGoal + delta));
+  passTotal = Math.max(passGoal, passTotal); // total은 항상 goal 이상
+  if (delta > 0 && passGoal > passTotal - 2) passTotal = passGoal + 2;
+  localStorage.setItem('cn_pass_goal', passGoal);
+  localStorage.setItem('cn_pass_total', passTotal);
+  debounceSaveSettings();
+  renderCardList();
+  const card = cards.find(c => c.id === currentCardId);
+  if (card) updateStudyStatus(card);
+}
+
+// ── 카드 선택 ──
+async function selectCard(cardId) {
+  currentCardId = cardId;
+  localStorage.setItem(CARD_KEY, cardId);
+  debounceSaveSettings();
+  lastGenKey = ''; // 새 카드 선택 시 발음 재생성
+  closeSidebar();
+  updateCardPosition();
+  updateVoiceUI();
+
+  // 좌측 active 즉시 토글
+  document.querySelectorAll('.card-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.getAttribute('data-id')) === cardId);
+  });
+
+  // 이미 가진 카드 데이터로 즉시 표시
+  const card = cards.find(c => c.id === cardId);
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('studyArea').classList.add('active');
+  document.getElementById('evalResult').classList.remove('active');
+
+  if (card) {
+    document.getElementById('studyChinese').textContent = card.chinese;
+    renderBreakBar(card.chinese);
+    // 학습 상태 배지
+    updateStudyStatus(card);
+    document.getElementById('studyPinyin').textContent = card.pinyin;
+    document.getElementById('studyTones').textContent = card.tones || '';
+    document.getElementById('studyMeaning').textContent = card.meaning_ko || '';
+
+    // 한국어/영어 번역 표시
+    const transEl = document.getElementById('studyTranslations');
+    transEl.innerHTML = `<div style="background:var(--surface);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.85em;color:var(--muted);text-align:center;width:100%;"><span class="spin" style="margin-right:0.3rem;"></span> 번역 로딩 중...</div>`;
+
+    // 한국어/영어 번역 비동기 로드
+    fetch(`${API}/api/chinese/translate/${cardId}`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(data => {
+        let html = '';
+        // 한국어
+        if (data.meaning_ko) {
+          const koLabel = data.ko_source === '번역' ? '한국어 (번역)' : '한국어';
+          html += `<div style="background:var(--surface);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.9em;text-align:left;flex:1;min-width:120px;">
+            <span style="color:var(--accent2);font-size:0.65em;font-weight:700;">${koLabel}</span><br>
+            <span>${data.meaning_ko}</span>
+          </div>`;
+        }
+        // 영어
+        if (data.english) {
+          const enLabel = data.english_source === '번역' ? 'English (번역)' : 'English (사전)';
+          html += `<div style="background:var(--surface);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.9em;text-align:left;flex:1;min-width:120px;">
+            <span style="color:var(--accent3);font-size:0.65em;font-weight:700;">${enLabel}</span><br>
+            <span>${data.english}</span>
+          </div>`;
+        }
+        if (html) transEl.innerHTML = html;
+      }).catch(() => {});
+
+    const hasRef = !!card.ref_audio_path;
+    document.getElementById('btnRefPlay').disabled = !hasRef;
+    document.getElementById('btnRefPlay').textContent = hasRef ? '발음 듣기' : '발음 생성';
+    document.getElementById('btnGenRef').textContent = hasRef ? '재생성' : '발음 생성';
+
+    if (card.subject && card.week) {
+      currentSubject = card.subject;
+      currentWeek = card.week;
+    }
+  }
+
+  // 녹음 이력 + 메모는 백그라운드로
+  fetch(`${API}/api/chinese/card/${cardId}`, { headers: authHeaders() })
+    .then(r => r.json())
+    .then(data => {
+      if (currentCardId !== cardId) return; // 이미 다른 카드 선택됨
+      const freshCard = data.card;
+      renderRecords(data.records || []);
+      // ref_audio_path 최신화
+      if (freshCard.ref_audio_path && !card.ref_audio_path) {
+        document.getElementById('btnRefPlay').disabled = false;
+        document.getElementById('btnRefPlay').textContent = '발음 듣기';
+        document.getElementById('btnGenRef').textContent = '재생성';
+      }
+    }).catch(() => {});
+
+  loadNotes().catch(() => {});
+
+  // 참조 발음은 버튼으로만 생성 (자동 생성 끔 — GPU 메모리 보호)
+
+  // 교안은 자동 로드 안 함 (버튼으로만)
+}
+
+// ── 녹음 이력 렌더링 ──
+function renderRecords(records) {
+  const el = document.getElementById('recordsList');
+  if (records.length === 0) {
+    el.innerHTML = '<div style="padding:0.8rem;color:var(--muted2);font-size:0.78rem;text-align:center;">아직 연습 기록이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = records.map((r, i) => `
+    <div class="record-item">
+      <span class="record-num">#${records.length - i}</span>
+      <span class="record-score ${scoreClass(r.score)}">${r.score}점</span>
+      <span class="record-stt" style="font-family:var(--font-jp)">${r.stt_text || '-'}</span>
+      <span class="record-date">${(r.created_at || '').slice(5, 16)}</span>
+      <div class="record-actions">
+        <button class="record-btn" onclick="playRecordAudio(${r.id})" title="재생">&#9654;</button>
+        <button class="record-btn ${r.is_starred ? 'starred' : ''}" onclick="toggleStar(${r.id})" title="별표">&#9733;</button>
+        <button class="record-btn del" onclick="deleteRecord(${r.id})" title="삭제">&#10005;</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── 카드 추가 ──
+function openAddModal() { document.getElementById('addModal').classList.add('active'); document.getElementById('inputChinese').focus(); }
+function closeAddModal() { document.getElementById('addModal').classList.remove('active'); }
+
+async function addCard() {
+  const chinese = document.getElementById('inputChinese').value.trim();
+  const meaning = document.getElementById('inputMeaning').value.trim();
+  const category = document.getElementById('inputCategory').value;
+  if (!chinese) { showToast('중국어를 입력해주세요', 'error'); return; }
+
+  try {
+    const res = await fetch(`${API}/api/chinese/card`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chinese, meaning_ko: meaning, category })
+    });
+    if (!res.ok) throw new Error('생성 실패');
+    const data = await res.json();
+    showToast('카드가 추가되었습니다');
+    closeAddModal();
+    document.getElementById('inputChinese').value = '';
+    document.getElementById('inputMeaning').value = '';
+    await loadCards();
+    selectCard(data.card.id);
+  } catch (e) {
+    showToast('카드 추가 실패', 'error');
+  }
+}
+
+// ── 카드 삭제 ──
+async function deleteCurrentCard() {
+  if (!currentCardId) return;
+  if (!confirm('이 카드와 모든 녹음 기록을 삭제할까요?')) return;
+  try {
+    await fetch(`${API}/api/chinese/card/${currentCardId}`, {
+      method: 'DELETE', headers: authHeaders()
+    });
+    showToast('카드가 삭제되었습니다');
+    currentCardId = null;
+    document.getElementById('studyArea').classList.remove('active');
+    document.getElementById('emptyState').style.display = '';
+    loadCards();
+    loadStats();
+  } catch (e) {
+    showToast('삭제 실패', 'error');
+  }
+}
+
+// ── 자동 참조 발음 생성 + 재생 ──
+async function autoGenerateAndPlay(cardId) {
+  try {
+    const voiceId = document.getElementById('voiceSelect').value;
+    const res = await fetch(`${API}/api/chinese/card/${cardId}/ref-audio`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_id: voiceId || null })
+    });
+    if (!res.ok) return;
+    document.getElementById('btnRefPlay').disabled = false;
+    document.getElementById('btnRefPlay').textContent = '발음 듣기';
+    document.getElementById('btnGenRef').textContent = '재생성';
+    // 자동 재생
+    const audio = new Audio(`${API}/api/chinese/audio/${cardId}/ref?t=${Date.now()}`);
+    audio.play();
+  } catch (e) {
+    document.getElementById('btnRefPlay').textContent = '생성 실패';
+  }
+}
+
+// ── 참조 발음 생성 ──
+let lastGenKey = ''; // card_id + voice_id 조합
+
+async function generateRefAudio() {
+  if (!currentCardId) return;
+
+  const voiceId = document.getElementById('voiceSelect').value || '8';
+  const card = cards.find(c => c.id === currentCardId);
+  const breakText = card ? getBreakText(card.chinese) : '';
+  const breakKey = breakPositions[currentCardId] ? [...breakPositions[currentCardId]].sort().join(',') : '';
+  const genKey = `${currentCardId}_${voiceId}_${breakKey}`;
+
+  // 같은 카드+음성+끊어읽기면 바로 재생
+  if (lastGenKey === genKey) {
+    playRefAudio();
+    return;
+  }
+
+  const btn = document.getElementById('btnGenRef');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>';
+  showLoading('발음 생성 중...');
+
+  try {
+    const res = await fetch(`${API}/api/chinese/card/${currentCardId}/ref-audio`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice_id: voiceId, text_override: breakText || null, language: PAGE_LANG })
+    });
+    if (!res.ok) throw new Error('생성 실패');
+    lastGenKey = genKey;
+    playRefAudio();
+  } catch (e) {
+    showToast('발음 생성 실패', 'error');
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>';
+  }
+}
+
+// ── 이전/다음 단어 ──
+function prevCard() {
+  if (!cards.length || !currentCardId) return;
+  const idx = cards.findIndex(c => c.id === currentCardId);
+  if (idx > 0) selectCard(cards[idx - 1].id);
+}
+function nextCard() {
+  if (!cards.length || !currentCardId) return;
+  const idx = cards.findIndex(c => c.id === currentCardId);
+  if (idx < cards.length - 1) selectCard(cards[idx + 1].id);
+}
+function updateCardPosition() {
+  const el = document.getElementById('cardPosition');
+  if (!el || !cards.length || !currentCardId) { if(el) el.textContent = '-/-'; return; }
+  const idx = cards.findIndex(c => c.id === currentCardId);
+  el.textContent = `${idx + 1}/${cards.length}`;
+}
+
+// ── 참조 발음 재생 ──
+// ── 연속연습 (드릴 모드) ──
+let drillMode = false;
+let drillCardIds = [];
+let drillIdx = 0;
+let drillResults = [];
+
+function startDrill() {
+  if (drillMode) { stopDrill(); return; }
+  if (!cards.length) { showToast('카드가 없습니다', 'error'); return; }
+
+  // 미통과 카드만 필터 (통과된 건 제외)
+  drillCardIds = cards.filter(c => !isPassed(c)).map(c => c.id);
+  if (drillCardIds.length === 0) {
+    drillCardIds = cards.map(c => c.id); // 전부 통과면 전체
+    showToast('모든 카드 통과! 전체 복습합니다');
+  }
+
+  drillMode = true;
+  drillIdx = 0;
+  drillResults = [];
+
+  document.getElementById('drillStatus').style.display = 'block';
+  document.getElementById('btnDrill').textContent = '🔄 연습 중...';
+  document.getElementById('btnDrill').style.opacity = '0.6';
+
+  showToast(`연속연습 시작! ${drillCardIds.length}개 카드`);
+  drillNext();
+}
+
+function stopDrill() {
+  drillMode = false;
+  document.getElementById('drillStatus').style.display = 'none';
+  document.getElementById('btnDrill').textContent = '🔄 연속연습';
+  document.getElementById('btnDrill').style.opacity = '1';
+
+  if (drillResults.length > 0) {
+    const avg = Math.round(drillResults.reduce((a,b) => a+b, 0) / drillResults.length);
+    const perfect = drillResults.filter(s => s >= 100).length;
+    showToast(`연습 완료! ${drillResults.length}개 · 평균 ${avg}점 · 100점 ${perfect}개`);
+  }
+}
+
+function drillNext() {
+  if (!drillMode) return;
+  if (drillIdx >= drillCardIds.length) {
+    // 전체 완료
+    stopDrill();
+    return;
+  }
+
+  const cardId = drillCardIds[drillIdx];
+  const progress = `${drillIdx + 1}/${drillCardIds.length}`;
+  document.getElementById('drillProgress').textContent = `연속연습 ${progress}`;
+  document.getElementById('drillBar').style.width = ((drillIdx + 1) / drillCardIds.length * 100) + '%';
+
+  // 카드 선택
+  selectCard(cardId);
+
+  // 1초 후 참조 발음 재생
+  setTimeout(() => {
+    if (!drillMode) return;
+    generateRefAudio();
+
+    // 발음 재생 후 2초 대기 → 자동 녹음 시작
+    setTimeout(() => {
+      if (!drillMode) return;
+      if (!isRecording) {
+        startRecording();
+        // 5초 후 자동 녹음 중지
+        setTimeout(() => {
+          if (drillMode && isRecording) {
+            stopRecording();
+          }
+        }, 5000);
+      }
+    }, 3000);
+  }, 1000);
+}
+
+// 드릴 모드에서 평가 완료 후 자동 다음 카드
+function drillOnEvalComplete(score) {
+  if (!drillMode) return;
+  drillResults.push(score);
+  drillIdx++;
+
+  // 2초 후 다음 카드
+  setTimeout(() => drillNext(), 2000);
+}
+
+// ── 끊어읽기 ──
+let breakPositions = {}; // cardId -> Set of gap indices
+
+function renderBreakBar(chinese) {
+  const bar = document.getElementById('breakBar');
+  if (!chinese || chinese.length < 2) { bar.innerHTML = ''; return; }
+
+  const chars = chinese.split('');
+  const breaks = breakPositions[currentCardId] || new Set();
+  let html = '';
+
+  chars.forEach((ch, i) => {
+    html += `<span class="break-char">${ch}</span>`;
+    if (i < chars.length - 1) {
+      const isActive = breaks.has(i);
+      html += `<span class="break-gap ${isActive ? 'active' : ''}" onclick="toggleBreak(${i})" title="끊어읽기"><span class="slash">/</span></span>`;
+    }
+  });
+
+  bar.innerHTML = html;
+}
+
+function toggleBreak(gapIdx) {
+  if (!currentCardId) return;
+  if (!breakPositions[currentCardId]) breakPositions[currentCardId] = new Set();
+  const breaks = breakPositions[currentCardId];
+  if (breaks.has(gapIdx)) breaks.delete(gapIdx);
+  else breaks.add(gapIdx);
+
+  // 바 업데이트
+  const gaps = document.querySelectorAll('#breakBar .break-gap');
+  gaps.forEach((g, i) => {
+    g.classList.toggle('active', breaks.has(i));
+  });
+
+  // 재생성 필요 플래그
+  lastGenKey = '';
+}
+
+// 끊어읽기 적용된 텍스트 생성 (/ → ， 쉼표로 변환)
+function getBreakText(chinese) {
+  const breaks = breakPositions[currentCardId];
+  if (!breaks || breaks.size === 0) return chinese;
+
+  const chars = chinese.split('');
+  let result = '';
+  chars.forEach((ch, i) => {
+    result += ch;
+    if (i < chars.length - 1 && breaks.has(i)) {
+      result += '，'; // 중국어 쉼표 → TTS가 자연스럽게 끊음
+    }
+  });
+  return result;
+}
+
+let playbackSpeed = 1.0;
+
+function updateSpeed(val) {
+  playbackSpeed = parseInt(val) / 100;
+  document.getElementById('speedLabel').textContent = val + '%';
+  // 속도 설정 저장
+  localStorage.setItem('cn_speed', val);
+  debounceSaveSettings();
+}
+
+// 저장된 속도 복원
+(function(){
+  const saved = localStorage.getItem('cn_speed') || '100';
+  playbackSpeed = parseInt(saved) / 100;
+  const slider = document.getElementById('speedSlider');
+  if (slider) { slider.value = saved; }
+  const label = document.getElementById('speedLabel');
+  if (label) label.textContent = saved + '%';
+})();
+
+function playRefAudio() {
+  if (!currentCardId) return;
+  const audio = new Audio(`${API}/api/chinese/audio/${currentCardId}/ref?t=${Date.now()}`);
+  audio.playbackRate = playbackSpeed;
+  audio.play();
+}
+
+// ── 녹음 ──
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+let recAudioCtx = null;
+let recAnalyser = null;
+let recLevelInterval = null;
+// (서버 평가만 사용)
+
+// ── 50음도 차트 ──
+const GOJUON = {
+  seion: [
+    {row:"あ행", chars:[["あ","ア","a"],["い","イ","i"],["う","ウ","u"],["え","エ","e"],["お","オ","o"]]},
+    {row:"か행", chars:[["か","カ","ka"],["き","キ","ki"],["く","ク","ku"],["け","ケ","ke"],["こ","コ","ko"]]},
+    {row:"さ행", chars:[["さ","サ","sa"],["し","シ","shi"],["す","ス","su"],["せ","セ","se"],["そ","ソ","so"]]},
+    {row:"た행", chars:[["た","タ","ta"],["ち","チ","chi"],["つ","ツ","tsu"],["て","テ","te"],["と","ト","to"]]},
+    {row:"な행", chars:[["な","ナ","na"],["に","ニ","ni"],["ぬ","ヌ","nu"],["ね","ネ","ne"],["の","ノ","no"]]},
+    {row:"は행", chars:[["は","ハ","ha"],["ひ","ヒ","hi"],["ふ","フ","fu"],["へ","ヘ","he"],["ほ","ホ","ho"]]},
+    {row:"ま행", chars:[["ま","マ","ma"],["み","ミ","mi"],["む","ム","mu"],["め","メ","me"],["も","モ","mo"]]},
+    {row:"や행", chars:[["や","ヤ","ya"],["","",""],["ゆ","ユ","yu"],["","",""],["よ","ヨ","yo"]]},
+    {row:"ら행", chars:[["ら","ラ","ra"],["り","リ","ri"],["る","ル","ru"],["れ","レ","re"],["ろ","ロ","ro"]]},
+    {row:"わ행", chars:[["わ","ワ","wa"],["","",""],["","",""],["","",""],["を","ヲ","wo"]]},
+    {row:"", chars:[["ん","ン","n"],["","",""],["","",""],["","",""],["","",""]]},
+  ],
+  dakuten: [
+    {row:"が행", chars:[["が","ガ","ga"],["ぎ","ギ","gi"],["ぐ","グ","gu"],["げ","ゲ","ge"],["ご","ゴ","go"]]},
+    {row:"ざ행", chars:[["ざ","ザ","za"],["じ","ジ","ji"],["ず","ズ","zu"],["ぜ","ゼ","ze"],["ぞ","ゾ","zo"]]},
+    {row:"だ행", chars:[["だ","ダ","da"],["ぢ","ヂ","di"],["づ","ヅ","du"],["で","デ","de"],["ど","ド","do"]]},
+    {row:"ば행", chars:[["ば","バ","ba"],["び","ビ","bi"],["ぶ","ブ","bu"],["べ","ベ","be"],["ぼ","ボ","bo"]]},
+    {row:"ぱ행", chars:[["ぱ","パ","pa"],["ぴ","ピ","pi"],["ぷ","プ","pu"],["ぺ","ペ","pe"],["ぽ","ポ","po"]]},
+  ],
+};
+
+let gojuonMode = 'both';
+
+function openGojuon() {
+  document.getElementById('gojuonOverlay').classList.add('active');
+  showGojuon('both');
+}
+
+function showGojuon(mode) {
+  gojuonMode = mode;
+  document.getElementById('gTab1').style.borderColor = mode==='hira' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('gTab2').style.borderColor = mode==='kata' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('gTab3').style.borderColor = mode==='both' ? 'var(--accent)' : 'var(--border)';
+
+  function renderTable(title, rows) {
+    let html = `<div class="goj-header">${title}</div><table class="goj-table"><tr><td class="empty" style="font-size:0.6em;color:var(--muted);">　</td><td class="empty" style="font-size:0.6em;">a</td><td class="empty" style="font-size:0.6em;">i</td><td class="empty" style="font-size:0.6em;">u</td><td class="empty" style="font-size:0.6em;">e</td><td class="empty" style="font-size:0.6em;">o</td></tr>`;
+    rows.forEach(r => {
+      html += `<tr><td class="empty" style="font-size:0.55em;color:var(--muted2);">${r.row}</td>`;
+      r.chars.forEach(([h,k,rm]) => {
+        if (!h) { html += '<td class="empty"></td>'; return; }
+        let main = mode==='hira' ? h : mode==='kata' ? k : h;
+        let sub = mode==='both' ? k : '';
+        html += `<td onclick="playGojuon('${h}')"><div class="g-main">${main}</div>${sub ? `<div class="g-sub">${sub}</div>` : ''}<div class="g-roma">${rm}</div></td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</table>';
+    return html;
+  }
+
+  const el = document.getElementById('gojuonChart');
+  el.innerHTML = renderTable('清音 (청음)', GOJUON.seion) + renderTable('濁音·半濁音 (탁음·반탁음)', GOJUON.dakuten);
+}
+
+async function playGojuon(char) {
+  try {
+    const voiceId = document.getElementById('voiceSelect').value || '8';
+    const res = await fetch(`${API}/api/chinese/tts-test`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: char, voice_id: voiceId, language: 'ja' })
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.playbackRate = playbackSpeed;
+    audio.play();
+  } catch(e) {}
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      if (recLevelInterval) { clearInterval(recLevelInterval); recLevelInterval = null; }
+      document.getElementById('recLevelBar').style.display = 'none';
+      document.getElementById('recTapHint').style.display = 'none';
+      document.removeEventListener('click', recTapHandler);
+      uploadRecording();
+    };
+    mediaRecorder.start();
+    isRecording = true;
+
+    const btn = document.getElementById('btnRecord');
+    btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+    btn.style.background = 'var(--danger)';
+    btn.style.animation = 'pulse 1s infinite';
+
+    recStartTime = Date.now();
+    const timer = document.getElementById('recTimer');
+    timer.style.display = 'block';
+    recInterval = setInterval(() => {
+      const sec = Math.floor((Date.now() - recStartTime) / 1000);
+      timer.textContent = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+    }, 200);
+
+    // 오디오 레벨 바 표시
+    recAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = recAudioCtx.createMediaStreamSource(stream);
+    recAnalyser = recAudioCtx.createAnalyser();
+    recAnalyser.fftSize = 256;
+    source.connect(recAnalyser);
+    const levelBar = document.getElementById('recLevelBar');
+    const levelFill = document.getElementById('recLevelFill');
+    levelBar.style.display = 'block';
+    const dataArray = new Uint8Array(recAnalyser.frequencyBinCount);
+    recLevelInterval = setInterval(() => {
+      recAnalyser.getByteFrequencyData(dataArray);
+      const avg = dataArray.reduce((a,b) => a+b, 0) / dataArray.length;
+      levelFill.style.width = Math.min(100, avg * 1.5) + '%';
+    }, 50);
+
+    // "터치하면 녹음 종료" 힌트
+    document.getElementById('recTapHint').style.display = 'block';
+    setTimeout(() => {
+      document.addEventListener('click', recTapHandler);
+    }, 500);
+  } catch (e) {
+    showToast('마이크 권한이 필요합니다', 'error');
+  }
+}
+
+function recTapHandler(e) {
+  // 녹음 버튼 자체 클릭은 toggleRecording에서 처리
+  if (e.target.closest('#btnRecord')) return;
+  if (isRecording) stopRecording();
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    isRecording = false;
+    clearInterval(recInterval);
+    document.getElementById('recTimer').style.display = 'none';
+    const btn = document.getElementById('btnRecord');
+    btn.innerHTML = '<span class="spin" style="border-top-color:#fff;width:22px;height:22px;border-width:3px;"></span>';
+    btn.style.background = 'var(--muted2)';
+    btn.style.animation = '';
+    btn.disabled = true;
+    showLoading('발음 평가 중...');
+  }
+}
+
+async function uploadRecording() {
+  const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+
+  try {
+    const res = await fetch(`${API}/api/chinese/card/${currentCardId}/record`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData
+    });
+    if (!res.ok) throw new Error('업로드 실패');
+    const data = await res.json();
+    lastRecordId = data.record_id;
+
+    // 평가 결과 표시
+    const evalEl = document.getElementById('evalResult');
+    evalEl.classList.add('active');
+    const scoreBig = document.getElementById('evalScoreBig');
+    scoreBig.textContent = data.score;
+    scoreBig.className = `eval-score-big ${scoreClass(data.score)}`;
+
+    // 발음/성조 점수 바
+    const pronScore = data.pron_score || 0;
+    const toneScore = data.tone_score || 0;
+    document.getElementById('evalPronScore').textContent = pronScore;
+    document.getElementById('evalToneScore').textContent = toneScore;
+    document.getElementById('evalPronBar').style.width = pronScore + '%';
+    document.getElementById('evalToneBar').style.width = toneScore + '%';
+
+    // 글자별 하이라이트
+    let details = [];
+    try { details = JSON.parse(data.tone_detail || '[]'); } catch(e) {}
+    const charEl = document.getElementById('evalCharDetails');
+    const statusLabels = {perfect:'정확', tone_wrong:'성조 틀림', wrong:'발음 틀림', missing:'누락', extra:'초과'};
+    const statusIcons = {perfect:'✓', tone_wrong:'♪', wrong:'✗', missing:'—', extra:'+'};
+
+    if (details.length > 0) {
+      charEl.innerHTML = details.map(d => {
+        const yourChar = d.your_char || '';
+        const showYourChar = yourChar && yourChar !== d.char;
+        return `<div class="char-card ${d.status}">
+          <div class="cc-char">${d.char || '?'}</div>
+          <div class="cc-label">정답</div>
+          <div class="cc-expected">${d.expected_pinyin || ''}</div>
+          <div class="cc-divider"></div>
+          <div class="cc-your-label">내 발음</div>
+          <div class="cc-your">${d.your_pinyin || '—'}${showYourChar ? ' ('+yourChar+')' : ''}</div>
+          <div class="cc-status">${statusIcons[d.status]||''} ${statusLabels[d.status]||''}</div>
+        </div>`;
+      }).join('');
+    } else {
+      charEl.innerHTML = `<span style="font-size:0.9em;color:var(--muted);">인식: ${data.stt_text || '(실패)'}</span>`;
+    }
+
+    // 인식된 전체 문장 + 한국어 뜻
+    const card = cards.find(c => c.id === currentCardId);
+    let feedbackHtml = data.feedback || '';
+    if (data.stt_text) {
+      feedbackHtml += `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">
+        <div style="font-size:0.75em;color:var(--muted2);margin-bottom:0.2rem;">내가 말한 것</div>
+        <div style="font-family:var(--font-jp);font-size:1.1em;font-weight:600;">${data.stt_text}</div>
+      </div>`;
+    }
+    if (card && card.meaning_ko) {
+      feedbackHtml += `<div style="margin-top:0.5rem;">
+        <div style="font-size:0.75em;color:var(--muted2);margin-bottom:0.2rem;">한국어 뜻</div>
+        <div style="font-size:1em;">${card.meaning_ko}</div>
+      </div>`;
+    }
+    // 연속 발화 결과 표시
+    if (data.multi_count > 1 && data.multi_results) {
+      feedbackHtml += `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);">
+        <div style="font-size:0.8em;font-weight:700;color:var(--accent);margin-bottom:0.3rem;">🔄 ${data.multi_count}회 연속 발화 감지!</div>
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">
+          ${data.multi_results.map(r => {
+            const cls = r.score >= 100 ? 'var(--success)' : r.score >= 80 ? 'var(--accent)' : 'var(--danger)';
+            return `<div style="background:var(--surface);border-radius:6px;padding:0.3rem 0.5rem;font-size:0.75em;border-left:3px solid ${cls};">
+              <b>${r.index}회</b> ${r.score}점
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    document.getElementById('evalFeedback').innerHTML = feedbackHtml;
+
+    // 카드 점수 업데이트 (연속 발화면 각각 카운트)
+    const multiCount = data.multi_count || 1;
+    const perfectInMulti = data.multi_results ? data.multi_results.filter(r => r.score >= 100).length : (data.score >= 100 ? 1 : 0);
+    const cardObj = cards.find(c => c.id === currentCardId);
+    if (cardObj) {
+      cardObj.attempts = (cardObj.attempts || 0) + multiCount;
+      cardObj.best_score = Math.max(cardObj.best_score || 0, data.score);
+      cardObj.perfect_count = (cardObj.perfect_count || 0) + perfectInMulti;
+    }
+    renderCardList();
+    if (cardObj) updateStudyStatus(cardObj);
+
+    // 통과 판정
+    const pc = cardObj ? (cardObj.perfect_count || 0) : 0;
+
+    // 드릴 모드면 자동 다음
+    if (drillMode) {
+      showToast(`${data.score}점 (${multiCount}회) → 다음`);
+      drillOnEvalComplete(data.score);
+    } else if (multiCount > 1) {
+      // 연속 발화 결과
+      showToast(`🔄 ${multiCount}회 연속! 💯×${perfectInMulti} (${pc}/${passGoal})`);
+      if (pc >= passGoal) {
+        showToast(`🎉 ${passGoal}회 통과! 다음 카드로 이동합니다`);
+        setTimeout(() => nextCard(), 2000);
+      }
+    } else if (data.score >= 100 && pc >= passGoal) {
+      showToast(`🎉 ${passGoal}회 통과! 다음 카드로 이동합니다`);
+      setTimeout(() => nextCard(), 2000);
+    } else if (data.score >= 100) {
+      showToast(`💯 ${pc}/${passGoal} 완료! ${passGoal - pc}번 더!`);
+    } else if (data.score >= 80) {
+      showToast(`${data.score}점 — 좋아요! 100점을 목표로!`);
+    } else {
+      showToast(`${data.score}점 — 다시 연습해보세요!`, 'error');
+    }
+
+    // 녹음 이력 새로고침
+    fetch(`${API}/api/chinese/card/${currentCardId}`, { headers: authHeaders() })
+      .then(r => r.json()).then(d => renderRecords(d.records || [])).catch(() => {});
+    loadStats().catch(() => {});
+  } catch (e) {
+    showToast('평가 실패', 'error');
+  } finally {
+    hideLoading();
+    const btn = document.getElementById('btnRecord');
+    btn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>';
+    btn.style.background = 'linear-gradient(135deg,#f05252,#f687b3)';
+    btn.style.animation = '';
+    btn.disabled = false;
+  }
+}
+
+// ── 녹음 재생 ──
+function playRecordAudio(recordId) {
+  const audio = new Audio(`${API}/api/chinese/audio/record/${recordId}?t=${Date.now()}`);
+  audio.play();
+}
+
+function playLastRecord() {
+  if (lastRecordId) playRecordAudio(lastRecordId);
+}
+
+// ── 별표/삭제 ──
+async function toggleStar(recordId) {
+  try {
+    await fetch(`${API}/api/chinese/record/${recordId}/star`, {
+      method: 'POST', headers: authHeaders()
+    });
+    selectCard(currentCardId);
+    loadStats();
+  } catch (e) {}
+}
+
+async function deleteRecord(recordId) {
+  if (!confirm('이 녹음을 삭제할까요?')) return;
+  try {
+    await fetch(`${API}/api/chinese/record/${recordId}`, {
+      method: 'DELETE', headers: authHeaders()
+    });
+    selectCard(currentCardId);
+    loadStats();
+  } catch (e) {}
+}
+
+// ── 통계 ──
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/api/chinese/stats`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const s = await res.json();
+    document.getElementById('statToday').textContent = s.today_count || 0;
+    document.getElementById('statTotal').textContent = s.total_cards || 0;
+    document.getElementById('statAvg').textContent = s.avg_score || 0;
+    document.getElementById('statStar').textContent = s.starred_count || 0;
+  } catch (e) {}
+}
+
+// ── 과목/주차 트리 로드 ──
+async function loadSubjects() {
+  try {
+    const res = await fetch(`${API}/api/chinese/subjects`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    let items = data.subjects || [];
+    if (PAGE_SUBJECTS) {
+      items = items.filter(s => PAGE_SUBJECTS.includes(s.subject));
+    }
+
+    // 과목 > 주차 > 교시 3단 그룹핑
+    const grouped = {};
+    items.forEach(s => {
+      if (!grouped[s.subject]) grouped[s.subject] = {};
+      if (!grouped[s.subject][s.week]) grouped[s.subject][s.week] = [];
+      grouped[s.subject][s.week].push(s);
+    });
+
+    const tree = document.getElementById('subjectTree');
+    if (Object.keys(grouped).length === 0) { tree.innerHTML = ''; return; }
+
+    tree.innerHTML = Object.entries(grouped).map(([subj, weeks]) => {
+      const totalCards = Object.values(weeks).flat().reduce((a,c) => a + c.card_count, 0);
+      return `<div class="subject-group">
+        <div class="subject-name" onclick="toggleSubject(this)">
+          <span class="arrow">&#9654;</span> ${subj}
+          <span style="font-size:0.55rem;color:var(--muted);font-weight:400;">(${totalCards})</span>
+        </div>
+        <div class="week-list">
+          ${Object.entries(weeks).sort((a,b)=>a[0]-b[0]).map(([wk, classes]) => {
+            const wkTotal = classes.reduce((a,c) => a + c.card_count, 0);
+            return `<div style="margin-bottom:0.1rem;">
+              <button class="week-btn" onclick="toggleWeekClasses(this)" style="font-weight:600;">
+                <span>${wk}주차</span>
+                <span class="count">${wkTotal}</span>
+              </button>
+              <div class="class-list" style="display:none;padding-left:0.8rem;">
+                ${classes.sort((a,b)=>a.class_num-b.class_num).map(c => `
+                  <button class="week-btn" onclick="selectWeek('${subj}', ${wk}, ${c.class_num}, this)">
+                    <span>${c.class_num}교시</span>
+                    <span class="count">${c.card_count}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {}
+}
+
+function toggleWeekClasses(btn) {
+  const classList = btn.nextElementSibling;
+  const isOpen = classList.style.display !== 'none';
+  classList.style.display = isOpen ? 'none' : 'block';
+}
+
+function toggleSubject(el) {
+  const arrow = el.querySelector('.arrow');
+  const weekList = el.nextElementSibling;
+  arrow.classList.toggle('open');
+  weekList.classList.toggle('open');
+}
+
+let currentClassNum = 0;
+
+async function selectWeek(subject, week, classNum, btnEl) {
+  currentSubject = subject;
+  currentWeek = week;
+  currentClassNum = classNum || 0;
+  currentCardId = null;
+  // 헤더 타이틀 업데이트
+  const cls = classNum ? ` ${classNum}교시` : '';
+  document.getElementById('headerTitle').textContent = `${subject} ${week}주${cls}`;
+  // 세션 저장
+  localStorage.setItem(SESSION_KEY, JSON.stringify({subject, week, classNum: currentClassNum}));
+  debounceSaveSettings();
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('studyArea').classList.add('active');
+  showProgress();
+
+  try {
+    let url = `${API}/api/chinese/cards-by-week?subject=${encodeURIComponent(subject)}&week=${week}`;
+    const res = await fetch(url, { headers: authHeaders() });
+    if (res.status === 401) { location.href = '/login'; return; }
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    // 교시 필터
+    cards = (data.cards || []).filter(c => classNum === 0 || (c.class_num || 0) === classNum);
+    renderCardList();
+    updateCardPosition();
+  } catch (e) {
+    console.error('selectWeek error:', e);
+    showToast('카드 로드 실패 — 다시 시도해주세요', 'error');
+  } finally {
+    hideProgress();
+  }
+
+  closeTextbook();
+  loadNotes().catch(() => {});
+  renderWeekNav();
+}
+
+// ── 교재 가져오기 (temp 폴더 자동 스캔) ──
+async function importFromFolder() {
+  if (!confirm('temp 폴더의 중국어 교재 PDF를 자동으로 스캔하여 등록합니다.\n계속할까요?')) return;
+
+  const btn = document.getElementById('btnImportFolder');
+  btn.disabled = true;
+  btn.innerHTML = '가져오는 중...<span class="spin"></span>';
+  showLoading('교재 PDF 분석 중... 잠시 기다려주세요');
+
+  try {
+    const res = await fetch(`${API}/api/chinese/import-folder`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || '가져오기 실패');
+    }
+    const data = await res.json();
+    showToast(`${data.count}개 카드가 등록되었습니다`);
+    loadCards();
+    loadStats();
+    loadSubjects();
+  } catch (e) {
+    showToast(e.message || '교재 가져오기 실패', 'error');
+  } finally {
+    hideLoading();
+    btn.disabled = false;
+    btn.textContent = '교재 가져오기';
+  }
+}
+
+// ── PDF 가져오기 ──
+async function uploadPdf(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  // 카테고리 선택 (현재 활성화된 카테고리)
+  const activeCat = document.querySelector('.cat-btn.active');
+  const category = activeCat ? (activeCat.dataset.cat || 'general') : 'general';
+
+  showToast('PDF 분석 중...');
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('category', category);
+
+  try {
+    const res = await fetch(`${API}/api/chinese/import-pdf`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: formData
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || '업로드 실패');
+    }
+    const data = await res.json();
+    showToast(`${data.count}개 카드가 등록되었습니다`);
+    loadCards();
+    loadStats();
+  } catch (e) {
+    showToast(e.message || 'PDF 가져오기 실패', 'error');
+  }
+}
+
+// ── 교안 뷰어 ──
+let tbTotalPages = 0;
+let tbCurrentPage = 0;
+let tbSubject = '';
+let tbWeek = 0;
+let tbClassNum = 1;
+
+async function loadTextbook(subject, week) {
+  tbSubject = subject;
+  tbWeek = week;
+  tbCurrentPage = 0;
+  const cls = tbClassNum || currentClassNum || 1;
+  tbClassNum = cls;
+  document.getElementById('textbookTitle').textContent = `${subject} ${week}주 ${cls}교시`;
+
+  try {
+    const res = await fetch(`${API}/api/chinese/textbook/pages?subject=${encodeURIComponent(subject)}&week=${week}&class_num=${cls}`, { headers: authHeaders() });
+    if (!res.ok) {
+      document.getElementById('textbookViewer').innerHTML = '<p style="color:var(--muted2);font-size:0.78rem;">교안을 찾을 수 없습니다</p>';
+      document.getElementById('tbPageInfo').textContent = '-';
+      return;
+    }
+    const data = await res.json();
+    tbTotalPages = data.total_pages;
+    showTbPage(0);
+  } catch (e) {}
+}
+
+function showTbPage(idx) {
+  if (idx < 0 || idx >= tbTotalPages) return;
+  tbCurrentPage = idx;
+  document.getElementById('tbPageInfo').textContent = `${idx + 1} / ${tbTotalPages}`;
+  const viewer = document.getElementById('textbookViewer');
+  showProgress();
+  viewer.innerHTML = `<div style="padding:2rem;color:var(--muted);"><span class="spin"></span> 로딩 중...</div>`;
+  const img = new Image();
+  img.onload = () => { viewer.innerHTML = ''; viewer.appendChild(img); hideProgress(); };
+  img.onerror = () => { viewer.innerHTML = '<p style="color:var(--danger);font-size:0.8rem;">이미지 로딩 실패</p>'; hideProgress(); };
+  img.src = `${API}/api/chinese/textbook/image?subject=${encodeURIComponent(tbSubject)}&week=${tbWeek}&class_num=${tbClassNum}&page_idx=${idx}`;
+  img.style.cssText = 'max-width:100%;border-radius:8px;border:1px solid var(--border);';
+}
+
+// ── 교안 단어 목록 로드 ──
+async function loadTextbookWords(subject, week, classNum) {
+  const el = document.getElementById('textbookWords');
+  try {
+    let url = `${API}/api/chinese/cards-by-week?subject=${encodeURIComponent(subject)}&week=${week}`;
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) { el.innerHTML = ''; return; }
+    const data = await res.json();
+    // 교시 필터
+    const filtered = (data.cards || []).filter(c => !classNum || (c.class_num || 0) === classNum);
+
+    if (filtered.length === 0) {
+      el.innerHTML = '<div style="padding:0.8rem;color:var(--muted2);font-size:0.8em;text-align:center;">이 교시에 등록된 단어가 없습니다</div>';
+      return;
+    }
+
+    el.innerHTML = `
+      <div style="font-size:0.85em;font-weight:700;color:var(--muted);padding:0.4rem 0;border-bottom:1px solid var(--border);margin-bottom:0.3rem;">
+        학습 단어 (${filtered.length}개)
+      </div>
+      ${filtered.map((c, i) => `
+        <div class="tb-word" onclick="selectCard(${c.id})">
+          <span class="tw-num">${i + 1}</span>
+          <span class="tw-chinese">${c.chinese}</span>
+          <span class="tw-pinyin">${c.pinyin}</span>
+          <span class="tw-meaning">${c.meaning_ko || ''}</span>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) {
+    el.innerHTML = '';
+  }
+}
+
+function tbPrev() { showTbPage(tbCurrentPage - 1); }
+function tbNext() { showTbPage(tbCurrentPage + 1); }
+
+function openTextbook() {
+  const subj = currentSubject;
+  const wk = currentWeek;
+  const cls = currentClassNum || 1;
+  if (!subj || !wk) { showToast('주차를 선택해주세요', 'error'); return; }
+  document.getElementById('textbookModal').style.display = 'flex';
+  document.getElementById('textbookWords').style.display = 'block';
+  tbClassNum = cls;
+  loadTextbook(subj, wk);
+  loadTextbookWords(subj, wk, cls);
+}
+
+function closeTextbook() {
+  document.getElementById('textbookModal').style.display = 'none';
+}
+
+// ── 메모 ──
+function openNoteInput() {
+  document.getElementById('noteInput').style.display = 'block';
+  document.getElementById('noteContent').focus();
+}
+
+async function saveNote() {
+  const content = document.getElementById('noteContent').value.trim();
+  if (!content) { showToast('메모를 입력해주세요', 'error'); return; }
+
+  const body = { content };
+  if (currentCardId) body.card_id = currentCardId;
+  if (currentSubject) body.subject = currentSubject;
+  if (currentWeek) body.week = currentWeek;
+
+  try {
+    const res = await fetch(`${API}/api/chinese/note`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error();
+    showToast('메모 저장됨');
+    document.getElementById('noteContent').value = '';
+    document.getElementById('noteInput').style.display = 'none';
+    loadNotes();
+  } catch (e) {
+    showToast('메모 저장 실패', 'error');
+  }
+}
+
+async function loadNotes() {
+  let url = `${API}/api/chinese/notes?`;
+  if (currentCardId) url += `card_id=${currentCardId}&`;
+  if (currentSubject) url += `subject=${encodeURIComponent(currentSubject)}&`;
+  if (currentWeek) url += `week=${currentWeek}&`;
+
+  try {
+    const res = await fetch(url, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const notes = data.notes || [];
+    const el = document.getElementById('notesList');
+    if (notes.length === 0) {
+      el.innerHTML = '<p style="padding:0.5rem;color:var(--muted2);font-size:0.72rem;text-align:center;">메모가 없습니다</p>';
+      return;
+    }
+    el.innerHTML = notes.map(n => `
+      <div style="padding:0.5rem;border-bottom:1px solid var(--border);font-size:0.78rem;">
+        <div style="white-space:pre-wrap;line-height:1.5;">${n.content}</div>
+        <div style="display:flex;justify-content:space-between;margin-top:0.3rem;">
+          <span style="color:var(--muted2);font-size:0.65rem;">${(n.updated_at||'').slice(0,16)}</span>
+          <button class="record-btn del" onclick="deleteNote(${n.id})" style="font-size:0.7rem;">삭제</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {}
+}
+
+async function deleteNote(noteId) {
+  if (!confirm('메모를 삭제할까요?')) return;
+  try {
+    await fetch(`${API}/api/chinese/note/${noteId}`, { method: 'DELETE', headers: authHeaders() });
+    loadNotes();
+  } catch (e) {}
+}
+
+// ── 대시보드 ──
+function toggleDashboard() {
+  document.getElementById('dashboardOverlay').classList.add('active');
+  loadDashboard();
+}
+function closeDashboard() {
+  document.getElementById('dashboardOverlay').classList.remove('active');
+}
+
+async function loadDashboard() {
+  try {
+    const res = await fetch(`${API}/api/chinese/dashboard?days=30`, { headers: authHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const { stats, daily, recent } = data;
+
+    // 요약
+    document.getElementById('dbToday').textContent = stats.today_count || 0;
+    document.getElementById('dbAvg').textContent = stats.avg_score || 0;
+    document.getElementById('dbTotal').textContent = stats.total_records || 0;
+    document.getElementById('dbCards').textContent = stats.total_cards || 0;
+
+    // 날짜별 차트
+    const chartEl = document.getElementById('dailyChart');
+    const labelsEl = document.getElementById('dailyLabels');
+    if (daily.length === 0) {
+      chartEl.innerHTML = '<p style="margin:auto;color:var(--muted2);font-size:0.75rem;">아직 학습 기록이 없습니다</p>';
+      labelsEl.innerHTML = '';
+    } else {
+      const sorted = [...daily].reverse();
+      const maxCount = Math.max(...sorted.map(d => d.count), 1);
+      chartEl.innerHTML = sorted.map(d => {
+        const h = Math.max(4, (d.count / maxCount) * 100);
+        const color = d.avg_score >= 80 ? 'var(--success)' : d.avg_score >= 50 ? 'var(--accent)' : 'var(--accent3)';
+        return `<div style="flex:1;min-width:18px;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <span style="font-size:0.55rem;color:var(--muted);">${d.count}</span>
+          <div style="width:100%;height:${h}%;background:${color};border-radius:3px;min-height:4px;" title="${d.date}: ${d.count}회, 평균 ${d.avg_score}점"></div>
+        </div>`;
+      }).join('');
+      labelsEl.innerHTML = sorted.map(d =>
+        `<div style="flex:1;min-width:18px;text-align:center;font-size:0.5rem;color:var(--muted2);">${d.date.slice(5)}</div>`
+      ).join('');
+    }
+
+    // 최근 기록
+    const recEl = document.getElementById('recentRecords');
+    if (recent.length === 0) {
+      recEl.innerHTML = '<p style="padding:1rem;color:var(--muted2);font-size:0.75rem;text-align:center;">아직 연습 기록이 없습니다</p>';
+    } else {
+      recEl.innerHTML = recent.map(r => `
+        <div style="display:flex;align-items:center;gap:0.6rem;padding:0.45rem 0.3rem;border-bottom:1px solid var(--border);font-size:0.75rem;">
+          <span class="record-score ${scoreClass(r.score)}" style="min-width:2.2rem;text-align:right;">${r.score}</span>
+          <span style="font-family:var(--font-jp);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.chinese || ''}</span>
+          <span style="color:var(--muted2);font-size:0.6rem;">${r.subject ? r.subject.slice(0,4) : ''}</span>
+          <span style="color:var(--muted2);font-size:0.6rem;min-width:6rem;">${(r.created_at||'').slice(0,16)}</span>
+          <button class="record-btn" onclick="closeDashboard();playRecordAudio(${r.id})" title="재생" style="font-size:0.8rem;">&#9654;</button>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.error('Dashboard load error:', e);
+  }
+}
+
+// 엔터키로 카드 추가
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('addModal').classList.contains('active')) {
+    addCard();
+  }
+  if (e.key === 'Escape') {
+    closeAddModal();
+  }
+});
+</script>
+</body>
+</html>

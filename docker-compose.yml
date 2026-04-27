@@ -1,0 +1,34 @@
+name: myvoice2
+
+services:
+  myvoice2-prod:
+    image: myvoice-myvoice-prod:latest
+    container_name: myvoice2-prod
+    environment:
+      - PORT=9092
+      - ENV=production
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./certs:/app/certs:ro
+      - ./voice_samples:/app/voice_samples
+      - ./outputs:/app/outputs
+      - ./database:/app/database
+      - ./finetune_data:/app/finetune_data
+      - ./projects:/app/projects
+      - ./temp:/app/temp
+      - ./diarize_temp:/app/diarize_temp
+      - ./main.py:/app/main.py:ro
+      - ./auth:/app/auth:ro
+      - ./tts:/app/tts:ro
+      - ./library:/app/library:ro
+      - ./frontend:/app/frontend:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
