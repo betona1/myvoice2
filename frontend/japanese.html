@@ -723,7 +723,7 @@
           <div id="liveResults" style="display:none;margin:0.3rem 0;display:flex;flex-wrap:wrap;gap:0.2rem;justify-content:center;"></div>
           <div style="display:flex;align-items:center;justify-content:center;gap:0.3rem;">
             <select id="voiceSelect" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.2rem 0.4rem;font-size:0.65em;font-family:var(--font-b);outline:none;">
-              <option value="8">김준용 (남)</option>
+              <option value="8">내 목소리 (남)</option>
               <option value="11">수민 (여)</option>
             </select>
           </div>
@@ -1142,7 +1142,7 @@ function syncMainVoiceSelect() {
       `<option value="${v.id}" ${v.id == saved ? 'selected' : ''}>${v.name}</option>`
     ).join('');
   } else {
-    sel.innerHTML = '<option value="8">김준용 (남)</option><option value="11">수민 (여)</option>';
+    sel.innerHTML = '<option value="8">내 목소리 (남)</option><option value="11">수민 (여)</option>';
   }
   sel.value = saved;
 }

@@ -793,12 +793,12 @@
                 oninput="updateSpeed(this.value)" title="재생 속도">
               <span id="speedLabel" style="font-size:0.5em;color:var(--muted);font-weight:700;">100%</span>
             </div>
-            <!-- 김준용 듣기 -->
+            <!-- 내 목소리 -->
             <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
-              <button onclick="playVoice('ref')" style="width:46px;height:46px;border-radius:50%;background:var(--grad);border:none;color:#fff;cursor:pointer;box-shadow:0 3px 10px rgba(124,109,250,0.3);display:flex;align-items:center;justify-content:center;" title="김준용">
+              <button onclick="playVoice('ref')" style="width:46px;height:46px;border-radius:50%;background:var(--grad);border:none;color:#fff;cursor:pointer;box-shadow:0 3px 10px rgba(124,109,250,0.3);display:flex;align-items:center;justify-content:center;" title="내 목소리">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
               </button>
-              <span style="font-size:0.5em;color:var(--muted);">김준용</span>
+              <span style="font-size:0.5em;color:var(--muted);">내 목소리</span>
             </div>
             <!-- 수민 듣기 -->
             <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
@@ -832,7 +832,7 @@
           <div id="liveResults" style="display:none;margin:0.3rem 0;display:flex;flex-wrap:wrap;gap:0.2rem;justify-content:center;"></div>
           <div style="display:none;">
             <select id="voiceSelect">
-              <option value="8">김준용</option>
+              <option value="8">내 목소리</option>
               <option value="11">수민</option>
             </select>
           </div>
@@ -1271,7 +1271,7 @@ function syncMainVoiceSelect() {
       `<option value="${v.id}" ${v.id == saved ? 'selected' : ''}>${v.name}</option>`
     ).join('');
   } else {
-    sel.innerHTML = '<option value="8">김준용 (남)</option><option value="11">수민 (여)</option>';
+    sel.innerHTML = '<option value="8">내 목소리 (남)</option><option value="11">수민 (여)</option>';
   }
   sel.value = saved;
 }
@@ -2563,7 +2563,7 @@ function startDrill() {
   modal.innerHTML = `<div class="eval-modal-content" style="max-width:300px;text-align:center;">
     <h3 style="margin:0 0 1rem;">연속연습 음성 선택</h3>
     <div style="display:flex;flex-direction:column;gap:0.5rem;">
-      <button onclick="selectDrillVoice('ref',this)" style="padding:0.8rem;border-radius:8px;background:var(--grad);border:none;color:#fff;font-size:1rem;cursor:pointer;">🎙 김준용 (남)</button>
+      <button onclick="selectDrillVoice('ref',this)" style="padding:0.8rem;border-radius:8px;background:var(--grad);border:none;color:#fff;font-size:1rem;cursor:pointer;">🎙 내 목소리 (남)</button>
       <button onclick="selectDrillVoice('ref2',this)" style="padding:0.8rem;border-radius:8px;background:linear-gradient(135deg,#4fd1c5,#7c6dfa);border:none;color:#fff;font-size:1rem;cursor:pointer;">🎙 수민 (여)</button>
       <button onclick="selectDrillVoice('both',this)" style="padding:0.8rem;border-radius:8px;background:linear-gradient(135deg,#f687b3,#7c6dfa);border:none;color:#fff;font-size:1rem;cursor:pointer;">🎙 모두 듣기</button>
       <button onclick="this.closest('.eval-modal').remove()" style="padding:0.5rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;">취소</button>
@@ -2594,7 +2594,7 @@ function actualStartDrill() {
   document.getElementById('btnDrill').textContent = '🔄 연습 중...';
   document.getElementById('btnDrill').style.opacity = '0.6';
 
-  const voiceNames = {ref:'김준용', ref2:'수민', both:'모두'};
+  const voiceNames = {ref:'내 목소리', ref2:'수민', both:'모두'};
   showToast(`연속연습 시작! ${drillCardIds.length}개 · ${voiceNames[drillVoice]}`);
   drillNext();
 }
@@ -2767,7 +2767,7 @@ function playVoiceWithCallback(type, onDone) {
 function playVoice(type) {
   if (!currentCardId) return;
   if (type === 'both') {
-    // 김준용 먼저, 끝나면 수민
+    // 내 목소리 먼저, 끝나면 수민
     const a1 = new Audio(`${API}/api/chinese/audio/${currentCardId}/ref?t=${Date.now()}`);
     a1.playbackRate = playbackSpeed;
     a1.play();

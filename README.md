@@ -20,7 +20,7 @@
 - 이메일 로그인만 (OAuth 비활성)
 - **GPU 역할 분리**: GPU 0 추론 / GPU 1 STT(Whisper large-v3) / GPU 2 학습·F5-TTS
 - **학습 서브프로세스 격리**: `tts/train_subprocess.py`가 `CUDA_VISIBLE_DEVICES`로 GPU 분리 실행
-- 비교 실험용 별도 venv (`~
+- 비교 실험용 별도 venv (`./voice_samples/f5tts_venv/`)
 
 ## ⚡ 빠른 시작
 
@@ -64,7 +64,7 @@ myvoice2/
 ffmpeg -i ref.wav -t 12 -ac 1 -ar 24000 ref12s.wav
 
 # 2. F5-TTS zero-shot
-. ~
+. ./voice_samples/f5tts_venv/bin/activate
 CUDA_VISIBLE_DEVICES=2 f5-tts_infer-cli \
   --ref_audio ref12s.wav --gen_text "..." \
   --output_file out_f5.wav

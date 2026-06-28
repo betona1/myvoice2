@@ -147,11 +147,11 @@ curl -ksS -b $COOKIE -X POST https://YOUR_SERVER:9092/api/tts/generate-finetuned
 ### F5-TTS 비교 (zero-shot)
 별도 venv에서 호스트 직접 실행:
 ```bash
-. ~
+. ./voice_samples/f5tts_venv/bin/activate
 CUDA_VISIBLE_DEVICES=2 f5-tts_infer-cli \
-  --ref_audio ~ \
+  --ref_audio ./voice_samples/refs/myvoice샘플_ref12s.wav \
   --gen_text "합성할 텍스트" \
-  --output_dir ~ \
+  --output_dir ./voice_samples/f5tts_outputs/ \
   --output_file 출력.wav \
   --device cuda
 ```
@@ -231,7 +231,7 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 | 경로 | 내용 |
 |---|---|
 | `~ | 이 프로젝트 |
-| `~ | F5-TTS venv + 비교 출력물 |
+| `./voice_samples/` | F5-TTS venv + 비교 출력물 |
 | `~ | 80서버에서 가져온 운영본 카피 (참조용, 가동 안 함) |
 | `~ | 88서버 공용 자격증명 (sudo 비번 등) |
 
@@ -242,11 +242,11 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 ```
 같은 텍스트 합성 → 3가지 모델 결과를 voice_compare/ 아래 모음:
   • F5-TTS zero-shot         → voice_compare/f5tts_outputs/
-  • XTTS v2 + 10 epoch       → voice_compare/xtts_outputs/샘플_xtts_v1_10ep.wav
-  • XTTS v2 + 30 epoch       → voice_compare/xtts_outputs/샘플_xtts_v2_30ep.wav
+  • XTTS v2 + 10 epoch       → voice_compare/xtts_outputs/myvoice샘플_xtts_v1_10ep.wav
+  • XTTS v2 + 30 epoch       → voice_compare/xtts_outputs/myvoice샘플_xtts_v2_30ep.wav
 
 scp로 가져가기:
-  scp joacham@YOUR_SERVER:'~ .
+  scp user@YOUR_SERVER:'./voice_samples/*/myvoice샘플*.wav' .
 ```
 
 ---

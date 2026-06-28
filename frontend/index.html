@@ -1866,9 +1866,9 @@
       updateCollapsedSelect();
       updateVoiceSelect();
 
-      // 첫 로드 시 기본 음성 선택: 김준용
+      // 첫 로드 시 기본 음성 선택: 내 목소리
       if (!selectedVoice && allVoices.length) {
-        const defaultVoice = allVoices.find(v => v.name === '김준용') || allVoices[0];
+        const defaultVoice = allVoices.find(v => v.name === '내 목소리') || allVoices[0];
         selectedVoice = { id: defaultVoice.id, name: defaultVoice.name };
         updateSelectedDisplay();
         updateVoiceSelect();
