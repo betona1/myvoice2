@@ -1,6 +1,6 @@
 # myvoice2 운영/개발 매뉴얼
 
-88서버에서 돌아가는 격리 인스턴스. 80서버 운영본 `myvoice`(`https://myvoice.901planner.cloud`)와 코드/DB/시크릿 모두 분리.
+운영서버에서 돌아가는 격리 인스턴스. GPU서버 운영본 `myvoice`(`https://myvoice.901planner.cloud`)와 코드/DB/시크릿 모두 분리.
 
 ---
 
@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 디렉터리 | `~ |
+| 디렉터리 | `~/myvoice2/` |
 | 컨테이너 | `myvoice2-prod` |
 | 이미지 | `myvoice-myvoice-prod:latest` (재사용, 코드/.env는 볼륨 마운트) |
 | 접근 URL | `https://YOUR_SERVER:9092` (LAN, 자체서명 인증서) |
@@ -22,7 +22,7 @@
 ## 2. 디렉터리 구조
 
 ```
-~
+~/myvoice2/
 ├── main.py                  # FastAPI 진입점 (~127KB)
 ├── docker-compose.yml       # 컨테이너 정의
 ├── Dockerfile               # 이미지 빌드 (재사용 시 안 쓰임)
@@ -54,7 +54,7 @@
 
 ### 컨테이너
 ```bash
-cd ~
+cd ~/myvoice2
 
 # 시작 (이미 빌드된 이미지 재사용)
 sudo docker compose up -d
@@ -226,14 +226,13 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 
 ---
 
-## 9. 공통 디렉터리 (88서버 전체)
+## 9. 공통 디렉터리 (운영서버 전체)
 
 | 경로 | 내용 |
 |---|---|
-| `~ | 이 프로젝트 |
+| `~/myvoice2/` | 이 프로젝트 |
 | `./voice_samples/` | F5-TTS venv + 비교 출력물 |
-| `~ | 80서버에서 가져온 운영본 카피 (참조용, 가동 안 함) |
-| `~ | 88서버 공용 자격증명 (sudo 비번 등) |
+| `(운영서버 카피)` | GPU서버에서 가져온 운영본 카피 (참조용, 가동 안 함) |
 
 ---
 
@@ -251,8 +250,8 @@ scp로 가져가기:
 
 ---
 
-## 11. 80서버 운영본과의 관계
+## 11. GPU서버 운영본과의 관계
 
-`myvoice2`는 운영본을 절대 건드리지 않음. 비교 데이터(voices, ref wav)만 80서버에서 80→88로 일방향 가져옴.
+`myvoice2`는 운영본을 절대 건드리지 않음. 비교 데이터(voices, ref wav)만 GPU서버에서 80→88로 일방향 가져옴.
 
-운영본 자체를 88서버로 컷오버하려면 별도 작업 필요 — `myvoice_production_routing.md` 메모리 참고 (80서버 nginx upstream 한 줄 변경).
+운영본 자체를 운영서버로 컷오버하려면 별도 작업 필요 — `myvoice_production_routing.md` 메모리 참고 (GPU서버 nginx upstream 한 줄 변경).

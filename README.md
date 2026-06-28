@@ -6,16 +6,16 @@
 
 - 같은 입력 텍스트를 **여러 모델로 합성**해 음성 품질 비교 (XTTS v2 zero-shot vs fine-tuned vs F5-TTS 등)
 - 운영본에 영향 없이 fine-tune/모델 교체/스키마 변경 등 자유롭게 실험
-- 88서버의 3× RTX 3080 GPU를 역할별로 분배해서 추론·STT·학습이 동시 가능
+- 운영서버의 3× RTX 3080 GPU를 역할별로 분배해서 추론·STT·학습이 동시 가능
 
 ## 🏗 아키텍처 차이점
 
-### myvoice (운영본, 80서버)
+### myvoice (운영본, GPU서버)
 - 도메인 + Cloudflare + nginx reverse proxy
 - Google OAuth + 이메일 로그인
 - 단일 GPU 추론
 
-### myvoice2 (이 프로젝트, 88서버)
+### myvoice2 (이 프로젝트, 운영서버)
 - LAN 직접 (`https://YOUR_SERVER:9092`, 자체서명 HTTPS)
 - 이메일 로그인만 (OAuth 비활성)
 - **GPU 역할 분리**: GPU 0 추론 / GPU 1 STT(Whisper large-v3) / GPU 2 학습·F5-TTS
@@ -25,7 +25,7 @@
 ## ⚡ 빠른 시작
 
 ```bash
-cd ~
+cd ~/myvoice2
 
 # 환경 설정 (.env 채우기 — 아래 참고)
 cp .env.example .env  # (예시 — 운영 .env는 git에 안 올라감)
@@ -94,4 +94,4 @@ curl -ksS -b $COOKIE -X POST .../api/tts/generate-finetuned \
 ## 🔗 관련 저장소
 
 - **운영본**: [betona1/voicetoTTS](https://github.com/betona1/voicetoTTS) (이 fork의 origin)
-- **이 저장소**: 88서버 격리 인스턴스, 비교/실험용
+- **이 저장소**: 운영서버 격리 인스턴스, 비교/실험용
