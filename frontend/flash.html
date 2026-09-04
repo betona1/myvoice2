@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#7c6dfa">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<title>단어학습 — 계속 단어보기</title>
+<style>
+:root{
+  --hz:1; --exz:40;
+  --bg:#14141b; --bg2:#1b1b24; --surface:#23232e; --surface2:#2c2c38;
+  --border:#33333f; --text:#eceff4; --muted:#a9adbb; --muted2:#6e7383;
+  --accent:#7c6dfa; --accent2:#4fd1c5; --success:#34d399; --danger:#f05252; --warn:#f0a020;
+  --font-cn:'Noto Sans SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','SimSun',
+            'Noto Sans CJK SC','Heiti SC',sans-serif;
+}
+body.light{--bg:#f7f8fa;--bg2:#fff;--surface:#f0f1f5;--surface2:#e6e8ef;--border:#dcdfe8;
+  --text:#1c1e26;--muted:#5b606e;--muted2:#8b90a0;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--text);overflow:hidden;
+  height:100dvh;display:flex;flex-direction:column;
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
+/* 위아래 줄은 제 높이만, 카드가 남는 자리를 전부 쓴다 → 아래 버튼이 잘릴 수 없다 */
+.top,.quick,.filt,.pg,.slrow,.ctl{flex:0 0 auto;}
+button{font-family:inherit;}
+
+/* 상단 */
+.top{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.7rem;
+  border-bottom:1px solid var(--border);background:var(--bg2);}
+.top h1{font-size:0.98rem;margin:0;flex:1;display:flex;align-items:center;gap:0.4rem;}
+.top h1 img{height:1.7em;}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:10px;padding:0.4rem 0.6rem;font-size:0.85rem;cursor:pointer;min-height:38px;}
+.tbtn:active{transform:scale(0.95);}
+.tbtn.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:800;}
+.icn{width:1.15em;height:1.15em;vertical-align:-0.18em;stroke:currentColor;fill:none;
+  stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;color:var(--accent2);}
+
+/* 필터 */
+.filt{display:none;gap:0.35rem;flex-wrap:wrap;padding:0.6rem 0.7rem;background:var(--bg2);
+  border-bottom:1px solid var(--border);}
+.filt.on{display:flex;}
+.filt .g{display:flex;gap:0.25rem;align-items:center;}
+.filt .lb{font-size:0.72rem;color:var(--muted2);margin-right:0.15rem;}
+.filt input[type=range]{flex:1 1 12rem;max-width:22rem;accent-color:var(--accent);
+  height:1.5rem;cursor:pointer;}
+.chip{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:999px;padding:0.28rem 0.6rem;font-size:0.78rem;cursor:pointer;}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:800;}
+
+/* 진행 */
+.pg{display:flex;align-items:center;gap:0.6rem;padding:0.45rem 0.8rem;font-size:0.78rem;
+  color:var(--muted2);}
+.pb{flex:1;height:5px;background:var(--surface2);border-radius:999px;overflow:hidden;}
+.pb i{display:block;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));
+  border-radius:999px;transition:width .25s;}
+
+/* 카드 덱 */
+.deck{position:relative;overflow:hidden;touch-action:pan-y;
+  flex:1 1 auto;min-height:0;}
+.track{display:flex;height:100%;width:300%;transform:translateX(-33.3333%);}
+.track.anim{transition:transform .26s cubic-bezier(.22,.8,.3,1);}
+.card{width:33.3333%;height:100%;padding:0.5rem 0.9rem;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:0.45rem;}
+.card .hz{font-family:var(--font-cn);font-weight:900;line-height:1.12;
+  /* 큰 한자는 배율을 절반만 받는다 — 안 그러면 화면을 넘어간다 */
+  font-size:min(calc(min(30vw,26dvh)*(1 + (var(--hz) - 1)*0.5)), 34dvh);}
+/* 한자 + 획순을 나란히 (PC) */
+.hzrow{display:flex;align-items:center;justify-content:center;gap:1.2rem;width:100%;}
+/* 큰 한자 옆 스피커 — 예문 없이 그 낱말만, 남·여를 따로 들어 볼 수 있게 */
+.hzsnds{display:flex;flex-direction:column;gap:0.5rem;flex:0 0 auto;}
+.hzsnd{display:flex;align-items:center;gap:0.35rem;cursor:pointer;
+  padding:0.35rem 0.7rem 0.35rem 0.5rem;
+  border:1px solid var(--border);border-radius:999px;background:var(--surface);
+  color:var(--accent2);transition:background .15s,border-color .15s,transform .1s;}
+.hzsnd:hover{background:var(--surface2);border-color:var(--accent);}
+.hzsnd:active{transform:scale(0.94);}
+.hzsnd.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.hzsnd svg{width:clamp(1.1rem,2.4dvh,1.7rem);height:clamp(1.1rem,2.4dvh,1.7rem);
+  fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.hzsnd i{font-style:normal;font-weight:800;font-size:clamp(0.85rem,1.9dvh,1.2rem);}
+.strokebox{flex:0 0 auto;display:none;border:2px solid var(--border);border-radius:14px;
+  background:#fff;position:relative;}
+.strokebox .lb{position:absolute;left:0;right:0;bottom:-1.35rem;text-align:center;
+  font-size:0.72rem;color:var(--muted2);}
+/* 좌우 분할 — 폰은 위아래로, PC 는 좌우로 */
+.split{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.45rem;width:100%;height:100%;}
+.pane-l{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0.35rem;min-width:0;}
+.pane-r{display:flex;align-items:center;justify-content:center;min-width:0;width:100%;}
+/* 넓은 화면: 왼쪽 한자·획순 / 오른쪽 예문을 한 화면에 크게 */
+@media (min-width:900px) and (min-height:520px){
+  .split{flex-direction:row;gap:1.6rem;padding:0 0.6rem;}
+  .pane-l{flex:0 0 34%;height:100%;}
+  .pane-r{flex:1 1 66%;height:100%;overflow:hidden;}
+  .card{padding:0.4rem 0.6rem;}
+  .card .hz{font-size:min(calc(min(17vw,34dvh)*(1 + (var(--hz) - 1)*0.5)), 42dvh);}
+  .card .py{font-size:calc(min(3.4vw,6.5dvh)*var(--hz));}
+  .card .ko{font-size:calc(min(3vw,5.6dvh)*var(--hz));}
+  .card .se{font-size:calc(min(1.9vw,3.2dvh)*var(--hz));max-width:34rem;}
+  .strokebox{display:block;}
+  /* 확대/축소(--hz)는 왼쪽 전용이다. 오른쪽 예문은 배율과 무관하게 칸 높이에 맞춰
+     늘 크게 나온다 — 둘을 같이 키우면 화면을 넘어간다.
+     예문이 오른쪽 칸을 세로로 꽉 채운다.
+     ⚠️ 비율로 어림잡지 않는다 — 줄 수·글자 수·화면에 따라 늘 빗나갔다.
+        JS(sizeEx)가 칸에 들어가는 가장 큰 크기를 직접 재서 --exz(px)로 넣어 준다. */
+  .pane-r .exs{max-width:none;height:auto;justify-content:center;
+    gap:calc(var(--exz)*0.10px);overflow:visible;}
+  .pane-r .ex{flex:0 0 auto;padding:calc(var(--exz)*0.07px) calc(var(--exz)*0.16px);
+    gap:calc(var(--exz)*0.16px);min-height:0;border-radius:14px;}
+  .pane-r .ex .z{font-size:calc(var(--exz)*1px);line-height:1.08;}
+  .pane-r .ex .p{font-size:calc(var(--exz)*0.30px);line-height:1.2;}
+  .pane-r .ex .k{font-size:calc(var(--exz)*0.32px);line-height:1.2;}
+  .pane-r .ex .s{font-size:calc(var(--exz)*0.26px);}
+}
+@media (min-width:1400px){
+  .card .hz{font-size:min(calc(min(16vw,38dvh)*(1 + (var(--hz) - 1)*0.5)), 46dvh);}
+}
+.card .py{font-size:calc(min(7.5vw,5.4dvh)*var(--hz));color:var(--accent2);font-weight:800;}
+.card .ko{font-size:calc(min(7vw,5dvh)*var(--hz));font-weight:800;line-height:1.35;
+  max-width:min(680px,94vw);}
+.card .se{font-size:calc(min(4.8vw,3dvh)*var(--hz));color:var(--muted);line-height:1.5;
+  max-width:min(680px,94vw);}
+.card .tag{display:flex;gap:0.35rem;flex-wrap:wrap;justify-content:center;margin-top:0.15rem;}
+.card .tag span{font-size:0.68rem;color:var(--muted2);background:var(--surface2);
+  border-radius:999px;padding:0.14rem 0.5rem;}
+.card.star .hz{text-shadow:0 0 18px rgba(240,160,32,0.55);}
+
+/* 하단 조작 */
+/* 따라 읽을 참을 그때그때 늘렸다 줄였다 하므로, 설정 안에 묻지 않고 늘 보이게 둔다 */
+.slrow{display:flex;align-items:center;justify-content:center;gap:1.4rem;flex-wrap:wrap;
+  padding:0.4rem 0.8rem;background:var(--bg2);border-top:1px solid var(--border);}
+.slrow label{display:flex;align-items:center;gap:0.5rem;flex:1 1 16rem;max-width:26rem;}
+.slrow span{font-size:0.78rem;color:var(--muted2);flex:0 0 auto;}
+.slrow b{font-size:0.82rem;color:var(--accent2);min-width:3rem;text-align:right;flex:0 0 auto;}
+.slrow input[type=range]{flex:1 1 auto;min-width:0;accent-color:var(--accent);
+  height:1.6rem;cursor:pointer;}
+.ctl{display:flex;align-items:center;justify-content:center;gap:0.5rem;
+  padding:0.55rem 0.7rem calc(0.55rem + env(safe-area-inset-bottom));
+  border-top:1px solid var(--border);background:var(--bg2);}
+.cbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:14px;min-width:52px;min-height:50px;font-size:1rem;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.cbtn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.cbtn:active{transform:scale(0.94);}
+.cbtn.play{min-width:96px;background:var(--accent);border-color:var(--accent);color:#fff;}
+.cbtn.play.on{background:var(--danger);border-color:var(--danger);}
+.cbtn.star.on{background:var(--warn);border-color:var(--warn);color:#241500;}
+.hint{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:#000c;color:#fff;
+  padding:0.35rem 0.85rem;border-radius:999px;font-size:0.82rem;opacity:0;transition:opacity .25s;
+  pointer-events:none;z-index:50;}
+.empty{padding:3rem 1rem;text-align:center;color:var(--muted2);}
+  /* 빠른 시작 — 자주 쓰는 묶음을 늘 보이게 */
+  .quick{display:flex;gap:0.35rem;flex-wrap:wrap;padding:0.4rem 0.8rem 0.1rem;}
+  .quick button{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    border-radius:999px;padding:0.3rem 0.7rem;font-size:0.8rem;font-weight:700;cursor:pointer;
+    display:inline-flex;align-items:center;gap:0.3rem;}
+  .quick button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .quick button .n{font-size:0.7rem;opacity:0.8;font-weight:600;}
+  /* 예문 — 양사처럼 '무엇을 세는가'가 핵심인 말은 예문이 있어야 뜻이 잡힌다 */
+  .exs{display:flex;flex-direction:column;gap:0.32rem;margin-top:0.7rem;width:100%;
+    max-width:34rem;align-self:center;}
+  .pane-r .exs{margin-top:0;}
+  .ex{display:flex;align-items:center;gap:0.5rem;background:var(--surface);
+    border:1px solid var(--border);border-radius:11px;padding:0.4rem 0.6rem;text-align:left;
+    cursor:pointer;transition:border-color .15s,background .15s;}
+  .ex:hover{border-color:var(--accent);}
+  .ex .tx{display:flex;flex-direction:column;gap:0.05rem;min-width:0;}
+  .ex .sub{display:flex;align-items:baseline;gap:0.7em;flex-wrap:wrap;min-width:0;}
+  .ex .z{font-family:var(--font-cn);font-size:1.95rem;font-weight:500;
+    line-height:1.25;}
+  .ex .p{font-size:1.2rem;color:var(--accent2);font-weight:500;line-height:1.25;}
+  .ex .k{font-size:1.25rem;color:var(--muted);line-height:1.35;}
+  .ex .s{font-size:0.9rem;color:var(--muted2);flex:0 0 auto;}
+  .ex .wbtn{cursor:pointer;border-radius:8px;padding:0.1rem 0.2rem;}
+  .ex .wbtn:hover{background:var(--surface2);color:var(--accent);}
+  .ex.on{border-color:var(--accent);background:rgba(124,109,250,0.16);
+    box-shadow:0 0 0 1px var(--accent);}
+  .ex.on .s{color:var(--accent);}
+/* 쓰기 공부 모달 — 예문을 한 글자씩 따라 쓰며 소리로 익힌다 */
+.wm{position:fixed;inset:0;background:rgba(0,0,0,0.74);display:none;z-index:60;
+  align-items:center;justify-content:center;padding:1rem;}
+.wm.on{display:flex;}
+.wmbox{background:var(--bg2);border:1px solid var(--border);border-radius:18px;
+  padding:1rem 1.2rem;width:100%;max-width:min(94vw,880px);max-height:94dvh;
+  display:flex;flex-direction:column;gap:0.8rem;overflow:auto;}
+.wmhd{display:flex;align-items:baseline;gap:0.8rem;flex-wrap:wrap;}
+.wmhd .z{font-family:var(--font-cn);font-size:clamp(1.6rem,4dvh,2.6rem);font-weight:600;}
+.wmhd .p{color:var(--accent2);font-size:clamp(0.9rem,2dvh,1.25rem);font-weight:600;}
+.wmhd .k{color:var(--muted);font-size:clamp(0.85rem,1.9dvh,1.15rem);}
+.wmstage{display:flex;align-items:center;justify-content:center;gap:1.2rem;flex-wrap:wrap;}
+.wmnow{display:flex;flex-direction:column;gap:0.3rem;min-width:8rem;max-width:22rem;}
+.wmnow .c{font-family:var(--font-cn);font-size:clamp(2.2rem,6dvh,4rem);font-weight:600;
+  line-height:1;}
+.wmnow .p{color:var(--accent2);font-size:clamp(1rem,2.4dvh,1.6rem);font-weight:700;}
+.wmnow .k{color:var(--muted);font-size:clamp(0.9rem,2.1dvh,1.3rem);line-height:1.4;}
+.wmpad{width:min(72vw,46dvh);height:min(72vw,46dvh);border:2px solid var(--border);
+  border-radius:16px;background:var(--surface);position:relative;}
+.wmchars{display:flex;gap:0.45rem;flex-wrap:wrap;justify-content:center;}
+.wmch{font-family:var(--font-cn);font-size:clamp(1.3rem,3.2dvh,2rem);font-weight:600;
+  padding:0.2rem 0.55rem;border:1px solid var(--border);border-radius:12px;
+  background:var(--surface);color:var(--text);cursor:pointer;}
+.wmch.on{border-color:var(--accent);background:rgba(124,109,250,0.2);}
+.wmch.done{color:var(--accent2);}
+.wmctl{display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;}
+.wmtip{text-align:center;font-size:0.78rem;color:var(--muted2);}
+</style>
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+</head>
+<body>
+
+<div class="top">
+  <h1><img id="babTop" src="/img/babbab/lv1.webp" alt="">단어학습
+    <span style="font-size:0.74rem;color:var(--muted2);font-weight:600">계속 단어보기</span></h1>
+  <button class="tbtn" id="btnF" onclick="toggleFilt()" title="설정">설정</button>
+  <button class="tbtn" onclick="hz(-1)">A−</button>
+  <button class="tbtn" onclick="hz(1)">A+</button>
+  <button class="tbtn" onclick="location.href='/words'" title="학습 홈">
+    <svg class="icn" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></button>
+</div>
+
+<div class="quick" id="quick"></div>
+
+<div class="filt" id="filt">
+  <div class="g" style="flex:1 1 100%"><span class="lb">교재</span><div id="fSubj"></div></div>
+  <div class="g" style="flex:1 1 100%"><span class="lb">단원</span><div id="fUnit"></div></div>
+  <div class="g"><span class="lb">갈래</span><div id="fCat"></div></div>
+  <div class="g"><span class="lb">HSK</span><div id="fHsk"></div></div>
+  <div class="g"><span class="lb">교재</span><div id="fCourse"></div></div>
+  <div class="g"><span class="lb">묶음</span><div id="fSet"></div></div>
+  <div class="g"><span class="lb">순서</span><div id="fOrd"></div></div>
+  <div class="g"><span class="lb">범위</span><div id="fOnly"></div></div>
+  <div class="g"><span class="lb">속도</span><div id="fSpd"></div></div>
+  <div class="g"><span class="lb">발음</span><div id="fSnd"></div></div>
+  <div class="g"><span class="lb">목소리</span><div id="fVoice"></div></div>
+</div>
+
+<div class="pg"><span id="pgTxt">0 / 0</span><div class="pb"><i id="pgBar"></i></div>
+  <span id="pgAll"></span></div>
+
+<div class="deck" id="deck">
+  <div class="track" id="track">
+    <div class="card" id="c0"></div>
+    <div class="card" id="c1"></div>
+    <div class="card" id="c2"></div>
+  </div>
+</div>
+
+<div class="slrow">
+  <label><span>예문 사이</span>
+    <input type="range" id="fExGap" min="0.5" max="10" step="0.1"
+      oninput="setExGap(this.value)" title="예문 하나를 읽고 다음 예문까지 쉬는 참">
+    <b id="fExGapT">2.0초</b></label>
+  <label><span>되풀이 쉼</span>
+    <input type="range" id="fGap" min="3" max="60" step="1"
+      oninput="setGap(this.value)" title="한 번 읽고 다음 번 읽기까지 쉬는 참">
+    <b id="fGapT">5초</b></label>
+</div>
+<div class="ctl">
+  <button class="cbtn" onclick="goEnd(-1)" title="맨 처음으로">⏮</button>
+  <button class="cbtn" onclick="go(-1)" title="이전">◀</button>
+  <button class="cbtn" id="btnSnd" onclick="playCur()" title="발음">
+    <svg class="icn" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18 6.5a7.6 7.6 0 0 1 0 11"/></svg></button>
+  <button class="cbtn" id="btnVoice" onclick="flipVoice()" style="font-size:0.95rem">여</button>
+  <button class="cbtn" id="btnEx" onclick="flipEx()" style="font-size:0.78rem"
+    title="단어를 읽은 뒤 예문까지 차례로 읽어 줍니다">예문</button>
+  <button class="cbtn play" id="btnPlay" onclick="toggleAuto()">▶ 자동</button>
+  <button class="cbtn" id="btnRep" onclick="flipRep()" style="font-size:0.82rem"
+    title="자동일 때 한 낱말을 몇 번 되풀이해 읽을지">3회</button>
+  <button class="cbtn star" id="btnStar" onclick="toggleStar()" title="별표">★</button>
+  <button class="cbtn" onclick="go(1)" title="다음">▶</button>
+  <button class="cbtn" onclick="goEnd(1)" title="맨 끝으로">⏭</button>
+</div>
+
+<div class="hint" id="hint"></div>
+
+<script>
+const API='';
+let TOKEN=localStorage.getItem('token')||'';
+function H(){ return TOKEN?{'Authorization':'Bearer '+TOKEN}:{}; }
+function esc(t){return String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+async function api(path,opt){
+  const r=await fetch(API+path,Object.assign({headers:Object.assign({'Content-Type':'application/json'},H())},opt||{}));
+  if(r.status===401){ location.href='/login'; return null; }
+  return r.ok?r.json():null;
+}
+if(localStorage.getItem('cn_theme')==='light') document.body.classList.add('light');
+
+/* 한자 크기 배율 — /words 와 같은 값을 공유한다 */
+// 기본 배율 — 작게 보인다는 말이 많아 기본값 자체를 키웠다
+const HZ_BASE=1.35;
+let HZ=parseFloat(localStorage.getItem('cn_hz')||String(HZ_BASE));
+if(!localStorage.getItem('cn_repgap_v2')){    // 예전에 저장된 3초는 한 번만 5초로
+  try{ const o=JSON.parse(localStorage.getItem('flash_set')||'{}');
+       if(o && (!o.repgap || o.repgap < 5000)){ o.repgap=5000;
+         localStorage.setItem('flash_set', JSON.stringify(o)); }
+  }catch(e){}
+  localStorage.setItem('cn_repgap_v2','1');
+}
+if(!localStorage.getItem('cn_exgap_v2')){     // 예전에 저장된 0.5초는 한 번만 2초로
+  try{ const o=JSON.parse(localStorage.getItem('flash_set')||'{}');
+       if(o && (!o.exgap || o.exgap < 1000)){ o.exgap=2000;
+         localStorage.setItem('flash_set', JSON.stringify(o)); }
+  }catch(e){}
+  localStorage.setItem('cn_exgap_v2','1');
+}
+if(!localStorage.getItem('cn_spd_v2')){       // 예전에 저장된 2.5초는 한 번만 5초로
+  try{ const o=JSON.parse(localStorage.getItem('flash_set')||'{}');
+       if(o && o.spd && o.spd < 3000){ o.spd=5000; localStorage.setItem('flash_set', JSON.stringify(o)); }
+  }catch(e){}
+  localStorage.setItem('cn_spd_v2','1');
+}
+if(!localStorage.getItem('cn_hz_v2')){        // 예전에 저장된 작은 값은 한 번만 올려 준다
+  if(HZ < HZ_BASE) HZ = HZ_BASE;
+  localStorage.setItem('cn_hz', HZ); localStorage.setItem('cn_hz_v2','1');
+}
+function applyHz(){ document.documentElement.style.setProperty('--hz',HZ); }
+function hz(d){ HZ=Math.min(3.2,Math.max(0.9,+(HZ+d*0.15).toFixed(2)));
+  localStorage.setItem('cn_hz',HZ); applyHz(); toast('글자 '+Math.round(HZ*100)+'%'); }
+applyHz();
+
+function toast(t){ const h=document.getElementById('hint'); h.textContent=t; h.style.opacity='1';
+  clearTimeout(h._t); h._t=setTimeout(()=>h.style.opacity='0',1100); }
+
+/* ── 설정 ── */
+const S=Object.assign({cat:'',hsk:0,order:'seq',only:'',spd:5000,snd:1,off:0,subject:'',week:0,cls:0,voice:2,
+                       course:0,wordset:'',exsnd:1,rep:3,repgap:5000,exgap:2000},
+  JSON.parse(localStorage.getItem('flash_set')||'{}'));
+// 주소로 넘어온 값이 있으면 그걸 우선한다 (/flash?course=4, /flash?liangci=1)
+(function(){ const q=new URLSearchParams(location.search);
+  if(q.has('course')){ S.course=+q.get('course')||0; S.hsk=0; S.subject=''; S.week=0; S.cls=0; S.off=0; }
+  if(q.has('set')){ S.wordset=q.get('set')||''; S.course=0; S.hsk=0; S.subject=''; S.week=0; S.cls=0; S.off=0; }
+})();
+function saveS(){ localStorage.setItem('flash_set',JSON.stringify(S)); }
+function toggleFilt(){ const f=document.getElementById('filt');
+  f.classList.toggle('on'); document.getElementById('btnF').classList.toggle('on'); sizeDeck(); }
+
+function chips(host,items,cur,fn){
+  document.getElementById(host).innerHTML=items.map(([v,t])=>
+    `<button class="chip${String(cur)===String(v)?' on':''}" data-v="${esc(String(v))}">${esc(t)}</button>`).join('');
+  document.getElementById(host).onclick=e=>{ const b=e.target.closest('.chip'); if(!b) return;
+    fn(b.dataset.v); };
+}
+// 빠른 시작 줄 — 묶음·교재급수를 한 번에 고른다
+async function paintQuick(){
+  const cur = S.wordset ? 'set:' + S.wordset : (S.course ? 'course:' + S.course : '');
+  const ITEMS = [['', '전체', ''], ['set:양사', '🔢 양사', '양사'],
+                 ['set:접속사', '🔗 접속사', '접속사'], ['set:의성의태', '💬 의성·의태어', '의성의태'],
+                 ['course:4', '📘 교재 4급', ''], ['course:5', '📗 교재 5급', '']];
+  const host = document.getElementById('quick');
+  host.innerHTML = ITEMS.map(([v, t]) =>
+    `<button data-v="${v}" class="${cur===v?'on':''}">${esc(t)}<span class="n" data-k="${v}"></span></button>`).join('');
+  host.onclick = e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const v = b.dataset.v;
+    S.wordset = v.startsWith('set:') ? v.slice(4) : '';
+    S.course  = v.startsWith('course:') ? +v.slice(7) : 0;
+    if (v) { S.hsk = 0; S.subject = ''; S.week = 0; S.cls = 0; }
+    reload(0);
+  };
+  try{
+    const r = await api('/api/words/roadmap'); if(!r) return;
+    const sets = r.sets || {}, cs = r.course || {};
+    for (const [k, o] of Object.entries(sets)){
+      const el = host.querySelector(`[data-k="set:${k}"]`);
+      if (el && o) el.textContent = `${o.done}/${o.total}`;
+    }
+    for (const lv of ['4','5']){
+      const el = host.querySelector(`[data-k="course:${lv}"]`);
+      if (el && cs[lv]) el.textContent = `${cs[lv].done}/${cs[lv].total}`;
+    }
+  }catch(e){}
+}
+
+function paintFilt(){
+  chips('fCat',[['','전체'],['단어','단어'],['구문','구문'],['성어','성어']],S.cat,v=>{S.cat=v;reload(0);});
+  chips('fHsk',[[0,'전체'],[1,'1급'],[2,'2급'],[3,'3급'],[4,'4급'],[5,'5급'],[6,'6급']],S.hsk,v=>{S.hsk=+v;reload(0);});
+  // 교재가 정한 급수 어휘 · 주요 양사
+  chips('fCourse',[[0,'전체'],[4,'교재 4급'],[5,'교재 5급']],(S.wordset?-1:S.course),v=>{
+    S.wordset=''; S.course=+v; reload(0);});
+  chips('fSet',[['','전체'],['양사','양사'],['접속사','접속사'],['의성의태','의성·의태어']],S.wordset,v=>{
+    S.wordset=v; if(v) S.course=0; reload(0);});
+  chips('fOrd',[['seq','쉬운 순'],['unit','교재 단원순'],['random','무작위'],['due','복습 먼저']],S.order,v=>{S.order=v;reload(0);});
+  chips('fOnly',[['','전체'],['new','안 배운 것'],['wrong','틀린 것'],['star','별표']],S.only,v=>{S.only=v;reload(0);});
+  chips('fSpd',[[3000,'빠름'],[5000,'보통'],[8000,'느림'],[12000,'아주 느림']],S.spd,v=>{S.spd=+v;saveS();paintFilt();
+    if(AUTO){stopAuto();startAuto();} toast('자동 넘김 '+(S.spd/1000)+'초');});
+  chips('fSnd',[[1,'켜기'],[0,'끄기']],S.snd,v=>{S.snd=+v;saveS();paintFilt();});
+  chips('fVoice',[[2,'여성'],[1,'남성']],S.voice,v=>{S.voice=+v;saveS();paintFilt();paintVoiceBtn();playCur();});
+  const g=document.getElementById('fGap');
+  if(g){ g.value=Math.round((S.repgap||5000)/1000);
+         document.getElementById('fGapT').textContent=g.value+'초'; }
+  const g2=document.getElementById('fExGap');
+  if(g2){ g2.value=((S.exgap||2000)/1000).toFixed(1);
+          document.getElementById('fExGapT').textContent=g2.value+'초'; }
+}
+
+/* ── 학습 로드맵 (교재 → 단원) ── */
+let ROAD=null;
+async function loadRoad(){
+  ROAD=await api('/api/words/roadmap');
+  paintRoad();
+}
+function paintRoad(){
+  if(!ROAD) return;
+  const items=[['','전체'],['HSK어휘','HSK 어휘']].concat(ROAD.subjects.map(x=>[x.name,x.name]));
+  chips('fSubj',items,S.subject,v=>{ S.subject=v; S.week=0; S.cls=0; paintRoad(); reload(0); });
+  const sub=ROAD.subjects.find(x=>x.name===S.subject);
+  const host=document.getElementById('fUnit');
+  if(!sub||!sub.units.length){
+    host.innerHTML = S.subject==='HSK어휘'
+      ? '<span style="font-size:0.76rem;color:var(--muted2)">HSK 어휘는 위의 급수로 고르세요</span>'
+      : '<span style="font-size:0.76rem;color:var(--muted2)">교재를 먼저 고르세요</span>';
+    return;
+  }
+  const cur=`${S.week}-${S.cls}`;
+  host.innerHTML='<button class="chip'+(!S.week?' on':'')+'" data-v="0-0">전체 '+
+      '<small style="opacity:.7">'+sub.done+'/'+sub.total+'</small></button>'+
+    sub.units.map(u=>{
+      const k=`${u.week}-${u.cls}`;
+      const full=u.done>=u.total;
+      return '<button class="chip'+(cur===k?' on':'')+'" data-v="'+k+'" title="'+u.done+'/'+u.total+'">'+
+        (full?'✓ ':'')+u.week+'주 '+u.cls+'교시<small style="opacity:.7"> '+u.done+'/'+u.total+'</small></button>';
+    }).join('');
+  host.onclick=e=>{ const b=e.target.closest('.chip'); if(!b) return;
+    const [w,c]=b.dataset.v.split('-').map(Number);
+    S.week=w; S.cls=c; if(w) S.order='unit'; paintRoad(); paintFilt(); reload(0); };
+}
+
+/* ── 데이터 ── */
+let LIST=[], IDX=0, TOTAL=0;
+async function reload(off, toEnd){
+  S.off=off; saveS(); paintFilt(); paintQuick();
+  const q=`offset=${off}&limit=100&cat=${encodeURIComponent(S.cat)}&hsk=${S.hsk}&order=${S.order}`
+        + `&only=${S.only}&subject=${encodeURIComponent(S.subject)}&week=${S.week}&cls=${S.cls}`
+        + `&course=${S.course||0}&wordset=${encodeURIComponent(S.wordset||'')}`;
+  const d=await api('/api/words/deck?'+q);
+  if(!d){ return; }
+  LIST=d.words; TOTAL=d.total; IDX = toEnd && d.words.length ? d.words.length-1 : 0;
+  if(!LIST.length){
+    document.getElementById('c1').innerHTML='<div class="empty">조건에 맞는 단어가 없습니다.<br>설정을 바꿔 보세요.</div>';
+    document.getElementById('c0').innerHTML=''; document.getElementById('c2').innerHTML='';
+    document.getElementById('pgTxt').textContent='0 / 0'; return;
+  }
+  paint();
+}
+
+function cardHtml(w, sid){
+  if(!w) return '';
+  const tags=[];
+  if(w.hsk) tags.push('HSK '+w.hsk+'급');
+  if(w.category) tags.push(w.category);
+  if(w.subject) tags.push(w.unit_week ? `${w.subject} ${w.unit_week}주${w.unit_class}교시` : w.subject);
+  if((w.box||0)>=5) tags.push('숙달');
+  else if(w.seen) tags.push('학습 중');
+  else tags.push('새 단어');
+  const se=(w.senses_ko&&w.senses_ko!==w.meaning_ko)?`<div class="se">${esc(w.senses_ko)}</div>`:'';
+  // 예문 — 누르면 그 예문만 읽어 준다
+  const ex=(w.examples||[]).length ? '<div class="exs">' + w.examples.map((e,i)=>
+      `<div class="ex" data-i="${i}" data-a1="${esc(e.a1||'')}" data-a2="${esc(e.a2||'')}"`+
+      ` data-py="${esc(e.pinyin||'')}" data-ko="${esc(e.ko||'')}">`+
+      `<span class="s">🔊</span>`+
+      `<span class="s wbtn" title="이 예문 쓰기 공부">✍</span>`+
+      `<div class="tx"><div class="z">${esc(e.chinese)}</div>`+
+      `<div class="sub"><span class="p">${esc(e.pinyin||'')}</span>`+
+      `<span class="k">${esc(e.ko||'')}</span></div></div></div>`).join('') + '</div>' : '';
+  // 획순은 한 글자일 때만 (여러 글자는 첫 글자를 보여 준다)
+  const sw = `<div class="strokebox" id="sw_${sid}"><div class="lb">획순</div></div>`;
+  return `<div class="split">
+      <div class="pane-l">
+        <div class="hzrow"><div class="hz">${esc(w.chinese)}</div>`+
+        `<div class="hzsnds">`+
+        [[2,'여'],[1,'남']].map(([v,t])=>
+          `<button class="hzsnd" onclick="sayWord(event,${v})" title="${t}성 목소리로 이 낱말만 듣기">`+
+          `<svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/>`+
+          `<path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18 6.5a7.6 7.6 0 0 1 0 11"/></svg>`+
+          `<i>${t}</i></button>`).join('')+
+        `</div>${sw}</div>
+        <div class="py">${esc(w.pinyin)}</div>
+        <div class="ko">${esc(w.meaning_ko)}</div>${se}
+        <div class="tag">${tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div>
+      </div>
+      <div class="pane-r">${ex}</div>
+    </div>`;
+}
+function paint(){
+  const t=document.getElementById('track');
+  t.classList.remove('anim'); t.style.transform='translateX(-33.3333%)';
+  document.getElementById('c0').innerHTML=cardHtml(LIST[IDX-1],'0');
+  document.getElementById('c1').innerHTML=cardHtml(LIST[IDX],'1');
+  document.getElementById('c2').innerHTML=cardHtml(LIST[IDX+1],'2');
+  paintStroke(LIST[IDX]);          // 가운데 카드만 획순을 돌린다
+  sizeEx();     // 예문 글씨를 칸에 맞춰 다시 잰다
+
+  stopSeq();                       // 넘기면 이전 카드의 차례 재생을 멈춘다
+  const w=LIST[IDX];
+  document.getElementById('c1').classList.toggle('star', !!(w&&w.starred));
+  document.getElementById('btnStar').classList.toggle('on', !!(w&&w.starred));
+  document.getElementById('pgTxt').textContent=`${IDX+1} / ${LIST.length}`;
+  document.getElementById('pgBar').style.width=(100*(IDX+1)/Math.max(LIST.length,1))+'%';
+  document.getElementById('pgAll').textContent=TOTAL?`전체 ${(S.off+IDX+1).toLocaleString()} / ${TOTAL.toLocaleString()}`:'';
+  if(AUTO) startAuto();          // 자동일 땐 이 카드의 한 바퀴를 새로 돌린다
+  else if(S.snd) playCur();
+}
+
+/* ── 넘기기 ── */
+let BUSY=false;
+/* 100개씩 나눠 받으므로, 맨 끝은 '마지막 묶음의 마지막 장'이다. */
+function goEnd(dir){
+  if(BUSY || !TOTAL) return;
+  stopSeq(); if(AUTO) stopAuto();
+  if(dir < 0){
+    if(S.off===0 && IDX===0){ toast('이미 맨 처음입니다'); return; }
+    if(S.off===0){ IDX=0; paint(); toast('맨 처음'); return; }
+    reload(0); toast('맨 처음');
+  }else{
+    const last = Math.max(0, Math.floor((TOTAL-1)/100)*100);
+    if(S.off===last && IDX===LIST.length-1){ toast('이미 맨 끝입니다'); return; }
+    if(S.off===last){ IDX=LIST.length-1; paint(); toast('맨 끝'); return; }
+    reload(last, true); toast('맨 끝');
+  }
+}
+function go(dir){
+  if(BUSY||!LIST.length) return;
+  const ni=IDX+dir;
+  if(ni<0){ if(S.off>0){ reload(Math.max(0,S.off-100)); } else toast('처음입니다'); return; }
+  if(ni>=LIST.length){                       // 100개를 다 보면 다음 묶음으로
+    if(S.off+LIST.length<TOTAL){ toast('다음 100단어'); reload(S.off+LIST.length); }
+    else { toast('마지막입니다'); stopAuto(); }
+    return;
+  }
+  BUSY=true;
+  const t=document.getElementById('track');
+  t.classList.add('anim');
+  t.style.transform=`translateX(${dir>0?'-66.6666%':'0%'})`;
+  setTimeout(()=>{ IDX=ni; BUSY=false; paint(); },260);
+}
+
+/* 손가락을 따라오는 스와이프 (마우스 드래그도 같은 경로) */
+let dragX=null, dragged=0;
+const deck=document.getElementById('deck');
+function dStart(x){ if(BUSY) return; dragX=x; dragged=0; document.getElementById('track').classList.remove('anim'); }
+function dMove(x){
+  if(dragX===null) return;
+  dragged=x-dragX;
+  const pct=-33.3333+(dragged/deck.clientWidth)*33.3333;
+  document.getElementById('track').style.transform=`translateX(${pct}%)`;
+}
+function dEnd(){
+  if(dragX===null) return;
+  const th=Math.min(90,deck.clientWidth*0.18);
+  const d=dragged; dragX=null;
+  if(d<=-th) go(1); else if(d>=th) go(-1);
+  else { const t=document.getElementById('track'); t.classList.add('anim');
+         t.style.transform='translateX(-33.3333%)'; }
+  if(Math.abs(d)>th) pauseAutoBriefly();
+}
+deck.addEventListener('touchstart',e=>dStart(e.touches[0].clientX),{passive:true});
+deck.addEventListener('touchmove', e=>dMove(e.touches[0].clientX),{passive:true});
+deck.addEventListener('touchend',  dEnd);
+deck.addEventListener('mousedown', e=>{e.preventDefault();dStart(e.clientX);});
+window.addEventListener('mousemove',e=>{ if(dragX!==null) dMove(e.clientX); });
+window.addEventListener('mouseup',  dEnd);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){ go(1); pauseAutoBriefly(); }
+  else if(e.key==='ArrowLeft'){ go(-1); pauseAutoBriefly(); }
+  else if(e.key===' '){ e.preventDefault(); toggleAuto(); }
+});
+
+/* ── 자동 넘김 ──
+   시계처럼 일정 시간마다 넘기면 획순을 다 쓰기도 전에 넘어가 버린다.
+   낱말·예문을 다 들려주고 획순도 한 바퀴 돈 뒤에, 정한 만큼 더 머물렀다가 넘어간다. */
+let AUTO=false, TIM=null;
+function startAuto(){
+  clearTimeout(TIM); TIM=null;
+  let n=0;
+  const round=()=>{
+    if(!AUTO) return;
+    n++;
+    // 되풀이마다 남↔여를 번갈아 들려준다 — 한 목소리만 들으면 그 소리에만 귀가 든다
+    const v = (n % 2 === 1) ? (S.voice||2) : ((S.voice||2)===1 ? 2 : 1);
+    playCur(()=>{                     // ① 낱말 → 예문 차례로 다 듣고
+      if(!AUTO) return;
+      if(n < (S.rep||3)){ TIM=setTimeout(round, S.repgap||5000); return; }  // ② 쉬었다 다시
+      const wait=()=>{
+        if(!AUTO) return;
+        if(!STROKE1){ TIM=setTimeout(wait,200); return; }  // ③ 획순 한 바퀴를 기다린다
+        TIM=setTimeout(()=>{ if(AUTO) go(1); }, S.spd);    // ④ 눈에 담을 참을 준다
+      };
+      wait();
+    }, v);
+  };
+  round();
+}
+function stopAuto(){ AUTO=false; clearTimeout(TIM); TIM=null; stopSeq();
+  const b=document.getElementById('btnPlay'); b.classList.remove('on'); b.textContent='▶ 자동'; }
+function toggleAuto(){
+  if(AUTO){ stopAuto(); toast('자동 넘김 정지'); return; }
+  AUTO=true; startAuto();
+  const b=document.getElementById('btnPlay'); b.classList.add('on'); b.textContent='❚❚ 정지';
+  toast(`자동 — 남녀 번갈아 ${S.rep||3}번, 사이 ${(S.repgap||5000)/1000}초`);
+}
+function pauseAutoBriefly(){ if(AUTO){ clearTimeout(TIM); TIM=null; } }   // 직접 넘기면 타이머만 끈다
+
+/* 예문 글씨를 '칸에 들어가는 가장 큰 크기'로 맞춘다.
+   비율로 어림잡으면 예문 수·문장 길이·화면 크기에 따라 매번 빗나가므로,
+   실제로 넣어 보고 넘치는지 재는 편이 정확하다 (이분법 12번 ≈ 0.05px 오차). */
+function sizeEx(){
+  const root=document.documentElement;
+  const pr=document.querySelector('#c1 .pane-r'), exs=pr&&pr.querySelector('.exs');
+  if(!pr||!exs||!exs.children.length) return;
+  const box=pr.getBoundingClientRect();
+  if(box.height<80||box.width<80){                // 아직 자리를 못 잡았다 — 한 틱 뒤 다시
+    if(SIZETRY++<20) requestAnimationFrame(sizeEx);
+    return;
+  }
+  SIZETRY=0;
+  const kids=[...exs.children];
+  const fits=v=>{
+    root.style.setProperty('--exz', v);
+    const b=pr.getBoundingClientRect();
+    const f=kids[0].getBoundingClientRect(), l=kids[kids.length-1].getBoundingClientRect();
+    if(f.top<b.top-0.5 || l.bottom>b.bottom+0.5) return false;   // 위아래로 삐져나왔나
+    for(const e of kids)
+      if(e.scrollWidth>e.clientWidth+1) return false;            // 가로로 잘리나
+    return true;
+  };
+  let lo=16, hi=400;
+  if(fits(hi)) return;
+  for(let i=0;i<14;i++){ const m=(lo+hi)/2; fits(m) ? lo=m : hi=m; }
+  root.style.setProperty('--exz', lo);
+}
+let SIZETRY=0;
+window.addEventListener('resize', sizeEx);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(sizeEx);
+
+/* ── 획순 (눈으로 익히도록 계속 되풀이) ── */
+let SW=null, SWTIMER=null, SWCHAR='', STROKE1=false;
+function stopStroke(){
+  if(SWTIMER){ clearTimeout(SWTIMER); SWTIMER=null; }
+  SW=null; SWCHAR='';
+}
+function paintStroke(w){
+  const box=document.getElementById('sw_1');
+  stopStroke();
+  STROKE1=false;
+  if(!box || !w){ STROKE1=true; return; }
+  if(typeof HanziWriter==='undefined'){ STROKE1=true; return; }
+  // 획순 자료는 한 글자 단위 — 여러 글자면 첫 한자를 보여 준다
+  const ch=[...String(w.chinese)].find(c=>c>='\u4e00'&&c<='\u9fff');
+  if(!ch){ box.style.visibility='hidden'; STROKE1=true; return; }
+  box.style.visibility='visible';
+  const size=Math.round(Math.min(240, Math.max(120, window.innerHeight*0.30)));
+  box.style.width=size+'px'; box.style.height=size+'px';
+  box.innerHTML='<div class="lb">획순 · 자동 반복</div>';
+  const holder=document.createElement('div');
+  holder.id='swc'; box.insertBefore(holder, box.firstChild);
+  try{
+    SWCHAR=ch;
+    SW=HanziWriter.create('swc', ch, {
+      width:size, height:size, padding:6, showOutline:true, showCharacter:false,
+      strokeAnimationSpeed:1, delayBetweenStrokes:150,
+      strokeColor:'#7c6dfa', outlineColor:'#d7d9e2', radicalColor:'#4fd1c5' });
+    const loop=()=>{
+      if(!SW || SWCHAR!==ch) return;
+      SW.animateCharacter({ onComplete:()=>{
+        STROKE1=true;                      // 한 번은 끝까지 썼다
+        if(!SW || SWCHAR!==ch) return;
+        SWTIMER=setTimeout(loop, 900);     // 다 쓰면 잠깐 보여 주고 다시
+      }});
+    };
+    loop();
+  }catch(e){ box.style.visibility='hidden'; STROKE1=true; }
+}
+window.addEventListener('resize', ()=>{ if(LIST[IDX]) paintStroke(LIST[IDX]); });
+
+/* ── 발음 · 별표 ── */
+let AU=null;
+let SEQ=null;                    // 차례 재생 중인 흐름 (카드를 넘기면 멈춘다)
+function stopSeq(){
+  if(SEQ){ clearTimeout(SEQ.t); SEQ.dead=true; SEQ=null; }
+  if(AU){ try{AU.pause();}catch(e){} }
+  document.querySelectorAll('.ex.on').forEach(x=>x.classList.remove('on'));
+}
+function sayWord(e, voice){                   // voice 1=남 2=여
+  if(e){ e.stopPropagation(); e.preventDefault(); }
+  const w=LIST[IDX]; if(!w) return;
+  stopSeq();                                  // 예문까지 읽던 차례는 멈추고 낱말만
+  const b=e && e.currentTarget;
+  if(b) b.classList.add('on');
+  const src = voice ? ((voice===1 ? w.audio1 : w.audio2) || w.audio1 || w.audio2 || '')
+                    : pickSrc(w.audio1, w.audio2);
+  playOne(src, w.chinese, null, ()=>{ if(b) b.classList.remove('on'); });
+}
+function pickSrc(a1,a2){ return (S.voice===1 ? a1 : a2) || a1 || a2 || ''; }
+
+// 한 소리를 끝까지 재생하고 다음으로 (약간의 갭을 둔다)
+function playOne(src, zh, el, done){
+  const go = ()=>{ if(el) el.classList.remove('on'); done && done(); };
+  if(el){ document.querySelectorAll('.ex.on').forEach(x=>x.classList.remove('on'));
+          el.classList.add('on');
+          el.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+  if(!src){ sayCn(zh); return setTimeout(go, 900); }
+  try{
+    if(AU){AU.pause();}
+    AU=new Audio('/'+String(src).replace(/^\/+/,''));
+    AU.onended=go; AU.onerror=()=>{ sayCn(zh); setTimeout(go, 900); };
+    AU.play().catch(()=>{ sayCn(zh); setTimeout(go, 900); });
+  }catch(e){ sayCn(zh); setTimeout(go, 900); }
+}
+
+function playCur(onEnd, voice){        // voice 를 주면 그 목소리로, 없으면 설정대로
+  const w=LIST[IDX]; if(!w){ if(onEnd) onEnd(); return; }
+  const pick=(a1,a2)=> voice ? ((voice===1 ? a1 : a2) || a1 || a2 || '') : pickSrc(a1,a2);
+  stopSeq();
+  const seq={dead:false, t:null}; SEQ=seq;
+  const GAP=S.exgap||2000;                         // 예문 사이 — 설정에서 0.5~10초
+  const exs = S.exsnd ? [...document.querySelectorAll('#c1 .ex')] : [];
+  const items=[{src:pick(w.audio1,w.audio2), zh:w.chinese, el:null}].concat(
+    exs.map(el=>({src:pick(el.dataset.a1, el.dataset.a2),
+                  zh:(el.querySelector('.z')||{}).textContent||'', el})));
+  let i=0;
+  const step=()=>{
+    if(seq.dead || i>=items.length){
+      if(SEQ===seq) SEQ=null;
+      if(!seq.dead && onEnd) onEnd();      // 낱말+예문을 다 들려준 뒤에 알린다
+      return; }
+    const it=items[i++];
+    playOne(it.src, it.zh, it.el, ()=>{
+      if(seq.dead) return;
+      seq.t=setTimeout(step, GAP);
+    });
+  };
+  step();
+}
+function flipEx(){ S.exsnd = S.exsnd ? 0 : 1; saveS(); paintExBtn(); }
+function setGap(v){ S.repgap=Math.max(3,Math.min(60,+v))*1000; saveS();
+  document.getElementById('fGapT').textContent=(S.repgap/1000)+'초'; }
+function setExGap(v){ S.exgap=Math.round(Math.max(0.5,Math.min(10,+v))*1000); saveS();
+  document.getElementById('fExGapT').textContent=(S.exgap/1000).toFixed(1)+'초'; }
+function flipRep(){ S.rep = (S.rep||3) % 5 + 1; saveS(); paintRepBtn();
+  toast(`한 낱말을 ${S.rep}번 읽고 넘어감`);
+  if(AUTO){ stopAuto(); AUTO=true; startAuto();
+    const b=document.getElementById('btnPlay'); b.classList.add('on'); b.textContent='❚❚ 정지'; } }
+function paintRepBtn(){ const b=document.getElementById('btnRep');
+  if(b) b.textContent = (S.rep||3) + '회'; }
+function paintExBtn(){
+  const b=document.getElementById('btnEx'); if(!b) return;
+  b.classList.toggle('on', !!S.exsnd);
+  b.textContent = S.exsnd ? '예문✓' : '예문';
+}
+// 예문을 누르면 그 예문만 읽어 준다 (카드 넘김·자동재생과 부딪히지 않게 한 곳에서 처리)
+document.addEventListener('click', e=>{
+  const el=e.target.closest('.ex'); if(!el) return;
+  e.stopPropagation();
+  stopSeq();                                   // 차례 재생 중이면 멈추고 이것만
+  const zh=(el.querySelector('.z')||{}).textContent||'';
+  if(e.target.closest('.wbtn')){               // ✍ 는 쓰기 공부
+    openWrite(zh, el.dataset.py||'', el.dataset.ko||'',
+              pickSrc(el.dataset.a1, el.dataset.a2));
+    return;
+  }
+  playOne(pickSrc(el.dataset.a1, el.dataset.a2), zh, el, null);
+}, true);
+
+/* ── 쓰기 공부 ──
+   예문을 한 글자씩 획순대로 써 보이고, 그 글자 소리를 함께 들려준다.
+   한 글자를 다 쓰기 전에는 다음으로 넘어가지 않는다(눈이 따라갈 참을 준다).
+   글자를 누르면 그 글자만 다시 쓴다. */
+let WM={chars:[], i:0, w:null, src:'', zh:'', quiz:false, tim:null};
+function openWrite(zh, py, ko, src){
+  stopSeq(); if(AUTO) stopAuto();              // 자동 넘김과 부딪히지 않게
+  WM={chars:[...String(zh)].filter(c=>c>='\u4e00'&&c<='\u9fff'),
+      i:0, w:null, src:src||'', zh:zh, quiz:false, tim:null, snd:1};
+  document.getElementById('wmZ').textContent=zh;
+  document.getElementById('wmP').textContent=py||'';
+  document.getElementById('wmK').textContent=ko||'';
+  document.getElementById('wmChars').innerHTML=
+    WM.chars.map((c,i)=>`<button class="wmch" onclick="wmGo(${i})">${esc(c)}</button>`).join('');
+  document.getElementById('wm').classList.add('on');
+  const sb=document.getElementById('wmS');
+  if(sb){ sb.textContent='소리 켬'; sb.classList.add('on'); }
+  if(WM.src) playOne(WM.src, zh, null, null);  // 먼저 예문을 통째로 들려준다
+  if(WM.chars.length) wmGo(0);
+}
+function closeWrite(){
+  if(WM.tim){ clearTimeout(WM.tim); WM.tim=null; }
+  try{ if(WM.w && WM.w.cancelQuiz) WM.w.cancelQuiz(); }catch(e){}
+  WM.w=null; try{ if(AU) AU.pause(); }catch(e){}   // 한 번도 안 틀었으면 AU 가 없다
+  try{ speechSynthesis.cancel(); }catch(e){}
+  document.getElementById('wm').classList.remove('on');
+}
+function wmPaintChars(){
+  [...document.getElementById('wmChars').children].forEach((b,k)=>{
+    b.classList.toggle('on', k===WM.i);
+    b.classList.toggle('done', k<WM.i);
+  });
+}
+function wmGo(i){
+  if(!WM.chars.length) return;
+  if(WM.tim){ clearTimeout(WM.tim); WM.tim=null; }
+  if(i>=WM.chars.length){                      // 다 썼으면 멈춘다 (끝없이 돌면 소리가 계속 난다)
+    document.getElementById('wmTip').textContent='다 썼습니다 ✓ — 글자를 누르면 그 글자만 다시 씁니다';
+    try{ speechSynthesis.cancel(); }catch(e){}
+    return;
+  }
+  WM.i=i; WM.quiz=false; wmPaintChars();
+  const q=document.getElementById('wmQ'); if(q) q.classList.remove('on');
+  const pad=document.getElementById('wmPad');
+  pad.innerHTML='<div id="wmW" style="position:absolute;inset:0"></div>';
+  const ch=WM.chars[i];
+  document.getElementById('wmTip').textContent=
+    `${i+1} / ${WM.chars.length} — ${ch} · 글자를 누르면 그 글자만 다시 씁니다`;
+  wmShowChar(ch);                              // 그 글자의 음과 뜻
+  if(WM.snd!==0) sayCn(ch);                    // 쓰기 전에 소리부터
+  if(typeof HanziWriter==='undefined') return;
+  const n=Math.max(140, Math.min(pad.clientWidth, pad.clientHeight));
+  try{
+    WM.w=HanziWriter.create('wmW', ch, {
+      width:n, height:n, padding:10, showOutline:true, showCharacter:false,
+      strokeAnimationSpeed:0.75, delayBetweenStrokes:260,
+      strokeColor:'#7c6dfa', outlineColor:'#d7d9e2', radicalColor:'#4fd1c5' });
+    WM.w.animateCharacter({ onComplete:()=>{
+      if(WM.quiz) return;
+      // 다 쓴 뒤 잠깐 보여 주고 다음 글자로 (아직은 이 글자를 눈에 담을 참)
+      WM.tim=setTimeout(()=>{ if(!WM.quiz && WM.i===i) wmGo(i+1); }, 1400);
+    }});
+  }catch(e){}
+}
+function wmQuiz(){                             // 손으로 따라 그려 보기
+  if(!WM.w) return;
+  WM.quiz=true;
+  if(WM.tim){ clearTimeout(WM.tim); WM.tim=null; }
+  document.getElementById('wmQ').classList.add('on');
+  document.getElementById('wmTip').textContent='획순대로 그려 보세요';
+  try{
+    WM.w.quiz({ onComplete:()=>{
+      document.getElementById('wmTip').textContent='잘 썼습니다 ✓';
+      if(WM.snd!==0) sayCn(WM.chars[WM.i]);
+    }});
+  }catch(e){}
+}
+const WMCH={};
+async function wmShowChar(ch){
+  document.getElementById('wmChZ').textContent=ch;
+  document.getElementById('wmChP').textContent='';
+  document.getElementById('wmChK').textContent='';
+  let d=WMCH[ch];
+  if(d===undefined){
+    try{ d=await api('/api/chinese/char/'+encodeURIComponent(ch)); }catch(e){ d=null; }
+    WMCH[ch]=d||null;
+  }
+  if(!d || WM.chars[WM.i]!==ch) return;        // 그새 다른 글자로 넘어갔으면 덮지 않는다
+  const w=d.word||{};
+  document.getElementById('wmChP').textContent=d.pinyin||w.pinyin||'';
+  document.getElementById('wmChK').textContent=d.meaning||w.meaning_ko||w.meaning_en||'';
+}
+function wmFlipSnd(){
+  WM.snd = (WM.snd===0) ? 1 : 0;
+  const b=document.getElementById('wmS');
+  b.textContent = WM.snd===0 ? '소리 끔' : '소리 켬';
+  b.classList.toggle('on', WM.snd!==0);
+  if(WM.snd===0){ try{ speechSynthesis.cancel(); if(AU) AU.pause(); }catch(e){} }
+}
+function wmSay(){ if(WM.src) playOne(WM.src, WM.zh, null, null); else sayCn(WM.zh); }
+
+function sayCn(t){                        // 브라우저 읽어주기로 대신 들려준다
+  try{ speechSynthesis.cancel();
+       const u=new SpeechSynthesisUtterance(t); u.lang='zh-CN'; u.rate=0.8;
+       speechSynthesis.speak(u); }catch(e){}
+}
+// 하단 발음 버튼에 현재 목소리를 표시한다 — 눌러서 바로 바꿀 수도 있다
+function paintVoiceBtn(){
+  const b=document.getElementById('btnVoice'); if(!b) return;
+  b.textContent = S.voice===1 ? '남' : '여';
+  b.title = (S.voice===1?'남성':'여성')+' 음성 — 눌러서 전환';
+}
+function flipVoice(){ S.voice = (S.voice===1?2:1); saveS(); paintFilt(); paintVoiceBtn();
+  toast((S.voice===1?'남성':'여성')+' 음성'); playCur(); }
+async function toggleStar(){
+  const w=LIST[IDX]; if(!w) return;
+  const on=!w.starred; w.starred=on?1:0;
+  document.getElementById('btnStar').classList.toggle('on',on);
+  document.getElementById('c1').classList.toggle('star',on);
+  await api('/api/words/star',{method:'POST',body:JSON.stringify({word_id:w.id,on:on?1:0})});
+}
+
+/* ── 바브바브 아바타 ── */
+const BAB=[[0,'lv1'],[50,'lv2'],[300,'lv3'],[1000,'lv4'],[2500,'lv5']];
+(async()=>{
+  const d=await api('/api/words/stats');
+  if(d){ let img='lv1'; for(const [n,f] of BAB) if((d.seen||0)>=n) img=f;
+         document.getElementById('babTop').src='/img/babbab/'+img+'.webp'; }
+})();
+
+function sizeDeck(){ /* 높이는 이제 flex 가 알아서 나눈다 — 예문 글씨만 다시 맞추면 된다 */
+  setTimeout(sizeEx, 0);
+}
+window.addEventListener('resize',sizeDeck);
+window.addEventListener('orientationchange',()=>setTimeout(sizeDeck,300));
+
+paintFilt(); paintVoiceBtn(); paintExBtn(); paintRepBtn(); loadRoad(); reload(S.off||0); setTimeout(sizeDeck,50);
+</script>
+<div class="wm" id="wm" onclick="if(event.target===this) closeWrite()">
+  <div class="wmbox">
+    <div class="wmhd">
+      <span class="z" id="wmZ"></span>
+      <span class="p" id="wmP"></span>
+      <span class="k" id="wmK"></span>
+      <button class="cbtn" style="margin-left:auto" onclick="closeWrite()">닫기</button>
+    </div>
+    <div class="wmstage">
+      <div class="wmpad" id="wmPad"></div>
+      <div class="wmnow">
+        <div class="c" id="wmChZ"></div>
+        <div class="p" id="wmChP"></div>
+        <div class="k" id="wmChK"></div>
+      </div>
+    </div>
+    <div class="wmchars" id="wmChars"></div>
+    <div class="wmctl">
+      <button class="cbtn" onclick="wmGo(WM.i)">다시 쓰기</button>
+      <button class="cbtn" id="wmQ" onclick="wmQuiz()">따라쓰기</button>
+      <button class="cbtn" onclick="wmSay()">발음</button>
+      <button class="cbtn" id="wmS" onclick="wmFlipSnd()">소리 켬</button>
+      <button class="cbtn" onclick="wmGo(WM.i+1)">다음 글자 ▶</button>
+    </div>
+    <div class="wmtip" id="wmTip">글자를 누르면 그 글자만 다시 씁니다</div>
+  </div>
+</div>
+</body>
+</html>

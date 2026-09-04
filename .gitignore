@@ -18,3 +18,12 @@ projects/
 frontend/test*.wav
 promo_video.html
 promo_tts_script.txt
+
+# ── 비밀·백업 (2026-09: .env.bak.* 가 걸러지지 않아 올라갈 뻔했다) ──
+.env*
+*.bak
+*.bak.*
+*.bak2.*
+database/voices.db*
+database/.admin_hash*
+database/*.DAMAGED.*
