@@ -3696,6 +3696,48 @@ async def speech_page():
     return FileResponse("frontend/speech.html", headers=_NOCACHE)
 
 
+# 녹음할 지문 — 교안에서 옮겨 왔다.
+# 과제 서식(pptx)에는 「1분 보이스 녹음」이라고만 되어 있고 읽을 글이 없어,
+# 교안의 딕션 훈련 문장(2주2교시 66쪽)과 감성 낭독 지문(2주3교시 80쪽)을 실어 둔다.
+# 80쪽은 그림이라 글자를 떠서(OCR) 옮겼다.
+SPEECH_SCRIPTS = [
+    {
+        "id": "diction1",
+        "title": "딕션 훈련 ①",
+        "from": "교안 2주 2교시 · 66쪽",
+        "hint": "천천히 또박또박부터. 입을 평소의 두 배로 벌려 과장해 읽어 보세요.",
+        "text": "정동진역 앞 정동진 순두부찌개집의 주방장은\n"
+                "찹쌀떡과 들깨칼국수의 황금 배합 특허를 취득했다.",
+    },
+    {
+        "id": "diction2",
+        "title": "딕션 훈련 ②",
+        "from": "교안 2주 2교시 · 66쪽",
+        "hint": "치조음(ㄴ·ㄷ·ㅅ)에서 혀끝이 윗잇몸에 닿는지 살펴 가며 읽으세요.",
+        "text": "서울특별시 특허허가과 허가과장의\n"
+                "특허 허가 고시문 양식은 매우 정교하게 조율되어 있다.",
+    },
+    {
+        "id": "reading",
+        "title": "감성 낭독 — 폴 발레리 「해변의 묘지」",
+        "from": "교안 2주 3교시 · 80쪽",
+        "hint": "장면을 머릿속에 그리며(마인드 컬러링), 핵심어 앞뒤에 멈춤을 두어 읽으세요.",
+        "text": "바람이 분다!… 살아야겠다!\n"
+                "드넓은 대기가 내 책을 열었다 닫고,\n"
+                "물보라가 된 파도가 바위에서 솟쳐 오른다!\n"
+                "날아올라라, 눈부신 책장들이여!\n"
+                "부수어라, 파도여! 환희의 물결로 부수어라,\n"
+                "삼각돛들이 쪼아대던 저 고요한 지붕을!",
+    },
+]
+
+
+@app.get("/api/speech/scripts")
+async def speech_scripts(user: dict = Depends(get_current_user)):
+    """녹음할 지문 목록"""
+    return {"scripts": SPEECH_SCRIPTS}
+
+
 @app.get("/api/speech/state")
 async def speech_state(user: dict = Depends(get_current_user)):
     c = _speech_db()
@@ -3780,6 +3822,29 @@ async def speech_answers(payload: dict, user: dict = Depends(get_current_user)):
     finally:
         c.close()
     return {"ok": True}
+
+
+@app.get("/api/words/audio")
+async def words_audio(w: str = "", voice: int = 2, user: dict = Depends(get_current_user)):
+    """이미 만들어 둔 낱말 음성을 그대로 내어 준다.
+    이게 없으면 화면이 누를 때마다 XTTS 로 새로 합성해 몇 초씩 기다리게 된다."""
+    w = (w or "").strip()
+    if not w:
+        raise HTTPException(400, "낱말이 없습니다")
+    c = _wdb()
+    try:
+        r = c.execute("""SELECT audio1,audio2 FROM words
+                         WHERE chinese=? AND COALESCE(excluded,0)=0 LIMIT 1""", (w,)).fetchone()
+    finally:
+        c.close()
+    if not r:
+        raise HTTPException(404, "그 낱말이 없습니다")
+    order = ("audio1", "audio2") if voice == 1 else ("audio2", "audio1")
+    for col in order:
+        p = r[col]
+        if p and os.path.exists(p):
+            return FileResponse(p, headers={"Cache-Control": "public, max-age=604800"})
+    raise HTTPException(404, "음성이 없습니다")
 
 
 @app.get("/api/words/deck")
@@ -5328,10 +5393,21 @@ async def list_subjects(request: Request):
 
 @app.get("/api/chinese/cards-by-week")
 async def cards_by_week(request: Request, subject: str = "", week: int = 0):
-    """과목/주차별 카드 조회"""
+    """과목/주차별 카드 조회.
+    선택지만 남아 문제 꼴을 잃은 카드는 숨긴다(hidden=1) — 그 문제는 /api/chinese/reading 이 낸다."""
     user_id = request.state.user_id
     cards = await get_chinese_cards(user_id, subject=subject or None,
                                      week=week if week > 0 else None)
+    c = _wdb()
+    try:
+        hid = {r["id"] for r in c.execute(
+            "SELECT id FROM chinese_cards WHERE COALESCE(hidden,0)=1")}
+    except Exception:
+        hid = set()
+    finally:
+        c.close()
+    if hid:
+        cards = [x for x in cards if x.get("id") not in hid]
     return {"cards": cards}
 
 
@@ -5366,7 +5442,8 @@ async def writing_puzzles(request: Request, subject: str = "", week: int = 0, cl
         if week:    cond.append("week=?");    args.append(week)
         if class_num: cond.append("class_num=?"); args.append(class_num)
         where = (" WHERE " + " AND ".join(cond)) if cond else ""
-        rows = c.execute(f"""SELECT id,week,class_num,level,answer,tokens,meaning_ko
+        rows = c.execute(f"""SELECT id,week,class_num,level,answer,tokens,meaning_ko,
+                                    COALESCE(kind,'word') kind
                              FROM writing_puzzles{where}
                              ORDER BY week,class_num,sort_order""", args).fetchall()
     except Exception:
@@ -5386,8 +5463,49 @@ async def writing_puzzles(request: Request, subject: str = "", week: int = 0, cl
             if sh != toks: break
         out.append({"id": r["id"], "week": r["week"], "cls": r["class_num"],
                     "level": r["level"], "answer": r["answer"],
+                    # word=낱말을 늘어놓아 한 문장 만들기 / order=세 도막을 차례대로 놓기
+                    "kind": r["kind"],
                     "tokens": sh, "order": toks, "ko": r["meaning_ko"] or ""})
     return {"puzzles": out}
+
+
+@app.get("/api/chinese/reading")
+async def reading_items(request: Request, subject: str = "", week: int = 0, class_num: int = 0):
+    """독해 2부분 — 지문과 선택지가 교안에서 다른 쪽에 실려 카드로는 흩어져 있었다.
+    교안에서 통째로 뽑아 문제 꼴로 되돌린 것. ⚠️ 교안에 정답이 없어 정답은 담지 않는다."""
+    c = _wdb()
+    try:
+        cond, args = [], []
+        if subject: cond.append("subject=?"); args.append(subject)
+        if week:    cond.append("week=?");    args.append(week)
+        if class_num: cond.append("class_num=?"); args.append(class_num)
+        where = (" WHERE " + " AND ".join(cond)) if cond else ""
+        rows = c.execute(f"""SELECT id,week,class_num,page,no,passage,options,
+                                    meaning_ko,options_ko,passage_py,options_py
+                             FROM reading_items{where} ORDER BY week,class_num,page""", args).fetchall()
+    except Exception:
+        return {"items": []}
+    finally:
+        c.close()
+    out = []
+    for r in rows:
+        try:
+            op = json.loads(r["options"])
+        except Exception:
+            continue
+        try:
+            opk = json.loads(r["options_ko"]) if r["options_ko"] else []
+        except Exception:
+            opk = []
+        try:
+            opp = json.loads(r["options_py"]) if r["options_py"] else []
+        except Exception:
+            opp = []
+        out.append({"id": r["id"], "week": r["week"], "cls": r["class_num"],
+                    "no": r["no"], "passage": r["passage"], "options": op,
+                    "ko": r["meaning_ko"] or "", "options_ko": opk,
+                    "py": r["passage_py"] or "", "options_py": opp})
+    return {"items": out}
 
 
 # ─── 교안 뷰어 API ──────────────────────────────────────
@@ -5422,6 +5540,61 @@ async def textbook_pages(subject: str, week: int, class_num: int = 0):
         "total_pages": len(target_pages),
         "sections": [{"class_num": s["class_num"], "title": s.get("title", "")} for s in matched],
     }
+
+
+_TB_TEXT: dict = {}
+
+
+def _tb_pages_text(pdf: str) -> list:
+    """교안 쪽마다의 글. 한 번 떠 두고 담아 둔다 (169쪽에 1초 남짓)."""
+    if pdf in _TB_TEXT:
+        return _TB_TEXT[pdf]
+    import subprocess
+    try:
+        n = int(subprocess.run(["pdfinfo", pdf], capture_output=True, text=True)
+                .stdout.split("Pages:")[1].split()[0])
+    except Exception:
+        _TB_TEXT[pdf] = []
+        return []
+    out = []
+    for p in range(1, n + 1):
+        try:
+            t = subprocess.run(["pdftotext", "-layout", "-f", str(p), "-l", str(p), pdf, "-"],
+                               capture_output=True, text=True).stdout
+        except Exception:
+            t = ""
+        out.append(t)
+    _TB_TEXT[pdf] = out
+    return out
+
+
+@app.get("/api/chinese/textbook/search")
+async def textbook_search(subject: str, q: str = "", week: int = 0):
+    """교안 글 찾기 — 찾은 쪽이 몇 주 몇 교시 몇 쪽째인지 함께 준다."""
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"hits": []}
+    sections = _load_sections()
+    secs = [s for s in sections if s["subject"] == subject and (not week or s["week"] == week)]
+    if not secs:
+        return {"hits": []}
+    hits = []
+    for sec in secs:
+        pages = _tb_pages_text(sec["pdf"])
+        for i in range(sec["start_page"], sec["end_page"] + 1):
+            if i >= len(pages):
+                break
+            t = pages[i]
+            k = t.find(q)
+            if k < 0:
+                continue
+            snip = " ".join(t[max(0, k - 40):k + len(q) + 60].split())
+            hits.append({"week": sec["week"], "cls": sec["class_num"],
+                         "page_idx": i - sec["start_page"], "page": i + 1,
+                         "title": sec.get("title", ""), "snippet": snip})
+            if len(hits) >= 60:
+                return {"hits": hits}
+    return {"hits": hits}
 
 
 @app.get("/api/chinese/textbook/image")

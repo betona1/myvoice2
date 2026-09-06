@@ -453,6 +453,49 @@
            border-radius:5px;padding:0.05rem 0.35rem;}
     .wq-ko{font-size:0.9rem;color:var(--muted);flex:1 1 100%;line-height:1.4;}
     /* 답을 놓는 자리 */
+    /* 순서 맞추기는 도막이 길다 — 위아래로 쌓아 앞뒤 차례가 눈에 들어오게 */
+    /* 독해 2부분 — 지문을 먼저 읽고 선택지를 고른다 */
+    .wq.rd{border-left:3px solid var(--accent2);}
+    .rd-p{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+      padding:0.7rem 0.8rem;font-family:var(--font-cn);font-size:1.05rem;line-height:1.9;
+      margin-bottom:0.6rem;}
+    .rd-o{display:flex;flex-direction:column;gap:0.35rem;}
+    .rd-i{text-align:left;border:1px solid var(--border);background:var(--surface);
+      color:var(--text);border-radius:10px;padding:0.5rem 0.7rem;cursor:pointer;
+      font-family:var(--font-cn);font-size:1rem;line-height:1.5;}
+    .rd-i:hover{border-color:var(--accent);}
+    .rd-i.on{border-color:var(--accent);background:rgba(124,109,250,0.16);}
+    .rd-i b{color:var(--accent2);margin-right:0.35rem;font-family:inherit;}
+    .rd-note{font-size:0.78rem;color:var(--muted2);}
+    .rd-btns{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.6rem;}
+
+    /* 해석·외우기 모달 — 지문과 A~D 를 하나씩 짚어 가며 달달 외운다 */
+    #readModal{position:fixed;inset:0;z-index:10001;display:none;
+      background:rgba(0,0,0,0.66);align-items:center;justify-content:center;padding:1rem;}
+    #readModal.active{display:flex;}
+    .rm-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+      padding:1rem 1.1rem;width:min(96vw,900px);max-height:93vh;overflow:auto;position:relative;
+      --rz:1.4;}
+    .rm-x{position:absolute;top:0.5rem;right:0.7rem;background:none;border:none;
+      color:var(--muted);font-size:1.2rem;cursor:pointer;}
+    .rm-bar{display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.7rem;}
+    .rm-tab{border:1px solid var(--border);background:var(--surface2);color:var(--muted);
+      border-radius:9px;padding:0.32rem 0.7rem;font-size:0.86rem;font-weight:800;cursor:pointer;}
+    .rm-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .rm-bar .sp{margin-left:auto;}
+    .rm-bar button.act{border:1px solid var(--border);background:var(--surface2);color:var(--text);
+      border-radius:9px;padding:0.32rem 0.65rem;font-size:0.82rem;font-weight:700;cursor:pointer;}
+    .rm-bar button.act.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .rm-bar input[type=range]{width:6.5rem;accent-color:var(--accent);}
+    .rm-bar .lb{font-size:0.78rem;color:var(--muted2);}
+    .rm-cn{font-size:calc(1.05rem * var(--rz));line-height:2.5;margin-bottom:0.7rem;}
+    .rm-ko{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+      padding:0.7rem 0.85rem;font-size:calc(0.95rem * var(--rz));line-height:1.7;color:var(--text);}
+    .rm-ko.hide{filter:blur(6px);cursor:pointer;}
+    .rm-hint{font-size:0.76rem;color:var(--muted2);margin-top:0.5rem;}
+    .wq-slot.ord{flex-direction:column;align-items:stretch;}
+    .wq-slot.ord .wq-t{width:100%;text-align:left;}
+    .wq-t.long{display:block;width:100%;margin-bottom:0.3rem;text-align:left;line-height:1.5;}
     .wq-slot{display:flex;flex-wrap:wrap;gap:0.4rem;min-height:3.2rem;align-items:center;
              border:2px dashed var(--border);border-radius:11px;padding:0.5rem;
              background:var(--surface);transition:border-color .15s,background .15s;}
@@ -465,6 +508,7 @@
              padding:0.45rem;border-radius:11px;background:var(--surface2);}
     .wq-bank.over{outline:2px dashed var(--accent);outline-offset:-3px;}
     .wq-t{font-family:var(--font-cn);font-size:1.35rem;font-weight:700;line-height:1.2;
+          user-select:none;-webkit-user-select:none;touch-action:none;
           background:var(--bg2);border:1px solid var(--border);border-radius:9px;
           padding:0.35rem 0.6rem;cursor:grab;user-select:none;touch-action:none;color:var(--text);}
     .wq-t:active{cursor:grabbing;}
@@ -2902,6 +2946,119 @@ document.addEventListener('click', e => {
 }, true);
 window.addEventListener('scroll', hideRbTip, true);
 
+/* ── 독해 해석·외우기 모달 ──
+   지문과 A~D 를 하나씩 짚어 가며 외운다. 한자에는 루비 병음이 붙고,
+   낱말을 누르면 그대로 단어 학습 모달로 이어진다(buildRuby 를 그대로 쓴다).
+   해석은 가려 두었다가 눌러서 확인할 수 있다 — 먼저 떠올려 보게 하려는 것이다. */
+let _rmItem = null, _rmIdx = 0, _rmAuto = null, _rmGap = 4, _rmHide = false;
+function openRead(i){
+  _rmItem = _rdList[i]; _rmIdx = 0;
+  _rmGap = parseFloat(localStorage.getItem('cn_rmgap') || '4');
+  _rmHide = localStorage.getItem('cn_rmhide') === '1';
+  let ov = document.getElementById('readModal');
+  if (!ov){
+    ov = document.createElement('div'); ov.id = 'readModal';
+    ov.innerHTML = '<div class="rm-box">' +
+      '<button class="rm-x" onclick="closeRead()">✕</button>' +
+      '<div class="rm-bar" id="rmBar"></div>' +
+      '<div class="rm-cn" id="rmCn"></div>' +
+      '<div class="rm-ko" id="rmKo" onclick="this.classList.remove(\'hide\')"></div>' +
+      '<div class="rm-hint">한자 낱말을 누르면 그 낱말을 자세히 볼 수 있습니다 · ← → 로 넘기기</div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', ev => { if (ev.target === ov) closeRead(); });
+  }
+  ov.classList.add('active');
+  paintRead();
+}
+function closeRead(){
+  rmAutoStop();
+  const ov = document.getElementById('readModal');
+  if (ov) ov.classList.remove('active');
+}
+/* 본문과 같은 낱말 묶음을 쓰려면 낱말 지도가 필요하다.
+   색인(_wordIndex)에서 그 글에 나오는 낱말만 추려 넘긴다. */
+function _wordMapFor(text){
+  const map = {};
+  const chars = Array.from(text || '').filter(_isHan);
+  for (const c of chars){
+    for (const w of (_wordIndex[c] || [])){
+      if (w[0] && w[0].length >= 2 && text.includes(w[0])) map[w[0]] = w;
+    }
+  }
+  return map;
+}
+function rmParts(){
+  const it = _rmItem;
+  if (!it) return [];
+  const out = [{ t: '지문', cn: it.passage, py: it.py || '', ko: it.ko || '' }];
+  (it.options || []).forEach((o, j) => out.push({
+    t: 'ABCD'[j], cn: o, py: (it.options_py || [])[j] || '', ko: (it.options_ko || [])[j] || '' }));
+  return out;
+}
+function rmGo(d){
+  const n = rmParts().length;
+  _rmIdx = (_rmIdx + d + n) % n;
+  paintRead();
+}
+function rmGapSet(v){ _rmGap = +v; localStorage.setItem('cn_rmgap', _rmGap); paintRead(); }
+function rmFlipHide(){
+  _rmHide = !_rmHide; localStorage.setItem('cn_rmhide', _rmHide ? '1' : '0'); paintRead();
+}
+function rmAutoStop(){ if (_rmAuto) clearTimeout(_rmAuto); _rmAuto = null;
+  const b = document.getElementById('rmAutoB'); if (b){ b.textContent = '▶ 자동'; b.classList.remove('on'); } }
+function rmAuto(){
+  if (_rmAuto){ rmAutoStop(); return; }
+  const step = () => { rmGo(1); rmSay(); _rmAuto = setTimeout(step, Math.max(1500, _rmGap*1000)); };
+  rmSay();
+  _rmAuto = setTimeout(step, Math.max(1500, _rmGap*1000));
+  const b = document.getElementById('rmAutoB'); if (b){ b.textContent = '■ 멈춤'; b.classList.add('on'); }
+}
+function rmSay(){
+  const p = rmParts()[_rmIdx];
+  if (!p) return;
+  fetch(`${API}/api/chinese/tts-test`, { method:'POST',
+    headers:{...authHeaders(),'Content-Type':'application/json'},
+    body: JSON.stringify({ text: p.cn, voice_id: (document.getElementById('voiceSelect')||{}).value || '8' }) })
+    .then(r => r.ok ? r.blob() : Promise.reject())
+    .then(b => { const a = new Audio(URL.createObjectURL(b)); a.playbackRate = playbackSpeed; a.play(); })
+    .catch(() => {});
+}
+function rmZoom(d){
+  const box = document.querySelector('#readModal .rm-box');
+  if (!box) return;
+  const cur = parseFloat(getComputedStyle(box).getPropertyValue('--rz')) || 1.4;
+  box.style.setProperty('--rz', Math.max(0.9, Math.min(2.6, +(cur + d*0.15).toFixed(2))));
+}
+function paintRead(){
+  const parts = rmParts(), p = parts[_rmIdx];
+  if (!p) return;
+  document.getElementById('rmBar').innerHTML =
+    parts.map((x, j) => '<button class="rm-tab' + (j===_rmIdx ? ' on' : '') + '" ' +
+      'onclick="_rmIdx=' + j + ';paintRead()">' + _esc(x.t) + '</button>').join('') +
+    '<span class="sp"></span>' +
+    '<button class="act" onclick="rmZoom(-1)">A−</button>' +
+    '<button class="act" onclick="rmZoom(1)">A+</button>' +
+    '<button class="act" onclick="rmSay()">🔊</button>' +
+    '<button class="act' + (_rmHide ? ' on' : '') + '" onclick="rmFlipHide()">해석 가리기</button>' +
+    '<button class="act" id="rmAutoB" onclick="rmAuto()">' + (_rmAuto ? '■ 멈춤' : '▶ 자동') + '</button>' +
+    '<span class="lb">사이</span>' +
+    '<input type="range" min="2" max="15" step="1" value="' + _rmGap + '" oninput="rmGapSet(this.value)">' +
+    '<span class="lb">' + _rmGap + '초</span>';
+  // 루비 병음 + 낱말 누르기는 본문과 같은 짜임을 그대로 쓴다
+  document.getElementById('rmCn').innerHTML = buildRuby(p.cn, p.py, _wordMapFor(p.cn), 0);
+  const ko = document.getElementById('rmKo');
+  ko.textContent = p.ko || '(해석 없음)';
+  ko.classList.toggle('hide', _rmHide && !!p.ko);
+}
+document.addEventListener('keydown', e => {
+  const ov = document.getElementById('readModal');
+  if (!ov || !ov.classList.contains('active')) return;
+  if (e.key === 'ArrowLeft'){ e.preventDefault(); rmGo(-1); }
+  if (e.key === 'ArrowRight'){ e.preventDefault(); rmGo(1); }
+  if (e.key === 'Escape') closeRead();
+});
+
 // ── 단어 모달: 뜻 + 획순/쓰기 연습 ──
 let _wmWriters = [];
 
@@ -3245,14 +3402,27 @@ function wmAutoStep(){
   WAUTO.timer = setTimeout(wmAutoStep, Math.max(1000, WGAP * 1000));
 }
 
+/* 발음 —  먼저 이미 만들어 둔 낱말 음성을 찾는다.
+   전에는 누를 때마다 XTTS 로 새로 합성해 몇 초씩 기다려야 했다(材料 처럼 흔한 낱말도).
+   담아 둔 것이 없을 때만 합성한다. */
+const _WAUD = {};                              // 한 번 받은 것은 담아 둔다
 function wmSpeak(){
   const t = document.getElementById('wmHan').textContent;
   if (!t) return;
-  fetch(`${API}/api/chinese/tts-test`, { method:'POST', headers:{...authHeaders(),'Content-Type':'application/json'},
-    body: JSON.stringify({ text: t, voice_id: (document.getElementById('voiceSelect')||{}).value || '8' }) })
+  const play = url => { const a = new Audio(url); a.playbackRate = playbackSpeed; a.play(); };
+  if (_WAUD[t]) return play(_WAUD[t]);
+  const v = (document.getElementById('voiceSelect')||{}).value === '1' ? 1 : 2;
+  fetch(`${API}/api/words/audio?w=${encodeURIComponent(t)}&voice=${v}`, { headers: authHeaders() })
     .then(r => r.ok ? r.blob() : Promise.reject())
-    .then(b => { const a = new Audio(URL.createObjectURL(b)); a.playbackRate = playbackSpeed; a.play(); })
-    .catch(() => showToast('발음 생성 실패', 'error'));
+    .then(b => { const u = URL.createObjectURL(b); _WAUD[t] = u; play(u); })
+    .catch(() => {                             // 담아 둔 것이 없으면 그때 합성한다
+      fetch(`${API}/api/chinese/tts-test`, { method:'POST',
+        headers:{...authHeaders(),'Content-Type':'application/json'},
+        body: JSON.stringify({ text: t, voice_id: (document.getElementById('voiceSelect')||{}).value || '8' }) })
+        .then(r => r.ok ? r.blob() : Promise.reject())
+        .then(b => { const u = URL.createObjectURL(b); _WAUD[t] = u; play(u); })
+        .catch(() => showToast('발음 생성 실패', 'error'));
+    });
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeWordModal(); hideRbTip(); return; }
@@ -3355,6 +3525,38 @@ function playProf(btn){
 // ── 쓰기 1부분: 제시어를 끌어다 순서 맞추기 ──
 // 마우스·손가락 모두 같은 길로 처리한다 (HTML5 드래그는 폰에서 안 먹는다)
 let _wqList = [];
+let _rdList = [];          // 독해 2부분 — 지문 + 선택지
+
+/* 교안이 지문과 선택지를 다른 쪽에 나눠 실어 카드로는 서로 떨어져 있었다.
+   교안에서 통째로 뽑아 문제 꼴로 되돌린 것을 여기서 받아 온다.
+   ⚠️ 교안에 정답이 적혀 있지 않아 정답 표시는 없다. */
+async function loadReading(subject, week, cls){
+  _rdList = [];
+  try{
+    const q = `subject=${encodeURIComponent(subject||'')}&week=${week||0}&class_num=${cls||0}`;
+    const r = await fetch(`${API}/api/chinese/reading?${q}`, { headers: authHeaders() });
+    if (r.ok) _rdList = (await r.json()).items || [];
+  }catch(e){ _rdList = []; }
+  return _rdList;
+}
+function readingHtml(){
+  if (!_rdList.length) return '';
+  return '<div class="wq-wrap">' + _rdList.map((x, i) =>
+    '<div class="wq rd">' +
+      '<div class="wq-h">' +
+        '<span class="wq-n">' + _esc(x.no || (i+1)) + '번</span>' +
+        '<span class="wq-lv">독해 2부분 · 맞는 답 고르기</span>' +
+      '</div>' +
+      '<div class="rd-p">' + _esc(x.passage) + '</div>' +
+      '<div class="rd-o">' + x.options.map((t, j) =>
+        '<button class="rd-i" onclick="this.classList.toggle(\'on\')">' +
+        '<b>' + 'ABCD'[j] + '</b> ' + _esc(t) + '</button>').join('') + '</div>' +
+      '<div class="rd-btns">' +
+        '<button class="wq-b anim" onclick="openRead(' + i + ')">📖 해석 · 외우기</button>' +
+        '<span class="rd-note">교안에 정답이 없어 채점은 없습니다 — 골라 보고 지문과 견주어 보세요</span>' +
+      '</div>' +
+    '</div>').join('') + '</div>';
+}
 
 async function loadWriting(subject, week, cls){
   _wqList = [];
@@ -3372,15 +3574,19 @@ function writingHtml(){
     '<div class="wq" id="wq' + i + '" data-i="' + i + '">' +
       '<div class="wq-h">' +
         '<span class="wq-n">' + (i+1) + '번</span>' +
-        '<span class="wq-lv">HSK' + p.level + ' 쓰기 1부분</span>' +
+        '<span class="wq-lv">' + (p.kind === 'order'
+            ? 'HSK' + p.level + ' 독해 2부분 · 순서 맞추기'
+            : 'HSK' + p.level + ' 쓰기 1부분') + '</span>' +
         '<span class="wq-ko">' + _esc(p.ko || '') + '</span>' +
       '</div>' +
-      '<div class="wq-slot" id="wqs' + i + '" data-i="' + i + '">' +
-        '<span class="ph">아래 제시어를 여기로 끌어다 놓으세요</span></div>' +
+      '<div class="wq-slot' + (p.kind === 'order' ? ' ord' : '') + '" id="wqs' + i + '" data-i="' + i + '">' +
+        '<span class="ph">' + (p.kind === 'order'
+            ? '아래 도막을 앞뒤 차례에 맞게 끌어다 놓으세요'
+            : '아래 제시어를 여기로 끌어다 놓으세요') + '</span></div>' +
       '<div class="wq-bank" id="wqb' + i + '" data-i="' + i + '">' +
         p.tokens.map((t, j) =>
-          '<span class="wq-t" draggable="true" data-i="' + i + '" data-t="' + _esc(t) + '">' +
-          _esc(t) + '</span>').join('') +
+          '<span class="wq-t' + (p.kind === 'order' ? ' long' : '') + '" ' +
+          'data-i="' + i + '" data-t="' + _esc(t) + '">' + _esc(t) + '</span>').join('') +
       '</div>' +
       '<div class="wq-btns">' +
         '<button class="wq-b" onclick="wqCheck(' + i + ')">채점</button>' +
@@ -3474,12 +3680,29 @@ function playText(t){
     }
     return null;
   }
+  /* 끌기 뒷정리. pointerup 에서만 지우면 화면에 그림자가 남는다 —
+     브라우저가 제 드래그를 가로채거나(dragstart) 창을 벗어나면 그 이벤트가 안 온다. */
+  function dragEnd(){
+    document.querySelectorAll('.wq-t.fly').forEach(n => n.remove());   // 흘린 것까지 쓸어 낸다
+    ghost = null;
+    document.querySelectorAll('.wq-t.drag').forEach(n => n.classList.remove('drag'));
+    zones().forEach(z => z.classList.remove('over'));
+    el = null; moved = false;
+  }
   document.addEventListener('pointerdown', e => {
     const t = e.target.closest('.wq-t');
     if (!t) return;
+    dragEnd();                       // 앞의 끌기가 덜 끝났으면 여기서 마무리
     el = t; sx = e.clientX; sy = e.clientY; moved = false;
     el.setPointerCapture && el.setPointerCapture(e.pointerId);
   });
+  // 우리는 pointer 로 끌므로 브라우저 기본 드래그는 막는다 (이게 pointerup 을 삼킨다)
+  document.addEventListener('dragstart', e => {
+    if (e.target.closest && e.target.closest('.wq-t')) e.preventDefault();
+  });
+  document.addEventListener('pointercancel', dragEnd);
+  window.addEventListener('blur', dragEnd);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) dragEnd(); });
   document.addEventListener('pointermove', e => {
     if (!el) return;
     if (!moved && Math.abs(e.clientX-sx) + Math.abs(e.clientY-sy) < 6) return;
@@ -3509,17 +3732,14 @@ function playText(t){
         const ref = insertAt(z, e.clientX, e.clientY);
         z.insertBefore(cur, ref);
       }
-      ghost && ghost.remove(); ghost = null;
-      cur.classList.remove('drag');
-      zones().forEach(z => z.classList.remove('over'));
     } else {
       // 그냥 누르면 보관함↔답 자리로 오간다 (손가락으로 빠르게 풀 때)
       const bank = document.getElementById('wqb' + i), slot = document.getElementById('wqs' + i);
       (cur.parentElement === slot ? bank : slot).appendChild(cur);
       wqClear(i);
     }
+    dragEnd();
     wqPlaceholder(i);
-    el = null; moved = false;
   });
 })();
 
@@ -3582,7 +3802,8 @@ function renderCardFeed() {
       (GICON[g] || '') + ' ' + g + '<span class="n">' + gCnt[g] + '</span></button>').join('') +
     '</div>';
   // 쓰기 문제는 카드가 아니라 따로 그린다 (전체 볼 때는 맨 위에)
-  const wqBlock = (_gFilter === '' || _gFilter === '쓰기') ? writingHtml() : '';
+  const wqBlock = (_gFilter === '' || _gFilter === '쓰기')
+        ? (readingHtml() + writingHtml()) : '';
   // 특정 문장에 붙지 않은 교시 전체 음성
   const unitAudio = profUnit().length
     ? '<div class="prof-row">' + profUnit().map(profBtn).join('') + '</div>' : '';
@@ -4652,6 +4873,7 @@ async function selectWeek(subject, week, classNum, btnEl) {
     // 교시 필터
     cards = (data.cards || []).filter(c => classNum === 0 || (c.class_num || 0) === classNum);
     await loadWriting(subject, week, currentClassNum);   // 어순 배열 문제(HSK 쓰기 1부분)
+    await loadReading(subject, week, currentClassNum);   // 독해 2부분(지문+선택지)
     await loadProfAudio(subject, week, currentClassNum); // 교수님이 읽어 주신 본문 음성
     renderCardList();
     renderCardFeed();   // 메인 피드도 그려야 함 (없으면 cardFeed가 display:none인 채로 남아 본문이 안 뜸)

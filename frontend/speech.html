@@ -14,20 +14,23 @@ body.light{--bg:#f7f8fa;--bg2:#fff;--surface:#f0f1f5;--surface2:#e6e8ef;--border
 html{font-size:calc(16px * var(--ui));}
 body{margin:0;background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
-.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:0.4rem;
-  padding:0.5rem 0.7rem;background:var(--bg2);border-bottom:1px solid var(--border);}
-.top h1{font-size:0.95rem;margin:0;font-weight:800;flex:1;line-height:1.3;}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:0.35rem;
+  padding:0.3rem 0.6rem;background:var(--bg2);border-bottom:1px solid var(--border);}
+.top h1{font-size:0.82rem;margin:0;font-weight:800;flex:1;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
-  border-radius:9px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;}
+  border-radius:8px;padding:0.22rem 0.45rem;font-size:0.72rem;cursor:pointer;}
 .tbtn:hover{border-color:var(--accent);}
-.tabs{display:flex;gap:0.3rem;padding:0.5rem 0.7rem;background:var(--bg2);
-  border-bottom:1px solid var(--border);position:sticky;top:2.7rem;z-index:19;}
+.tabs{display:flex;gap:0.25rem;padding:0.25rem 0.6rem;background:var(--bg2);
+  border-bottom:1px solid var(--border);position:sticky;top:1.9rem;z-index:19;}
 .tabs button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);
-  border-radius:11px;padding:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;}
+  border-radius:9px;padding:0.25rem;font-size:0.78rem;font-weight:700;cursor:pointer;}
 .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-.wrap{max-width:min(97vw, calc(900px * var(--ui)));margin:0 auto;padding:0.8rem;}
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
-  padding:0.9rem;margin-bottom:0.8rem;}
+.wrap{max-width:min(98vw, calc(900px * var(--ui)));margin:0 auto;padding:0.4rem;}
+/* 교안은 글씨 배율을 따라 커지면 오히려 좁아진다 — 쪽이 화면을 꽉 채우게 둔다 */
+#v0 .wrap-full{max-width:none;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:0.6rem;margin-bottom:0.6rem;}
 h2{font-size:0.95rem;margin:0 0 0.5rem;color:var(--accent2);font-weight:800;}
 h2 small{color:var(--muted2);font-weight:600;font-size:0.78rem;margin-left:0.3rem;}
 .row{display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;}
@@ -41,12 +44,44 @@ textarea{width:100%;min-height:4.5rem;resize:vertical;line-height:1.5;}
 .btn.rec{background:var(--danger);border-color:var(--danger);color:#fff;}
 .btn:disabled{opacity:0.45;cursor:default;}
 
-/* 교안 */
-.pg{display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem;}
-.pgbar{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+/* 교안 — 한 화면에 쪽이 다 들어오게 */
+.tbbar{gap:0.3rem;margin-bottom:0.3rem;}
+.tbbar select,.tbbar input{font-size:0.78rem;padding:0.25rem 0.4rem;}
+.tbbar input[type=search]{flex:1 1 8rem;min-width:6rem;}
+.tbbar .btn{padding:0.28rem 0.55rem;font-size:0.8rem;}
+.tbbar .pgt{font-size:0.78rem;color:var(--muted);white-space:nowrap;}
+.pgbar{height:4px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:0.35rem;}
 .pgbar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;}
-#tbimg{width:100%;border-radius:12px;background:#fff;display:block;min-height:12rem;}
-.nav{display:flex;gap:0.4rem;justify-content:center;margin-top:0.6rem;}
+.tbstage{display:flex;align-items:center;justify-content:center;background:#fff;
+  border-radius:10px;overflow:hidden;}
+#tbimg{max-width:100%;max-height:calc(100dvh - 9rem);width:auto;display:block;}
+.secT{font-size:0.76rem;color:var(--muted2);text-align:center;margin-top:0.25rem;}
+/* 전체화면 — 화면을 꽉 채우고 조작은 위에 얇게 띄운다 */
+#tbCard:fullscreen{background:#000;padding:0;border:0;border-radius:0;
+  display:flex;flex-direction:column;justify-content:center;}
+#tbCard:fullscreen .tbstage{flex:1;background:#000;}
+#tbCard:fullscreen #tbimg{max-height:100dvh;}
+#tbCard:fullscreen .tbbar{position:fixed;top:0;left:0;right:0;z-index:5;
+  background:rgba(20,20,27,0.86);padding:0.3rem 0.5rem;margin:0;opacity:0.25;transition:opacity .15s;}
+#tbCard:fullscreen .tbbar:hover{opacity:1;}
+#tbCard:fullscreen .pgbar,#tbCard:fullscreen .secT,#tbCard:fullscreen #hits{display:none;}
+/* 찾은 곳 */
+.hit{display:block;width:100%;text-align:left;background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:9px;padding:0.35rem 0.5rem;margin-bottom:0.25rem;
+  font-size:0.8rem;cursor:pointer;line-height:1.4;}
+.hit:hover{border-color:var(--accent);}
+.hit b{color:var(--accent2);margin-right:0.35rem;}
+#hits{max-height:11rem;overflow:auto;margin-bottom:0.35rem;}
+
+/* 읽을 지문 */
+.script{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:0.9rem 1rem;}
+.script .st{font-size:0.78rem;color:var(--muted2);margin-bottom:0.4rem;}
+.script .tx{font-size:clamp(1rem,2.6dvh,1.5rem);line-height:2;white-space:pre-line;font-weight:600;}
+.script .hi{margin-top:0.6rem;font-size:0.82rem;color:var(--accent2);line-height:1.5;}
+.sctab{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:10px;padding:0.4rem 0.7rem;font-size:0.85rem;font-weight:700;cursor:pointer;}
+.sctab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 
 /* 녹음 */
 .takes{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:0.6rem;}
@@ -85,25 +120,35 @@ td input[type=text]{width:100%;}
 <div class="wrap">
   <!-- 교안 -->
   <div id="v0">
-    <div class="card">
-      <div class="row" style="margin-bottom:0.6rem">
+    <div class="card" id="tbCard">
+      <div class="row tbbar">
         <select id="wk" onchange="loadPages()"></select>
         <select id="cl" onchange="loadPages()">
           <option value="1">1교시</option><option value="2">2교시</option><option value="3">3교시</option>
         </select>
-        <span id="secTitle" style="color:var(--muted);font-size:0.85rem"></span>
+        <input type="search" id="q" placeholder="교안에서 찾기"
+               onkeydown="if(event.key==='Enter') doSearch()">
+        <button class="btn" onclick="doSearch()">찾기</button>
+        <span class="pgt" id="pgTxt">0 / 0</span>
+        <button class="btn" onclick="pageGo(-1)">◀</button>
+        <button class="btn" onclick="pageGo(1)">▶</button>
+        <button class="btn main" onclick="fullOn()">⤢ 전체화면</button>
       </div>
-      <div class="pg"><span id="pgTxt">0 / 0</span><div class="pgbar"><i id="pgBar"></i></div></div>
-      <img id="tbimg" alt="교안">
-      <div class="nav">
-        <button class="btn" onclick="pageGo(-1)">◀ 이전</button>
-        <button class="btn main" onclick="pageGo(1)">다음 ▶</button>
-      </div>
+      <div class="pgbar"><i id="pgBar"></i></div>
+      <div id="hits"></div>
+      <div class="tbstage" id="tbStage"><img id="tbimg" alt="교안"></div>
+      <div class="secT" id="secTitle"></div>
     </div>
   </div>
 
   <!-- 과제 -->
   <div id="v1" style="display:none">
+    <div class="card">
+      <h2>읽을 지문 <small>교안에서 가져왔습니다 · 골라서 읽으세요</small></h2>
+      <div class="row" id="scTabs" style="margin-bottom:0.5rem"></div>
+      <div class="script" id="scBox"></div>
+    </div>
+
     <div class="card">
       <h2>STEP 1. 1분 보이스 녹음 <small>최대 3벌까지 담아 둘 수 있습니다</small></h2>
       <div class="row" style="margin-bottom:0.5rem">
@@ -175,11 +220,66 @@ function showPage(){
     : '';
 }
 function pageGo(d){ if(!PTOT) return; PIDX=Math.max(0,Math.min(PTOT-1,PIDX+d)); showPage(); }
+
+/* 전체화면 — 쪽을 크게 보고 싶을 때. 조작 줄은 위에 흐리게 띄워 두고 갖다 대면 진해진다. */
+function fullOn(){
+  const el=document.getElementById('tbCard');
+  if(document.fullscreenElement) document.exitFullscreen();
+  else el.requestFullscreen && el.requestFullscreen().catch(()=>{});
+}
+
+/* 교안에서 글 찾기 — 찾은 곳을 누르면 그 주차·교시의 그 쪽으로 바로 간다 */
+async function doSearch(){
+  const q=document.getElementById('q').value.trim();
+  const box=document.getElementById('hits');
+  if(q.length<2){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="secT">찾는 중…</div>';
+  try{
+    const r=await fetch(`/api/chinese/textbook/search?subject=${encodeURIComponent(SUBJ)}&q=${encodeURIComponent(q)}`,
+                        {credentials:'same-origin'});
+    const d=await r.json();
+    const hits=d.hits||[];
+    if(!hits.length){ box.innerHTML='<div class="secT">찾은 곳이 없습니다</div>'; return; }
+    box.innerHTML=hits.map(h=>
+      `<button class="hit" onclick="jump(${h.week},${h.cls},${h.page_idx})">
+         <b>${h.week}주 ${h.cls}교시 · ${h.page}쪽</b>${esc(h.snippet)}</button>`).join('');
+  }catch(e){ box.innerHTML='<div class="secT">찾지 못했습니다</div>'; }
+}
+async function jump(w,c,idx){
+  document.getElementById('wk').value=w;
+  document.getElementById('cl').value=c;
+  await loadPages();
+  PIDX=Math.max(0,Math.min(PTOT-1,idx)); showPage();
+}
 document.addEventListener('keydown', e=>{
   if(document.getElementById('v0').style.display==='none') return;
   if(e.key==='ArrowLeft') pageGo(-1);
   if(e.key==='ArrowRight') pageGo(1);
 });
+
+/* ── 읽을 지문 ──
+   과제 서식에는 「1분 보이스 녹음」이라고만 있고 읽을 글이 없다.
+   교안의 딕션 문장과 낭독 지문을 실어 두어, 열자마자 바로 읽을 수 있게 한다. */
+let SCRIPTS=[], SCI=+(localStorage.getItem('sp_sc')||0);
+async function loadScripts(){
+  try{
+    const r=await fetch('/api/speech/scripts',{credentials:'same-origin'});
+    SCRIPTS=(await r.json()).scripts||[];
+  }catch(e){ SCRIPTS=[]; }
+  paintScripts();
+}
+function scPick(i){ SCI=i; localStorage.setItem('sp_sc',i); paintScripts(); }
+function paintScripts(){
+  if(!SCRIPTS.length) return;
+  if(SCI>=SCRIPTS.length) SCI=0;
+  document.getElementById('scTabs').innerHTML=SCRIPTS.map((s,i)=>
+    `<button class="sctab ${i===SCI?'on':''}" onclick="scPick(${i})">${esc(s.title)}</button>`).join('');
+  const s=SCRIPTS[SCI];
+  document.getElementById('scBox').innerHTML=
+    `<div class="st">${esc(s.from)}</div>
+     <div class="tx">${esc(s.text)}</div>
+     <div class="hi">💡 ${esc(s.hint)}</div>`;
+}
 
 /* ── 녹음 ── */
 const LIMIT=90;                                   // 1분이 목표, 90초에서 자동으로 멈춘다
@@ -308,5 +408,5 @@ async function saveAns(){
 /* ── 시작 ── */
 document.getElementById('wk').innerHTML=[1,2,3,4].map(w=>`<option value="${w}">${w}주차</option>`).join('');
 tab(+(localStorage.getItem('sp_tab')||0));
-loadPages(); loadState();
+loadPages(); loadState(); loadScripts();
 </script>
