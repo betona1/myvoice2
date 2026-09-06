@@ -219,6 +219,8 @@ button{font-family:inherit;}
   <h1><img id="babTop" src="/img/babbab/lv1.webp" alt="">단어학습
     <span style="font-size:0.74rem;color:var(--muted2);font-weight:600">계속 단어보기</span></h1>
   <button class="tbtn" id="btnF" onclick="toggleFilt()" title="설정">설정</button>
+  <button class="tbtn" onclick="goPrint()" title="A4 쓰기 연습지 인쇄">인쇄</button>
+  <button class="tbtn" onclick="location.href='/liangci'" title="양사 문제 풀기">문제</button>
   <button class="tbtn" onclick="hz(-1)">A−</button>
   <button class="tbtn" onclick="hz(1)">A+</button>
   <button class="tbtn" onclick="location.href='/words'" title="학습 홈">
@@ -743,6 +745,13 @@ function setGap(v){ S.repgap=Math.max(3,Math.min(60,+v))*1000; saveS();
   document.getElementById('fGapT').textContent=(S.repgap/1000)+'초'; }
 function setExGap(v){ S.exgap=Math.round(Math.max(0.5,Math.min(10,+v))*1000); saveS();
   document.getElementById('fExGapT').textContent=(S.exgap/1000).toFixed(1)+'초'; }
+/* 지금 보고 있는 묶음·급수를 그대로 들고 쓰기 연습지로 넘어간다 */
+function goPrint(){
+  const q=new URLSearchParams();
+  if(S.wordset) q.set('set', S.wordset);
+  else if(S.hsk) q.set('hsk', S.hsk);
+  location.href='/static/writesheet.html' + (q.toString() ? '?'+q : '');
+}
 function flipRep(){ S.rep = (S.rep||3) % 5 + 1; saveS(); paintRepBtn();
   toast(`한 낱말을 ${S.rep}번 읽고 넘어감`);
   if(AUTO){ stopAuto(); AUTO=true; startAuto();

@@ -657,23 +657,35 @@
       .wm-tour{margin-right:1.7rem;padding:0.45rem 0.55rem;}
       .wm-tlab{display:none;}
     }
-    /* 관련 단어 */
+    /* 관련 단어 — 아래쪽 목록은 따로 키우고 줄일 수 있게 한다.
+       키우면 위쪽 머리글은 그만큼 줄여 한 화면에 담기게 한다(--wtop). */
+    #wordModal{--wz:1.5; --wtop:0.8;}
     .wm-rel{margin-top:1rem;}
+    .wr-bar{display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.5rem;}
+    .wr-bar .sp{margin-left:auto;}
+    .wr-bar button{border:1px solid var(--border);background:var(--surface2);color:var(--text);
+      border-radius:8px;padding:0.3rem 0.6rem;font-size:0.82rem;font-weight:700;cursor:pointer;}
+    .wr-bar button:hover{border-color:var(--accent);color:var(--accent);}
+    .wr-bar button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .wr-bar select,.wr-bar input[type=range]{font:inherit;font-size:0.8rem;background:var(--surface2);
+      color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0.2rem 0.35rem;}
+    .wr-bar input[type=range]{width:7rem;accent-color:var(--accent);padding:0;}
+    .wr-bar .lb{font-size:0.78rem;color:var(--muted2);}
     .wr-head{font-size:1.0rem;font-weight:800;color:var(--accent);margin-bottom:0.5rem;}
-    .wr-list{display:flex;flex-wrap:wrap;gap:0.4rem;max-height:34vh;overflow:auto;}
+    .wr-list{display:flex;flex-wrap:wrap;gap:calc(0.4rem*var(--wz));max-height:52vh;overflow:auto;}
     .wr-item{
       display:flex;align-items:center;gap:0.45rem;text-align:left;
       border:1px solid var(--border);background:var(--surface);border-radius:9px;
-      padding:0.45rem 0.6rem;cursor:pointer;color:var(--text);
+      padding:calc(0.45rem*var(--wz)) calc(0.6rem*var(--wz));cursor:pointer;color:var(--text);
     }
     .wr-item:hover{border-color:var(--accent);background:rgba(124,109,250,0.08);}
     .wr-item.cur{border-color:var(--accent);background:rgba(124,109,250,0.16);box-shadow:0 0 0 1px var(--accent);}
     .wr-item.done .wr-w::after{content:'✓';font-size:0.7rem;color:var(--accent2);
       vertical-align:super;margin-left:0.15rem;font-family:inherit;}
     .wr-pos{font-size:0.62rem;color:#fff;background:var(--muted2);border-radius:4px;padding:0.05rem 0.28rem;}
-    .wr-w{font-family:var(--font-cn);font-size:1.25rem;font-weight:700;}
-    .wr-py{font-size:0.86rem;color:var(--accent2);font-weight:600;}
-    .wr-ko{font-size:0.86rem;color:var(--muted);max-width:13rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .wr-w{font-family:var(--font-cn);font-size:calc(1.25rem*var(--wz));font-weight:700;}
+    .wr-py{font-size:calc(0.86rem*var(--wz));color:var(--accent2);font-weight:600;}
+    .wr-ko{font-size:calc(0.86rem*var(--wz));color:var(--muted);max-width:calc(13rem*var(--wz));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .wr-sub{font-size:0.6rem;color:var(--accent2);border:1px solid rgba(79,209,197,0.4);
       border-radius:4px;padding:0.05rem 0.28rem;margin-left:auto;flex-shrink:0;}
     .wm-x{
@@ -681,9 +693,9 @@
       color:var(--muted);font-size:1.2rem;cursor:pointer;line-height:1;
     }
     .wm-head{text-align:center;margin-bottom:0.9rem;}
-    .wm-han{font-family:var(--font-cn);font-size:2.6rem;font-weight:700;line-height:1.15;}
-    .wm-py{font-size:1.25rem;color:var(--accent2);font-weight:600;margin-top:0.15rem;}
-    .wm-ko{font-size:1.15rem;color:var(--muted);margin-top:0.35rem;line-height:1.4;}
+    .wm-han{font-family:var(--font-cn);font-size:calc(2.6rem*var(--wtop));font-weight:700;line-height:1.15;}
+    .wm-py{font-size:calc(1.25rem*var(--wtop));color:var(--accent2);font-weight:600;margin-top:0.15rem;}
+    .wm-ko{font-size:calc(1.15rem*var(--wtop));color:var(--muted);margin-top:0.35rem;line-height:1.4;}
     .wm-en{font-size:0.92rem;color:var(--muted2);margin-top:0.3rem;line-height:1.35;}
     .wm-targets{display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;margin-bottom:0.9rem;}
     .wm-cell{border:2px solid var(--border);border-radius:12px;background:#fff;}
@@ -2619,7 +2631,20 @@ const _isHan = ch => ch >= '\u4e00' && ch <= '\u9fff';
 // pypinyin은 '비한자 연속 구간'을 토큰 1개로 묶어 출력한다.
 // (예: "2．A 皮肤 B" → ["2．A","pí","fū","B"])
 // 따라서 글자수==토큰수 비교는 틀리고, 한자만 순서대로 매칭해야 한다.
-function alignPinyin(chars, pys){
+/* 한자에 병음을 짝지어 준다.
+
+   ⚠️ 자료마다 문장부호를 병음 쪽에 적기도 하고 안 적기도 한다.
+      「부호가 나오면 토큰 하나를 건너뛴다」고만 하면, 안 적힌 자료에서 통째로 밀린다
+      (1주2교시에서 点→dào, 到→diǎn 처럼 한 칸씩 어긋나 있었다).
+   그래서 두 가지로 짝지어 보고, 사전 읽기와 더 많이 맞는 쪽을 쓴다.
+     ① 부호 자리마다 토큰을 하나 건너뛴다      — 부호까지 적힌 자료
+     ② 부호 토큰은 걸러 내고 한자에만 차례로   — 한자 것만 적힌 자료 */
+const _PUNTOK = /^[，。！？、：；""''（）()《》〈〉…—·\-~～＋+／/【】\[\]{},.!?;:'"]+$/;
+function _noTone(s){
+  return (s || '').toLowerCase().normalize('NFD')
+                  .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+}
+function _alignByRun(chars, pys){
   const out = new Array(chars.length).fill('');
   let ti = 0, i = 0;
   while (i < chars.length) {
@@ -2631,11 +2656,70 @@ function alignPinyin(chars, pys){
         if (!/\s/.test(chars[j])) hasVisible = true;
         j++;
       }
-      if (hasVisible) ti++;      // 공백만인 구간은 토큰을 만들지 않음
+      if (hasVisible) ti++;
       i = j;
     }
   }
   return out;
+}
+/* 세지 말고 맞춰 본다.
+   자료를 보면 문장부호는 병음 쪽에도 적혀 있는데 **숫자는 읽기가 통째로 빠져 있다**
+     晚上9点到11点 → wǎn shàng diǎn dào diǎn   (9·11 의 읽기가 없다)
+   「부호든 숫자든 한 칸 건너뛴다」고 세면 그 뒤가 전부 밀린다.
+   그래서 한자가 아닌 자리는 **병음 쪽에 같은 글자가 있을 때만** 건너뛴다. */
+function _alignMatch(chars, pys){
+  const out = new Array(chars.length).fill('');
+  let ti = 0, i = 0;
+  const norm = t => String(t || '').replace(/\s+/g, '');
+  while (i < chars.length) {
+    if (_isHan(chars[i])) {
+      while (ti < pys.length && _PUNTOK.test(pys[ti])) ti++;   // 남은 부호 토큰은 건너뛴다
+      out[i] = pys[ti] || ''; ti++; i++;
+    } else {
+      let j = i;
+      while (j < chars.length && !_isHan(chars[j])) j++;
+      const run = norm(chars.slice(i, j).join(''));
+      if (run) {
+        // 병음 쪽에 그 글자가 그대로 적혀 있으면(부호·숫자·영문) 그때만 소비한다
+        let k = ti, eaten = '';
+        while (k < pys.length && eaten.length < run.length && run.startsWith(eaten + norm(pys[k]))) {
+          eaten += norm(pys[k]); k++;
+        }
+        if (eaten) ti = k;
+      }
+      i = j;
+    }
+  }
+  return out;
+}
+function _alignHanOnly(chars, pys){
+  const toks = pys.filter(t => !_PUNTOK.test(t));
+  const out = new Array(chars.length).fill('');
+  let ti = 0;
+  for (let i = 0; i < chars.length; i++) {
+    if (_isHan(chars[i])) { out[i] = toks[ti] || ''; ti++; }
+  }
+  return out;
+}
+function _alignScore(chars, out){          // 사전 읽기와 몇 글자나 맞는가
+  let hit = 0, seen = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (!_isHan(ch)) continue;
+    const d = _charDict[ch];
+    if (!d || !d.p) continue;
+    seen++;
+    if (_noTone(out[i]) === _noTone(String(d.p).split(/[\s,/]+/)[0])) hit++;
+  }
+  return seen ? hit / seen : 0;
+}
+function alignPinyin(chars, pys){
+  let best = null, score = -1;
+  for (const f of [_alignMatch, _alignHanOnly, _alignByRun]) {
+    const o = f(chars, pys), sc = _alignScore(chars, o);
+    if (sc > score) { score = sc; best = o; }
+  }
+  return best;
 }
 
 // 한자/병음을 문장 단위로 나눠 루비 HTML 생성.
@@ -2956,6 +3040,7 @@ function openWordModal(word, py, keepTour){
   // 이어보기 중이면 형제 단어 목록을 계속 띄워 둔다 (아니면 낱글자일 때만)
   document.getElementById('wmRel').innerHTML =
     _wmTour ? relatedHtml(_wmTour.ch) : (chars.length === 1 ? relatedHtml(chars[0]) : '');
+  wmBarRestore();          // 목록을 새로 그렸으니 배율·자동연습 상태를 도로 채운다
   paintTour();
 
   const cont = document.getElementById('wmTargets');
@@ -3001,8 +3086,25 @@ function relatedHtml(ch){
   return '<div class="wr-head">🔗 「' + _esc(ch) + '」이(가) 들어간 단어 ' + list.length + '개' +
          '<span style="font-weight:600;font-size:0.78rem;color:var(--muted2);margin-left:0.5rem">' +
          '하나를 누르면 ← → 로 이어서 볼 수 있습니다</span></div>' +
+         '<div class="wr-bar">' +
+           '<button onclick="wmZoom(-1)" title="작게">A−</button>' +
+           '<button onclick="wmZoom(1)" title="크게">A+</button>' +
+           '<span class="lb" id="wmZv"></span>' +
+           '<span class="sp"></span>' +
+           '<button id="wmAutoB" onclick="wmAuto()">▶ 자동연습</button>' +
+           '<span class="lb">사이</span>' +
+           '<input type="range" id="wmGap" min="1" max="10" step="0.5" ' +
+             'oninput="wmGapSet(this.value)">' +
+           '<span class="lb" id="wmGapV"></span>' +
+           '<select id="wmOrd" onchange="wmOrdSet(this.value)">' +
+             '<option value="seq">차례대로</option>' +
+             '<option value="rev">거꾸로</option>' +
+             '<option value="rand">섞어서</option></select>' +
+         '</div>' +
          '<div class="wr-list">' + items + '</div>';
 }
+// 목록을 다시 그리면 조작 줄도 새로 생기므로 상태를 도로 채워 준다
+function wmBarRestore(){ wmApplyZoom(); wmAutoPaint(); }
 
 // 구문 설명 팝업
 function showPattern(p, ko, ex, hit){
@@ -3074,11 +3176,75 @@ function openCharModal(ch, py){
 }
 
 function closeWordModal(){
+  wmAutoStop();          // 창을 닫으면 자동연습도 멈춘다
   _wmTour = null;
   const o = document.getElementById('wordModal'); if (o) o.classList.remove('active');
 }
 function wmAnimate(){ let d = 0; _wmWriters.forEach(w => { if (!w) return; setTimeout(() => w.animateCharacter(), d); d += 1100; }); }
 function wmQuiz(){ _wmWriters.forEach(w => { if (!w) return; w.hideCharacter(); w.quiz(); }); }
+/* ── 아래쪽 목록 키우기·줄이기 ──
+   키우면 위쪽 머리글을 그만큼 줄여 한 화면에 담기게 한다. */
+let WZ = parseFloat(localStorage.getItem('cn_wz') || '1.5');
+function wmApplyZoom(){
+  const ov = document.getElementById('wordModal');
+  if (!ov) return;
+  ov.style.setProperty('--wz', WZ.toFixed(2));
+  ov.style.setProperty('--wtop', Math.max(0.55, 1.2 - WZ * 0.28).toFixed(2));
+  const v = document.getElementById('wmZv');
+  if (v) v.textContent = Math.round(WZ * 100) + '%';
+}
+function wmZoom(d){
+  WZ = Math.max(0.9, Math.min(3.0, +(WZ + d * 0.15).toFixed(2)));
+  localStorage.setItem('cn_wz', WZ); wmApplyZoom();
+}
+
+/* ── 자동연습 ──
+   그 글자가 든 단어를 차례로 열어 발음까지 들려준다.
+   사이 간격과 차례(차례대로·거꾸로·섞어서)를 고를 수 있다. */
+let WAUTO = null;                       // {order:[...], k, timer}
+let WGAP = parseFloat(localStorage.getItem('cn_wgap') || '3');
+let WORD_ORD = localStorage.getItem('cn_word') || 'seq';
+function wmGapSet(v){
+  WGAP = +v; localStorage.setItem('cn_wgap', WGAP);
+  const e = document.getElementById('wmGapV');
+  if (e) e.textContent = WGAP + '초';
+}
+function wmOrdSet(v){ WORD_ORD = v; localStorage.setItem('cn_word', v); }
+function wmAutoPaint(){
+  const b = document.getElementById('wmAutoB');
+  if (b) { b.textContent = WAUTO ? '■ 멈춤' : '▶ 자동연습'; b.classList.toggle('on', !!WAUTO); }
+  const g = document.getElementById('wmGap');
+  if (g) g.value = WGAP;
+  const o = document.getElementById('wmOrd');
+  if (o) o.value = WORD_ORD;
+  const v = document.getElementById('wmGapV');
+  if (v) v.textContent = WGAP + '초';
+}
+function wmAutoStop(){
+  if (WAUTO && WAUTO.timer) clearTimeout(WAUTO.timer);
+  WAUTO = null; wmAutoPaint();
+}
+function wmAuto(){
+  if (WAUTO) { wmAutoStop(); return; }
+  if (!_wmTour) { showToast('먼저 단어를 하나 눌러 주세요'); return; }
+  const n = _wmTour.list.length;
+  let order = Array.from({length: n}, (_, i) => i);
+  if (WORD_ORD === 'rev') order.reverse();
+  else if (WORD_ORD === 'rand') order.sort(() => Math.random() - 0.5);
+  const from = order.indexOf(_wmTour.idx);        // 지금 보고 있는 것부터 이어서
+  if (from > 0) order = order.slice(from).concat(order.slice(0, from));
+  WAUTO = { order, k: 0, timer: null };
+  wmAutoPaint(); wmAutoStep();
+}
+function wmAutoStep(){
+  if (!WAUTO || !_wmTour) return;
+  if (WAUTO.k >= WAUTO.order.length) { wmAutoStop(); showToast('한 바퀴 다 돌았습니다'); return; }
+  const i = WAUTO.order[WAUTO.k++];
+  openTourWord(_wmTour.ch, i);                    // 모달을 그 단어로 바꾸고
+  setTimeout(() => { if (WAUTO) wmSpeak(); }, 220);   // 그림이 바뀐 뒤에 읽어 준다
+  WAUTO.timer = setTimeout(wmAutoStep, Math.max(1000, WGAP * 1000));
+}
+
 function wmSpeak(){
   const t = document.getElementById('wmHan').textContent;
   if (!t) return;

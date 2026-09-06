@@ -1,0 +1,185 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>양사 문제 — 무엇을 어느 양사로 세나</title>
+<style>
+:root{
+  --bg:#14141b; --bg2:#1b1b24; --surface:#23232e; --surface2:#2c2c38;
+  --border:#33333f; --text:#eceff4; --muted:#a9adbb; --muted2:#6e7383;
+  --accent:#7c6dfa; --accent2:#4fd1c5; --success:#34d399; --danger:#f05252;
+  --font-cn:'Noto Sans SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','SimSun',sans-serif;
+}
+body.light{--bg:#f7f8fa;--bg2:#fff;--surface:#f0f1f5;--surface2:#e6e8ef;--border:#dcdfe8;
+  --text:#1c1e26;--muted:#5b606e;--muted2:#8b90a0;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
+.top,.pg,.ctl{flex:0 0 auto;}
+.top{display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.7rem;
+  background:var(--bg2);border-bottom:1px solid var(--border);}
+.top h1{font-size:0.95rem;margin:0;font-weight:700;flex:1 1 auto;}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;}
+.tbtn:hover{border-color:var(--accent);}
+.tbtn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.pg{display:flex;align-items:center;gap:0.7rem;padding:0.45rem 0.8rem;font-size:0.8rem;
+  color:var(--muted);background:var(--bg2);border-bottom:1px solid var(--border);}
+.pb{flex:1 1 auto;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.pb i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s;}
+.sc{color:var(--accent2);font-weight:700;}
+.wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1.2rem;padding:1rem;text-align:center;}
+.ask{color:var(--muted);font-size:clamp(0.85rem,2dvh,1.05rem);}
+.noun{font-family:var(--font-cn);font-size:clamp(2.6rem,11dvh,6rem);font-weight:600;line-height:1.1;}
+.np{color:var(--accent2);font-size:clamp(1rem,3dvh,1.8rem);font-weight:700;}
+.nk{color:var(--muted);font-size:clamp(0.95rem,2.6dvh,1.5rem);max-width:34rem;}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.7rem;
+  width:100%;max-width:44rem;}
+@media (min-width:900px){ .opts{grid-template-columns:repeat(4,minmax(0,1fr));} }
+.opt{background:var(--surface);border:2px solid var(--border);border-radius:16px;
+  padding:0.8rem 0.5rem;cursor:pointer;color:var(--text);
+  display:flex;flex-direction:column;align-items:center;gap:0.2rem;
+  transition:border-color .12s,background .12s,transform .08s;}
+.opt:hover{border-color:var(--accent);}
+.opt:active{transform:scale(0.97);}
+.opt .c{font-family:var(--font-cn);font-size:clamp(1.8rem,5.5dvh,3rem);font-weight:600;line-height:1;}
+.opt .p{color:var(--accent2);font-size:clamp(0.75rem,1.8dvh,1rem);font-weight:600;}
+.opt .k{color:var(--muted2);font-size:clamp(0.7rem,1.6dvh,0.9rem);}
+.opt.ok{border-color:var(--success);background:rgba(52,211,153,0.18);}
+.opt.no{border-color:var(--danger);background:rgba(240,82,82,0.16);}
+.opt[disabled]{cursor:default;}
+.said{min-height:2.6rem;display:flex;flex-direction:column;gap:0.2rem;align-items:center;}
+.said .z{font-family:var(--font-cn);font-size:clamp(1.4rem,4dvh,2.2rem);font-weight:600;}
+.said .m{color:var(--muted);font-size:clamp(0.8rem,1.9dvh,1rem);}
+.ctl{display:flex;gap:0.5rem;justify-content:center;padding:0.6rem;
+  background:var(--bg2);border-top:1px solid var(--border);}
+.cbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:11px;padding:0.55rem 1rem;font-size:0.9rem;cursor:pointer;}
+.cbtn:hover{border-color:var(--accent);}
+.cbtn.main{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+.done{display:flex;flex-direction:column;gap:0.8rem;align-items:center;}
+.done .big{font-size:clamp(2rem,8dvh,3.4rem);font-weight:800;color:var(--accent2);}
+.wrongs{display:flex;flex-wrap:wrap;gap:0.4rem;justify-content:center;max-width:44rem;}
+.wrongs span{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:0.25rem 0.55rem;font-size:0.85rem;}
+.wrongs b{font-family:var(--font-cn);color:var(--accent2);}
+</style>
+
+<div class="top">
+  <h1>양사 문제</h1>
+  <button class="tbtn" id="bHsk" onclick="flipHsk()" title="쉬운 낱말로만">HSK 4급 이하</button>
+  <button class="tbtn" onclick="location.href='/flash?set=양사'">양사 학습</button>
+  <button class="tbtn" onclick="location.href='/words'">홈</button>
+</div>
+<div class="pg">
+  <span id="pgTxt">0 / 0</span>
+  <div class="pb"><i id="pgBar"></i></div>
+  <span class="sc" id="score">0점</span>
+</div>
+
+<div class="wrap" id="wrap"></div>
+
+<div class="ctl">
+  <button class="cbtn" onclick="load()">새 문제</button>
+  <button class="cbtn main" id="next" onclick="next()">다음 ▶</button>
+</div>
+
+<script>
+/* 양사 문제 — 「무엇을 어느 양사로 세나」.
+   낱말을 보여 주고 양사 넷 가운데 고르게 한다.
+   자료는 CC-CEDICT 의 CL: 표시에서 뽑았다 (上衣 /jacket/CL:件[jian4]/ → 옷은 件). */
+let Q=[], I=0, OK=0, WRONG=[], LOCK=false;
+let HSK = +(localStorage.getItem('cl_hsk') || 4);
+
+const esc = t => String(t??'').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function sayCn(t){                       // 낱말 소리는 따로 없으니 브라우저에 맡긴다
+  try{ speechSynthesis.cancel();
+       const u=new SpeechSynthesisUtterance(t); u.lang='zh-CN'; u.rate=0.85;
+       speechSynthesis.speak(u); }catch(e){}
+}
+function paintHsk(){
+  const b=document.getElementById('bHsk');
+  b.textContent = HSK ? `HSK ${HSK}급 이하` : '급수 상관없이';
+  b.classList.toggle('on', !!HSK);
+}
+function flipHsk(){                      // 4급 → 6급 → 전체 → 4급
+  HSK = HSK===4 ? 6 : (HSK===6 ? 0 : 4);
+  localStorage.setItem('cl_hsk', HSK); paintHsk(); load();
+}
+async function load(){
+  document.getElementById('wrap').innerHTML='<div class="ask">문제를 가져오는 중…</div>';
+  try{
+    const r=await fetch(`/api/words/cl-quiz?n=20&known=1&hsk=${HSK}`, {credentials:'same-origin'});
+    const d=await r.json();
+    Q=d.questions||[];
+  }catch(e){ Q=[]; }
+  I=0; OK=0; WRONG=[]; LOCK=false;
+  if(!Q.length){
+    document.getElementById('wrap').innerHTML='<div class="ask">문제를 만들 자료가 없습니다.</div>';
+    return;
+  }
+  paint();
+}
+function paintBar(){
+  document.getElementById('pgTxt').textContent=`${Math.min(I+1,Q.length)} / ${Q.length}`;
+  document.getElementById('pgBar').style.width=`${(I/Q.length)*100}%`;
+  document.getElementById('score').textContent=`${OK}점`;
+}
+function paint(){
+  LOCK=false;
+  if(I>=Q.length) return finish();
+  const q=Q[I];
+  document.getElementById('wrap').innerHTML=
+    `<div class="ask">이 낱말은 어느 양사로 셀까요?</div>
+     <div>
+       <div class="noun" onclick="sayCn('${esc(q.noun)}')" title="눌러서 듣기">${esc(q.noun)}</div>
+       <div class="np">${esc(q.pinyin)}</div>
+       <div class="nk">${esc(q.meaning)}</div>
+     </div>
+     <div class="opts" id="opts">` +
+     q.options.map((o,k)=>
+       `<button class="opt" data-c="${esc(o.c)}" onclick="answer(${k})">
+          <span class="c">${esc(o.c)}</span>
+          <span class="p">${esc(o.pinyin||'')}</span>
+          <span class="k">${esc(o.ko||'')}</span>
+        </button>`).join('') +
+     `</div><div class="said" id="said"></div>`;
+  paintBar();
+}
+function answer(k){
+  if(LOCK) return; LOCK=true;
+  const q=Q[I], got=q.options[k].c, bs=[...document.querySelectorAll('.opt')];
+  bs.forEach(b=>{
+    b.disabled=true;
+    if(b.dataset.c===q.answer) b.classList.add('ok');
+    else if(b.dataset.c===got) b.classList.add('no');
+  });
+  const good = got===q.answer;
+  if(good) OK++; else WRONG.push(q);
+  // 맞든 틀리든 옳은 말투를 한 번 보여 주고 들려준다 — 틀린 채로 넘어가면 남지 않는다
+  const phrase='一'+q.answer+q.noun;
+  document.getElementById('said').innerHTML=
+    `<span class="z">${esc(phrase)}</span>
+     <span class="m">${good ? '맞았습니다' : '정답은 '+esc(q.answer)} · ${esc(q.meaning)}</span>`;
+  sayCn(phrase);
+  paintBar();
+  setTimeout(()=>{ if(LOCK && I<Q.length) next(); }, good ? 1200 : 2600);
+}
+function next(){ if(I<Q.length){ I++; paint(); } }
+function finish(){
+  document.getElementById('pgBar').style.width='100%';
+  document.getElementById('pgTxt').textContent=`${Q.length} / ${Q.length}`;
+  const pct=Math.round(OK/Q.length*100);
+  document.getElementById('wrap').innerHTML=
+    `<div class="done">
+       <div class="big">${OK} / ${Q.length}  (${pct}%)</div>
+       ${WRONG.length ? '<div class="ask">틀린 것</div><div class="wrongs">' +
+          WRONG.map(w=>`<span>${esc(w.noun)} → <b>${esc(w.answer)}</b></span>`).join('') +
+          '</div>' : '<div class="ask">모두 맞혔습니다</div>'}
+       <button class="cbtn main" onclick="load()">한 판 더</button>
+     </div>`;
+}
+paintHsk(); load();
+</script>

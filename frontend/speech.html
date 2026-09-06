@@ -1,0 +1,312 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>성공하는 스피치커뮤니케이션</title>
+<style>
+:root{
+  --bg:#14141b; --bg2:#1b1b24; --surface:#23232e; --surface2:#2c2c38;
+  --border:#33333f; --text:#eceff4; --muted:#a9adbb; --muted2:#6e7383;
+  --accent:#7c6dfa; --accent2:#4fd1c5; --success:#34d399; --danger:#f05252; --warn:#f0a020;
+  --ui:1.5;
+}
+body.light{--bg:#f7f8fa;--bg2:#fff;--surface:#f0f1f5;--surface2:#e6e8ef;--border:#dcdfe8;
+  --text:#1c1e26;--muted:#5b606e;--muted2:#8b90a0;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{font-size:calc(16px * var(--ui));}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:0.4rem;
+  padding:0.5rem 0.7rem;background:var(--bg2);border-bottom:1px solid var(--border);}
+.top h1{font-size:0.95rem;margin:0;font-weight:800;flex:1;line-height:1.3;}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:0.35rem 0.6rem;font-size:0.8rem;cursor:pointer;}
+.tbtn:hover{border-color:var(--accent);}
+.tabs{display:flex;gap:0.3rem;padding:0.5rem 0.7rem;background:var(--bg2);
+  border-bottom:1px solid var(--border);position:sticky;top:2.7rem;z-index:19;}
+.tabs button{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:11px;padding:0.5rem;font-size:0.9rem;font-weight:700;cursor:pointer;}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.wrap{max-width:min(97vw, calc(900px * var(--ui)));margin:0 auto;padding:0.8rem;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+  padding:0.9rem;margin-bottom:0.8rem;}
+h2{font-size:0.95rem;margin:0 0 0.5rem;color:var(--accent2);font-weight:800;}
+h2 small{color:var(--muted2);font-weight:600;font-size:0.78rem;margin-left:0.3rem;}
+.row{display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;}
+select,input[type=text],textarea{font:inherit;background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;padding:0.45rem 0.6rem;}
+textarea{width:100%;min-height:4.5rem;resize:vertical;line-height:1.5;}
+.btn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:11px;padding:0.5rem 0.9rem;font-size:0.9rem;font-weight:700;cursor:pointer;}
+.btn:hover{border-color:var(--accent);}
+.btn.main{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.rec{background:var(--danger);border-color:var(--danger);color:#fff;}
+.btn:disabled{opacity:0.45;cursor:default;}
+
+/* 교안 */
+.pg{display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem;}
+.pgbar{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.pgbar i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s;}
+#tbimg{width:100%;border-radius:12px;background:#fff;display:block;min-height:12rem;}
+.nav{display:flex;gap:0.4rem;justify-content:center;margin-top:0.6rem;}
+
+/* 녹음 */
+.takes{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:0.6rem;}
+.take{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0.7rem;}
+.take.has{border-color:var(--success);}
+.take .tt{font-weight:800;font-size:0.9rem;margin-bottom:0.35rem;}
+.take .st{font-size:0.78rem;color:var(--muted2);min-height:1.2rem;}
+.take audio{width:100%;margin-top:0.4rem;}
+.timer{font-size:1.6rem;font-weight:900;letter-spacing:0.02em;font-variant-numeric:tabular-nums;}
+.timer.on{color:var(--danger);}
+.meter{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:0.35rem 0;}
+.meter i{display:block;height:100%;background:var(--success);width:0;}
+
+/* 자가진단표 */
+table{width:100%;border-collapse:collapse;font-size:0.85rem;}
+th,td{border:1px solid var(--border);padding:0.4rem 0.45rem;text-align:left;vertical-align:top;}
+th{background:var(--surface);color:var(--muted);font-size:0.78rem;}
+td.q{width:36%;}
+td.c{white-space:nowrap;}
+td.c label{margin-right:0.5rem;font-size:0.82rem;}
+td input[type=text]{width:100%;}
+.saved{font-size:0.78rem;color:var(--success);}
+</style>
+
+<div class="top">
+  <h1>성공하는 스피치커뮤니케이션</h1>
+  <button class="tbtn" onclick="ui(-1)">A−</button>
+  <button class="tbtn" onclick="ui(1)">A+</button>
+  <button class="tbtn" onclick="location.href='/words'">홈</button>
+</div>
+<div class="tabs">
+  <button id="tab0" class="on" onclick="tab(0)">교안 보기</button>
+  <button id="tab1" onclick="tab(1)">과제 · 보이스 자가진단</button>
+</div>
+
+<div class="wrap">
+  <!-- 교안 -->
+  <div id="v0">
+    <div class="card">
+      <div class="row" style="margin-bottom:0.6rem">
+        <select id="wk" onchange="loadPages()"></select>
+        <select id="cl" onchange="loadPages()">
+          <option value="1">1교시</option><option value="2">2교시</option><option value="3">3교시</option>
+        </select>
+        <span id="secTitle" style="color:var(--muted);font-size:0.85rem"></span>
+      </div>
+      <div class="pg"><span id="pgTxt">0 / 0</span><div class="pgbar"><i id="pgBar"></i></div></div>
+      <img id="tbimg" alt="교안">
+      <div class="nav">
+        <button class="btn" onclick="pageGo(-1)">◀ 이전</button>
+        <button class="btn main" onclick="pageGo(1)">다음 ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 과제 -->
+  <div id="v1" style="display:none">
+    <div class="card">
+      <h2>STEP 1. 1분 보이스 녹음 <small>최대 3벌까지 담아 둘 수 있습니다</small></h2>
+      <div class="row" style="margin-bottom:0.5rem">
+        <span class="timer" id="tmr">0:00</span>
+        <span style="color:var(--muted);font-size:0.82rem" id="recSt">녹음할 자리를 고르고 눌러 주세요</span>
+      </div>
+      <div class="meter"><i id="lvl"></i></div>
+      <div class="takes" id="takes"></div>
+    </div>
+
+    <div class="card">
+      <h2>STEP 2. 보이스 자가진단</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.5rem">
+        녹음한 내 목소리를 다시 들으며 채워 보세요. ‘개선필요’에 체크한 항목이 곧 성장 포인트입니다.</p>
+      <table><thead><tr><th>항목</th><th>자가 진단</th><th>한 줄 메모</th></tr></thead>
+        <tbody id="chk"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>STEP 3. 나의 목소리, 종합 소감</h2>
+      <div id="free"></div>
+      <div class="row" style="margin-top:0.6rem">
+        <button class="btn main" onclick="saveAns()">저장</button>
+        <span class="saved" id="savedAt"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 성공하는 스피치커뮤니케이션.
+   교안은 기존 교안 뷰어 API 를 그대로 쓰고, 과제는 브라우저에서 바로 녹음해 올린다.
+   과제 서식(pptx)의 짜임을 그대로 옮겼다 — 1분 녹음 · 자가진단 6항목 · 종합소감 3문항. */
+const SUBJ='성공하는스피치커뮤니케이션';
+const esc = t => String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let UI=parseFloat(localStorage.getItem('sp_ui')||'1.5');
+function applyUI(){ document.documentElement.style.setProperty('--ui', UI.toFixed(2)); }
+function ui(d){ UI=Math.max(1,Math.min(3,+(UI+d*0.15).toFixed(2)));
+  localStorage.setItem('sp_ui',UI); applyUI(); }
+applyUI();
+function tab(i){
+  document.getElementById('v0').style.display = i===0?'':'none';
+  document.getElementById('v1').style.display = i===1?'':'none';
+  document.getElementById('tab0').classList.toggle('on', i===0);
+  document.getElementById('tab1').classList.toggle('on', i===1);
+  localStorage.setItem('sp_tab', i);
+}
+
+/* ── 교안 ── */
+let PIDX=0, PTOT=0;
+async function loadPages(){
+  const w=+document.getElementById('wk').value, c=+document.getElementById('cl').value;
+  try{
+    const r=await fetch(`/api/chinese/textbook/pages?subject=${encodeURIComponent(SUBJ)}&week=${w}&class_num=${c}`,
+                        {credentials:'same-origin'});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    PTOT=d.total_pages||0; PIDX=0;
+    document.getElementById('secTitle').textContent=(d.sections?.[0]?.title)||'';
+  }catch(e){ PTOT=0; document.getElementById('secTitle').textContent='교안을 찾을 수 없습니다'; }
+  showPage();
+}
+function showPage(){
+  const w=+document.getElementById('wk').value, c=+document.getElementById('cl').value;
+  document.getElementById('pgTxt').textContent=`${PTOT?PIDX+1:0} / ${PTOT}`;
+  document.getElementById('pgBar').style.width=PTOT?`${(PIDX+1)/PTOT*100}%`:'0';
+  document.getElementById('tbimg').src = PTOT
+    ? `/api/chinese/textbook/image?subject=${encodeURIComponent(SUBJ)}&week=${w}&class_num=${c}&page_idx=${PIDX}`
+    : '';
+}
+function pageGo(d){ if(!PTOT) return; PIDX=Math.max(0,Math.min(PTOT-1,PIDX+d)); showPage(); }
+document.addEventListener('keydown', e=>{
+  if(document.getElementById('v0').style.display==='none') return;
+  if(e.key==='ArrowLeft') pageGo(-1);
+  if(e.key==='ArrowRight') pageGo(1);
+});
+
+/* ── 녹음 ── */
+const LIMIT=90;                                   // 1분이 목표, 90초에서 자동으로 멈춘다
+let MR=null, CHUNKS=[], T0=0, TICK=null, CUR=0, AC=null, ANA=null, RAF=null;
+function fmt(s){ return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+let STATE={takes:[], answers:{}};
+async function loadState(){
+  try{
+    const r=await fetch('/api/speech/state',{credentials:'same-origin'});
+    STATE=await r.json();
+  }catch(e){}
+  paintTakes(); paintAns();
+}
+function paintTakes(){
+  const have={}; (STATE.takes||[]).forEach(t=>have[t.take]=t);
+  document.getElementById('takes').innerHTML=[1,2,3].map(n=>{
+    const t=have[n];
+    return `<div class="take ${t?'has':''}" id="tk${n}">
+      <div class="tt">녹음 ${n}${t?' ✓':''}</div>
+      <div class="st">${t?`${t.sec}초 · ${esc(t.created_at||'')}`:'아직 없음'}</div>
+      ${t?`<audio controls preload="none" src="/api/speech/audio/${n}?t=${Date.now()}"></audio>`:''}
+      <div class="row" style="margin-top:0.4rem">
+        <button class="btn rec" onclick="rec(${n})" id="rb${n}">● 녹음</button>
+        ${t?`<button class="btn" onclick="delTake(${n})">지우기</button>`:''}
+      </div></div>`;
+  }).join('');
+}
+async function rec(n){
+  if(MR && MR.state==='recording'){ stopRec(); return; }
+  try{
+    const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    CUR=n; CHUNKS=[];
+    MR=new MediaRecorder(st, MediaRecorder.isTypeSupported('audio/webm')?{mimeType:'audio/webm'}:{});
+    MR.ondataavailable=e=>{ if(e.data.size) CHUNKS.push(e.data); };
+    MR.onstop=async ()=>{
+      cancelAnimationFrame(RAF); clearInterval(TICK);
+      st.getTracks().forEach(t=>t.stop());
+      const sec=(Date.now()-T0)/1000;
+      const blob=new Blob(CHUNKS,{type:MR.mimeType||'audio/webm'});
+      document.getElementById('recSt').textContent='올리는 중…';
+      const fd=new FormData();
+      fd.append('take', CUR); fd.append('sec', sec.toFixed(1));
+      fd.append('audio', blob, `take${CUR}.webm`);
+      try{
+        await fetch('/api/speech/record',{method:'POST',body:fd,credentials:'same-origin'});
+        document.getElementById('recSt').textContent=`녹음 ${CUR} 저장했습니다 (${sec.toFixed(0)}초)`;
+      }catch(e){ document.getElementById('recSt').textContent='올리지 못했습니다'; }
+      document.getElementById('tmr').classList.remove('on');
+      document.getElementById('lvl').style.width='0';
+      await loadState();
+    };
+    // 소리가 들어오는지 눈으로 보이게 (마이크가 꺼져 있는 채로 녹음하는 일을 막는다)
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    ANA=AC.createAnalyser(); ANA.fftSize=512;
+    AC.createMediaStreamSource(st).connect(ANA);
+    const buf=new Uint8Array(ANA.frequencyBinCount);
+    const draw=()=>{ ANA.getByteTimeDomainData(buf);
+      let m=0; for(const v of buf) m=Math.max(m, Math.abs(v-128));
+      document.getElementById('lvl').style.width=Math.min(100, m/64*100)+'%';
+      RAF=requestAnimationFrame(draw); };
+    draw();
+    MR.start(); T0=Date.now();
+    document.getElementById('tmr').classList.add('on');
+    document.getElementById('rb'+n).textContent='■ 멈춤';
+    document.getElementById('recSt').textContent='녹음 중… 1분을 채워 보세요';
+    TICK=setInterval(()=>{
+      const s=(Date.now()-T0)/1000;
+      document.getElementById('tmr').textContent=fmt(s);
+      if(s>=LIMIT) stopRec();
+    },200);
+  }catch(e){
+    document.getElementById('recSt').textContent='마이크를 쓸 수 없습니다 — 브라우저 권한을 확인해 주세요';
+  }
+}
+function stopRec(){ if(MR && MR.state==='recording') MR.stop(); }
+async function delTake(n){
+  if(!confirm(`녹음 ${n}을 지울까요?`)) return;
+  await fetch('/api/speech/audio/'+n,{method:'DELETE',credentials:'same-origin'});
+  loadState();
+}
+
+/* ── 자가진단 · 종합소감 ── */
+const ITEMS=[
+  ['호흡','문장 끝까지 숨이 안정적으로 유지되나요?'],
+  ['발성','갈라지거나 떨리지 않고 울림 있게 나오나요?'],
+  ['발음','도전 단어가 뭉개지지 않고 또렷한가요?'],
+  ['속도·멈춤','너무 빠르지 않게, 멈춤을 살렸나요?'],
+  ['톤·감정','내용의 감정에 맞춰 톤 변화가 드러나나요?'],
+  ['전체 인상','다시 듣고 싶은 신뢰감 있는 목소리인가요?'],
+];
+const FREE=[
+  ['strong','😊 오늘 내 목소리의 강점 1가지'],
+  ['improve','🔧 다음에 개선하고 싶은 점 1가지'],
+  ['feedback','🙋 6주차 수업에서 받고 싶은 피드백'],
+];
+function paintAns(){
+  const a=STATE.answers||{};
+  document.getElementById('chk').innerHTML=ITEMS.map(([k,q],i)=>{
+    const v=(a.check||{})[k]||'';
+    const memo=(a.memo||{})[k]||'';
+    return `<tr><td class="q"><b>${esc(k)}</b><br><span style="color:var(--muted2);font-size:0.78rem">${esc(q)}</span></td>
+      <td class="c">${['좋음','보통','개선필요'].map(o=>
+        `<label><input type="radio" name="c${i}" value="${o}" ${v===o?'checked':''}> ${o}</label>`).join('')}</td>
+      <td><input type="text" id="m${i}" value="${esc(memo)}" placeholder="한 줄 메모"></td></tr>`;
+  }).join('');
+  document.getElementById('free').innerHTML=FREE.map(([k,label])=>
+    `<div style="margin-bottom:0.6rem"><div style="font-weight:700;margin-bottom:0.25rem">${esc(label)}</div>
+     <textarea id="f_${k}">${esc(a[k]||'')}</textarea></div>`).join('');
+  if(a._at) document.getElementById('savedAt').textContent='저장됨 · '+a._at;
+}
+async function saveAns(){
+  const payload={check:{}, memo:{}};
+  ITEMS.forEach(([k],i)=>{
+    const r=document.querySelector(`input[name=c${i}]:checked`);
+    payload.check[k]=r?r.value:'';
+    payload.memo[k]=document.getElementById('m'+i).value.trim();
+  });
+  FREE.forEach(([k])=>{ payload[k]=document.getElementById('f_'+k).value.trim(); });
+  payload._at=new Date().toLocaleString('ko-KR');
+  await fetch('/api/speech/answers',{method:'POST',credentials:'same-origin',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+  STATE.answers=payload;
+  document.getElementById('savedAt').textContent='저장됨 · '+payload._at;
+}
+
+/* ── 시작 ── */
+document.getElementById('wk').innerHTML=[1,2,3,4].map(w=>`<option value="${w}">${w}주차</option>`).join('');
+tab(+(localStorage.getItem('sp_tab')||0));
+loadPages(); loadState();
+</script>

@@ -3611,6 +3611,177 @@ async def flash_page():
     return FileResponse("frontend/flash.html", headers=_NOCACHE)
 
 
+@app.get("/liangci")
+async def liangci_page():
+    """양사 문제 풀기 — 「옷은 어느 양사로 세나」를 묻는다"""
+    return FileResponse("frontend/liangci.html", headers=_NOCACHE)
+
+
+@app.get("/api/words/cl-quiz")
+async def cl_quiz(n: int = 20, known: int = 1, hsk: int = 0):
+    """양사 문제를 만들어 준다.
+       CC-CEDICT 의 CL: 표시에서 '무엇을 어느 양사로 세는가'를 뽑아 둔 표를 쓴다.
+       ⚠️ 오답 후보는 아무 양사나 고르면 안 된다 — 세는 결이 비슷한 것끼리 섞어야
+          문제가 된다(个 처럼 아무 데나 쓰이는 것을 늘 끼워 넣으면 답이 뻔해진다)."""
+    import random
+    c = _wdb()
+    try:
+        ours = [r["chinese"] for r in c.execute(
+            "SELECT chinese FROM words WHERE wordset='양사' AND COALESCE(excluded,0)=0")]
+        q = """SELECT classifier, noun, pinyin, meaning_ko, meaning_en, hsk
+               FROM classifier_nouns WHERE classifier IN (%s)""" % ",".join("?" * len(ours))
+        args = list(ours)
+        if known:
+            q += " AND known=1"
+        if hsk:
+            q += " AND hsk<=? AND hsk>0"; args.append(hsk)
+        rows = [dict(r) for r in c.execute(q, args)]
+        # 양사마다 몇 낱말을 세는지 — 흔한 양사일수록 오답으로 그럴듯하다
+        cnt = {}
+        for r in rows:
+            cnt[r["classifier"]] = cnt.get(r["classifier"], 0) + 1
+        pool = sorted(cnt, key=lambda x: -cnt[x])
+        mean = {r["chinese"]: (r["pinyin"], r["meaning_ko"]) for r in c.execute(
+            "SELECT chinese,pinyin,meaning_ko FROM words WHERE wordset='양사' AND COALESCE(excluded,0)=0")}
+    finally:
+        c.close()
+    if not rows:
+        return {"questions": []}
+    random.shuffle(rows)
+    out, used = [], set()
+    for r in rows:
+        if r["noun"] in used:
+            continue
+        used.add(r["noun"])
+        wrong = [x for x in pool if x != r["classifier"]]
+        # 흔한 것 위주로 뽑되 늘 같은 얼굴이 나오지 않게 조금 넓게 섞는다
+        wrong = random.sample(wrong[:24], 3) if len(wrong) >= 24 else random.sample(wrong, min(3, len(wrong)))
+        opts = wrong + [r["classifier"]]
+        random.shuffle(opts)
+        out.append({
+            "noun": r["noun"], "pinyin": r["pinyin"],
+            "meaning": r["meaning_ko"] or r["meaning_en"] or "",
+            "hsk": r["hsk"] or 0,
+            "answer": r["classifier"],
+            "options": [{"c": o, "pinyin": mean.get(o, ("", ""))[0],
+                         "ko": mean.get(o, ("", ""))[1]} for o in opts],
+        })
+        if len(out) >= max(1, min(n, 100)):
+            break
+    return {"questions": out, "total": len(rows)}
+
+
+# ─── 성공하는스피치커뮤니케이션 ──────────────────────────
+# 교안은 기존 교안 뷰어(/api/chinese/textbook/*)를 그대로 쓴다.
+# 여기 있는 것은 과제(보이스 자가진단) — 1분 녹음 + 자가진단표 + 종합소감.
+
+SPEECH_SUBJ = "성공하는스피치커뮤니케이션"
+SPEECH_DIR = OUTPUTS_DIR / "speech"
+
+
+def _speech_db():
+    c = _wdb()
+    c.execute("""CREATE TABLE IF NOT EXISTS speech_takes (
+        user_id INTEGER NOT NULL, take INTEGER NOT NULL,
+        path TEXT, sec REAL, created_at TEXT,
+        PRIMARY KEY (user_id, take))""")
+    c.execute("""CREATE TABLE IF NOT EXISTS speech_answers (
+        user_id INTEGER PRIMARY KEY, data TEXT, updated_at TEXT)""")
+    return c
+
+
+@app.get("/speech")
+async def speech_page():
+    """스피치 과목 — 교안보기와 과제(보이스 자가진단)"""
+    return FileResponse("frontend/speech.html", headers=_NOCACHE)
+
+
+@app.get("/api/speech/state")
+async def speech_state(user: dict = Depends(get_current_user)):
+    c = _speech_db()
+    try:
+        takes = [dict(r) for r in c.execute(
+            "SELECT take, sec, created_at FROM speech_takes WHERE user_id=? ORDER BY take",
+            (user["id"],))]
+        r = c.execute("SELECT data FROM speech_answers WHERE user_id=?", (user["id"],)).fetchone()
+    finally:
+        c.close()
+    return {"takes": takes, "answers": json.loads(r["data"]) if r and r["data"] else {}}
+
+
+@app.post("/api/speech/record")
+async def speech_record(take: int = Form(...), sec: float = Form(0),
+                        audio: UploadFile = File(...),
+                        user: dict = Depends(get_current_user)):
+    """녹음 한 벌을 받는다. 같은 자리에 다시 녹음하면 덮어쓴다."""
+    if take not in (1, 2, 3):
+        raise HTTPException(400, "녹음 자리는 1~3")
+    d = SPEECH_DIR / str(user["id"])
+    d.mkdir(parents=True, exist_ok=True)
+    ext = ".webm" if "webm" in (audio.content_type or "") else ".ogg"
+    path = d / f"take{take}{ext}"
+    for old in d.glob(f"take{take}.*"):        # 갈아 끼울 때 옛 확장자가 남지 않게
+        old.unlink(missing_ok=True)
+    with open(path, "wb") as f:
+        f.write(await audio.read())
+    c = _speech_db()
+    try:
+        c.execute("""INSERT INTO speech_takes(user_id,take,path,sec,created_at)
+                     VALUES(?,?,?,?,?)
+                     ON CONFLICT(user_id,take) DO UPDATE SET
+                       path=excluded.path, sec=excluded.sec, created_at=excluded.created_at""",
+                  (user["id"], take, str(path), round(sec, 1),
+                   datetime.now().strftime("%Y-%m-%d %H:%M")))
+        c.commit()
+    finally:
+        c.close()
+    return {"ok": True, "take": take, "sec": round(sec, 1)}
+
+
+@app.get("/api/speech/audio/{take}")
+async def speech_audio(take: int, user: dict = Depends(get_current_user)):
+    c = _speech_db()
+    try:
+        r = c.execute("SELECT path FROM speech_takes WHERE user_id=? AND take=?",
+                      (user["id"], take)).fetchone()
+    finally:
+        c.close()
+    if not r or not os.path.exists(r["path"]):
+        raise HTTPException(404, "녹음이 없습니다")
+    return FileResponse(r["path"], headers=_NOCACHE)
+
+
+@app.delete("/api/speech/audio/{take}")
+async def speech_audio_del(take: int, user: dict = Depends(get_current_user)):
+    c = _speech_db()
+    try:
+        r = c.execute("SELECT path FROM speech_takes WHERE user_id=? AND take=?",
+                      (user["id"], take)).fetchone()
+        if r and r["path"] and os.path.exists(r["path"]):
+            os.remove(r["path"])
+        c.execute("DELETE FROM speech_takes WHERE user_id=? AND take=?", (user["id"], take))
+        c.commit()
+    finally:
+        c.close()
+    return {"ok": True}
+
+
+@app.post("/api/speech/answers")
+async def speech_answers(payload: dict, user: dict = Depends(get_current_user)):
+    """자가진단 체크와 종합소감을 담아 둔다 (그때그때 저장)."""
+    c = _speech_db()
+    try:
+        c.execute("""INSERT INTO speech_answers(user_id,data,updated_at) VALUES(?,?,?)
+                     ON CONFLICT(user_id) DO UPDATE SET
+                       data=excluded.data, updated_at=excluded.updated_at""",
+                  (user["id"], json.dumps(payload, ensure_ascii=False),
+                   datetime.now().strftime("%Y-%m-%d %H:%M")))
+        c.commit()
+    finally:
+        c.close()
+    return {"ok": True}
+
+
 @app.get("/api/words/deck")
 async def words_deck(request: Request, offset: int = 0, limit: int = 100,
                      level: int = 0, hsk: int = 0, cat: str = "", order: str = "seq",

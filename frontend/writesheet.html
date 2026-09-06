@@ -1,0 +1,480 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>쓰기 연습지 — A4 인쇄</title>
+<style>
+:root{
+  --ink:#1c1e26; --line:#c9ccd6; --guide:#c9ccd6; --accent:#7c6dfa; --muted:#6e7383;
+  --font-cn:'Noto Sans SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','SimSun',
+            'Noto Sans CJK SC','Heiti SC',serif;
+  --cell:17.2mm; --cols:10;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:#eef0f4;color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
+
+/* ── 화면에만 보이는 조작 ── */
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;
+  padding:0.6rem 0.9rem;background:#fff;border-bottom:1px solid #dcdfe8;}
+.bar h1{font-size:0.95rem;margin:0 0.5rem 0 0;font-weight:800;}
+.bar label{font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:0.3rem;}
+.bar select,.bar input[type=number]{font:inherit;font-size:0.85rem;padding:0.25rem 0.4rem;
+  border:1px solid #dcdfe8;border-radius:8px;background:#fff;color:var(--ink);}
+.bar button{font:inherit;font-size:0.85rem;padding:0.4rem 0.8rem;border-radius:9px;
+  border:1px solid #dcdfe8;background:#f4f5f8;cursor:pointer;}
+.bar button:hover{border-color:var(--accent);}
+.bar button.main{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700;}
+.bar .seg{display:flex;border:1px solid #dcdfe8;border-radius:9px;overflow:hidden;}
+.bar .seg button{border:0;border-radius:0;background:#fff;}
+.bar .seg button.on{background:var(--accent);color:#fff;font-weight:700;}
+.bar .rad{display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:var(--muted);}
+.bar .rad label{gap:0.2rem;}
+.hint{font-size:0.78rem;color:var(--muted);padding:0 0.9rem 0.5rem;}
+
+/* 낱말 고르기 */
+.pick{background:#fff;border-bottom:1px solid #dcdfe8;padding:0.5rem 0.9rem 0.7rem;}
+.pick .row{display:flex;flex-wrap:wrap;gap:0.35rem;max-height:9.5rem;overflow:auto;}
+.pick .row label{display:flex;align-items:center;gap:0.25rem;font-size:0.85rem;
+  border:1px solid #dcdfe8;border-radius:9px;padding:0.2rem 0.45rem;cursor:pointer;background:#fafbfc;}
+.pick .row label.on{border-color:var(--accent);background:#f2f0ff;}
+.pick .row b{font-family:var(--font-cn);font-size:1.05rem;font-weight:600;}
+.pick .row s{text-decoration:none;color:var(--muted);font-size:0.72rem;}
+.pick .top{display:flex;gap:0.4rem;align-items:center;margin-bottom:0.4rem;}
+.pick .top span{font-size:0.8rem;color:var(--muted);margin-right:auto;}
+.pick .tip{font-size:0.72rem;color:#a8acb8;margin-top:0.35rem;}
+.pick .row label{cursor:grab;}
+.pick .row label.drag{opacity:0.4;}
+.pick .row label.over{border-color:var(--accent);box-shadow:-2px 0 0 var(--accent);}
+.pick .row label u{text-decoration:none;color:#b9bcc7;font-size:0.72rem;padding:0 0.1rem;
+  cursor:pointer;border-radius:4px;}
+.pick .row label u:hover{color:var(--accent);background:#f2f0ff;}
+
+/* ── 종이 ── */
+.sheet.blank{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+.sheet.blank .row{gap:0;}
+.sheet.blank .row + .row .cell{margin-top:-0.35mm;}
+.sheet{width:210mm;min-height:297mm;margin:1rem auto;padding:11mm 11mm 8mm;overflow:visible;
+  background:#fff;box-shadow:0 2px 14px rgba(0,0,0,0.12);}
+/* 바탕 글자 — 그 장이 무슨 글자를 익히는 장인지 한눈에 보이게, 아주 연하게 깔아 둔다.
+   칸과 글씨 뒤로 가야 하므로 z-index 를 낮춘다. */
+.sheet{position:relative;}
+.sheet.wm::before{content:attr(data-wm);position:absolute;left:0;right:0;top:50%;
+  transform:translateY(-50%);text-align:center;pointer-events:none;
+  font-family:var(--font-cn);font-size:190mm;line-height:1;color:#f2f3f6;z-index:0;}
+.sheet > *{position:relative;z-index:1;}
+.item{break-inside:avoid;page-break-inside:avoid;margin-bottom:3.2mm;}
+.lab{display:flex;align-items:baseline;gap:0.45rem;margin-bottom:1mm;}
+.lab .z{font-family:var(--font-cn);font-weight:700;
+  font-size:clamp(11pt, calc(var(--cell) * 0.62), 34pt);}
+.lab .p{color:#2f6f68;font-weight:700;
+  font-size:clamp(8.5pt, calc(var(--cell) * 0.34), 20pt);}
+.lab .k{color:var(--muted);
+  font-size:clamp(8pt, calc(var(--cell) * 0.30), 17pt);}
+
+/* 획순 — 작게, 한 줄로 */
+.sq{display:flex;flex-wrap:wrap;gap:0.7mm;margin:0 0 1mm 0;align-items:center;}
+.sq svg{width:6.6mm;height:6.6mm;border:0.2mm solid #e6e8ee;border-radius:0.6mm;background:#fff;}
+.sq .cap{font-size:6.5pt;color:#b9bcc7;margin-right:1mm;}
+
+/* 깍두기 칸 */
+.row{display:grid;grid-template-columns:repeat(var(--cols), var(--cell));gap:0;}
+.cell{width:var(--cell);height:var(--cell);position:relative;
+  border:0.35mm solid var(--line);margin-left:-0.35mm;}
+.row .cell:first-child{margin-left:0;}
+.cell::before,.cell::after{content:'';position:absolute;}
+.cell::before{left:50%;top:0;bottom:0;border-left:0.22mm dashed #e6e8ee;}
+.cell::after{top:50%;left:0;right:0;border-top:0.22mm dashed #e6e8ee;}
+.cell i{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;
+  font-family:var(--font-cn);font-size:calc(var(--cell) * 0.86);line-height:1;}
+.cell.guide i{color:var(--guide);}
+.cell.dark i{color:var(--ink);}
+
+/* 2낱말 방식 — 예문 쓰기 */
+.big .lab .z{font-size:clamp(17pt, calc(var(--cell) * 0.95), 44pt);}
+.big .lab .p{font-size:clamp(11pt, calc(var(--cell) * 0.46), 24pt);}
+.big .lab .k{font-size:clamp(10pt, calc(var(--cell) * 0.40), 20pt);}
+.ex{margin:2.5mm 0 0 0;break-inside:avoid;page-break-inside:avoid;}
+.ex .el{display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.8mm;
+  border-left:1mm solid #e6e8ee;padding-left:2mm;}
+.ex .el .z{font-family:var(--font-cn);font-weight:700;
+  font-size:clamp(11pt, calc(var(--cell) * 0.58), 30pt);}
+.ex .el .p{color:#2f6f68;font-weight:700;
+  font-size:clamp(9.5pt, calc(var(--cell) * 0.38), 22pt);}
+.ex .el .k{color:var(--muted);
+  font-size:clamp(9pt, calc(var(--cell) * 0.32), 18pt);}
+.brk{break-after:page;page-break-after:always;height:0;}
+
+/* 양면으로 찍어 묶을 때는 안쪽(묶는 쪽) 여백이 더 있어야 글이 접힘에 먹히지 않는다.
+   홀수 장은 왼쪽을, 짝수 장은 오른쪽을 넓힌다. */
+#paper.duplex .sheet:nth-child(odd){padding-left:20mm;padding-right:8mm;}
+#paper.duplex .sheet:nth-child(even){padding-left:8mm;padding-right:20mm;}
+
+@media print{
+  body{background:#fff;}
+  .bar,.hint,.pick{display:none !important;}
+  .sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none;}
+  .sheet + .sheet{break-before:page;page-break-before:always;}
+  #paper.duplex .sheet{padding-top:0;padding-bottom:0;}
+  #paper.duplex .sheet:nth-child(odd){padding-left:9mm;padding-right:0;}
+  #paper.duplex .sheet:nth-child(even){padding-left:0;padding-right:9mm;}
+  @page{size:A4 portrait;margin:11mm;}
+}
+</style>
+
+<div class="bar">
+  <h1>쓰기 연습지</h1>
+  <label>과정
+    <select id="src" onchange="load()">
+      <option value="set:양사">양사</option>
+      <option value="set:접속사">접속사</option>
+      <option value="set:의성의태">의성의태어</option>
+      <option value="hsk:1">HSK 1급</option><option value="hsk:2">HSK 2급</option>
+      <option value="hsk:3">HSK 3급</option><option value="hsk:4">HSK 4급</option>
+      <option value="hsk:5">HSK 5급</option><option value="hsk:6">HSK 6급</option>
+    </select></label>
+  <div class="seg">
+    <button id="m10" onclick="setMode(10)">한 장에 10낱말</button>
+    <button id="m1" onclick="setMode(1)">한 낱말 + 예문</button>
+    <button id="m0" onclick="setMode(0)">빈칸만</button>
+  </div>
+  <label id="szBox">칸 크기
+    <select id="sz" onchange="render()">
+      <option value="10">작은 10mm (18칸)</option>
+      <option value="15" selected>중간 15mm (12칸)</option>
+      <option value="20">큰 20mm (9칸)</option>
+    </select></label>
+  <label id="pgBox">장수 <input type="number" id="pages" value="2" min="1" max="20" style="width:3.5rem" onchange="render()"></label>
+  <label><input type="checkbox" id="duplex" onchange="render()"> 양면 인쇄</label>
+  <label id="wmBox"><input type="checkbox" id="wm" checked onchange="render()"> 바탕 글자</label>
+  <label>쓰기 칸 <input type="number" id="wr" value="10" min="3" max="16" style="width:3.5rem" onchange="render()"></label>
+  <span class="rad">쓰기 방향
+    <label><input type="radio" name="dir" value="v" checked onchange="render()"> 글자별</label>
+    <label><input type="radio" name="dir" value="h" onchange="render()"> 낱말째</label>
+  </span>
+  <span class="rad">안내 글씨
+    <label><input type="radio" name="gd" value="0" onchange="render()"> 없음</label>
+    <label><input type="radio" name="gd" value="1" checked onchange="render()"> 1개</label>
+    <label><input type="radio" name="gd" value="all" onchange="render()"> 모두</label>
+  </span>
+  <label>한 글자
+    <select id="two" onchange="render()">
+      <option value="1" selected>1줄</option><option value="2">2줄</option>
+      <option value="3">3줄</option><option value="4">4줄</option><option value="5">5줄</option>
+    </select></label>
+  <label><input type="checkbox" id="showSq" checked onchange="render()"> 획순</label>
+  <button class="main" onclick="window.print()">인쇄 / PDF 저장</button>
+</div>
+<div class="hint">인쇄 창에서 <b>배경 그래픽</b>을 켜야 칸선이 나옵니다. 여백은 「기본」.</div>
+
+<div class="pick">
+  <div class="top">
+    <span id="cnt">0개 고름</span>
+    <label>정렬
+      <select id="sort" onchange="applySort()">
+        <option value="seq">교재 순서</option>
+        <option value="py">병음 순</option>
+        <option value="hsk">쉬운 것부터 (HSK)</option>
+        <option value="stroke">획수 적은 것부터</option>
+        <option value="ko">뜻 가나다 순</option>
+        <option value="manual">직접 정렬</option>
+      </select></label>
+    <button onclick="all(1)">전체 고르기</button>
+    <button onclick="all(0)">전체 풀기</button>
+    <button onclick="onlyPicked()">고른 것만 남기기</button>
+  </div>
+  <div class="row" id="picks"></div>
+  <div class="tip">끌어다 놓아 차례를 바꿉니다 · <b>⤒</b> 맨 위로 · <b>⤓</b> 맨 아래로</div>
+</div>
+
+<div id="paper"></div>
+
+<script>
+/* A4 쓰기 연습지.
+   두 가지 방식 — 한 장에 10낱말(빽빽이) / 한 장에 2낱말 + 예문까지(찬찬히).
+   예문은 병음과 뜻만 적어 두고 칸은 비워 둔다 — 한자를 떠올려 쓰게 하려는 것이다.
+   획순은 hanzi-writer-data 를 받아 작게 그린다(받아 온 것은 담아 두어 다시 안 받는다). */
+let LIST=[], SEL=new Set(), MODE=+(localStorage.getItem('ws_mode')||10);
+if(![10,1,0].includes(MODE)) MODE=10;   // 예전에 저장된 '2낱말' 방식은 없앴다
+const esc = t => String(t??'').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = id => +document.getElementById(id).value;
+const hans = s => [...String(s||'')].filter(c=>c>='一'&&c<='鿿');
+
+/* ── 획순 자료 ── */
+const SQ={};
+async function strokes(ch){
+  if(ch in SQ) return SQ[ch];
+  const key='sq_'+ch;
+  try{ const c=localStorage.getItem(key); if(c){ SQ[ch]=JSON.parse(c); return SQ[ch]; } }catch(e){}
+  try{
+    const r=await fetch(`https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${encodeURIComponent(ch)}.json`);
+    const d=await r.json();
+    SQ[ch]={s:d.strokes};
+    try{ localStorage.setItem(key, JSON.stringify(SQ[ch])); }catch(e){}
+  }catch(e){ SQ[ch]=null; }
+  return SQ[ch];
+}
+function sqSvg(d, upto){
+  return `<svg viewBox="0 0 1024 1024"><g transform="scale(1,-1) translate(0,-900)">`+
+    d.s.slice(0,upto).map((p,i)=>
+      `<path d="${p}" fill="${i===upto-1?'#1c1e26':'#b9bcc7'}"/>`).join('')+`</g></svg>`;
+}
+
+/* ── 가져오기 ── */
+async function load(){
+  const [kind, v] = document.getElementById('src').value.split(':');
+  const q = new URLSearchParams({offset:0, limit:100, order:'seq', only:'', cat:'',
+                                 subject:'', week:0, cls:0, course:0,
+                                 hsk: kind==='hsk'? v:0, wordset: kind==='set'? v:''});
+  document.getElementById('paper').innerHTML='<div class="hint">가져오는 중…</div>';
+  try{
+    const r=await fetch('/api/words/deck?'+q, {credentials:'same-origin'});
+    LIST=(await r.json()).words||[];
+  }catch(e){ LIST=[]; }
+  SEL=new Set(LIST.map(w=>w.id));
+  paintPicks();
+  await warm(true);
+  applySort();
+  render();
+}
+async function warm(all){                   // 쓸 글자의 획순을 미리 받아 둔다
+  const need=new Set();                     // all 이면 목록 전체 (획수 정렬에 쓴다)
+  for(const w of LIST){ if(all || SEL.has(w.id)) hans(w.chinese).forEach(c=>need.add(c)); }
+  await Promise.all([...need].slice(0,400).map(strokes));
+}
+function paintPicks(){
+  document.getElementById('picks').innerHTML = LIST.map((w,i)=>
+    `<label class="${SEL.has(w.id)?'on':''}" data-id="${w.id}" data-i="${i}" draggable="true">
+       <input type="checkbox" ${SEL.has(w.id)?'checked':''} onchange="pick(${w.id},this)">
+       <b>${esc(w.chinese)}</b><s>${esc(w.pinyin||'')}</s>
+       <u onclick="move(${i},'top');event.preventDefault()" title="맨 위로">⤒</u>
+       <u onclick="move(${i},'end');event.preventDefault()" title="맨 아래로">⤓</u></label>`).join('');
+  document.getElementById('cnt').textContent=`${SEL.size}개 고름 / 모두 ${LIST.length}개`;
+  wireDrag();
+}
+
+/* 차례 바꾸기 — 끌어다 놓거나, ⤒ ⤓ 로 끝으로 보낸다.
+   손댄 순간부터는 '직접 정렬'이 된다 (다시 정렬을 고르면 그 차례로 덮인다). */
+function manual(){ document.getElementById('sort').value='manual'; }
+function move(i, where){
+  const w=LIST.splice(i,1)[0];
+  where==='top' ? LIST.unshift(w) : LIST.push(w);
+  manual(); paintPicks(); render();
+}
+let DRAG=null;
+function wireDrag(){
+  const host=document.getElementById('picks');
+  [...host.children].forEach(el=>{
+    el.ondragstart=e=>{ DRAG=+el.dataset.i; el.classList.add('drag');
+                        e.dataTransfer.effectAllowed='move'; };
+    el.ondragend  =()=>{ el.classList.remove('drag');
+                         [...host.children].forEach(x=>x.classList.remove('over')); };
+    el.ondragover =e=>{ e.preventDefault(); el.classList.add('over'); };
+    el.ondragleave=()=>el.classList.remove('over');
+    el.ondrop     =e=>{
+      e.preventDefault();
+      const to=+el.dataset.i;
+      if(DRAG===null || DRAG===to) return;
+      const w=LIST.splice(DRAG,1)[0];
+      LIST.splice(to,0,w);
+      DRAG=null; manual(); paintPicks(); render();
+    };
+  });
+}
+const PYKEY = w => (w.pinyin||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function applySort(){
+  const k=document.getElementById('sort').value;
+  if(k==='manual') return;
+  const st = w => { const c=hans(w.chinese)[0]; return (SQ[c] && SQ[c].s) ? SQ[c].s.length : 99; };
+  const cmp = {
+    seq:   (a,b)=> (a.seq??0)-(b.seq??0) || a.id-b.id,
+    py:    (a,b)=> PYKEY(a).localeCompare(PYKEY(b)) || a.id-b.id,
+    hsk:   (a,b)=> ((a.hsk||9)-(b.hsk||9)) || PYKEY(a).localeCompare(PYKEY(b)),
+    stroke:(a,b)=> (st(a)-st(b)) || PYKEY(a).localeCompare(PYKEY(b)),
+    ko:    (a,b)=> String(a.meaning_ko||'').localeCompare(String(b.meaning_ko||''),'ko') || a.id-b.id,
+  }[k];
+  if(cmp) LIST.sort(cmp);
+  paintPicks(); render();
+}
+function onlyPicked(){                       // 고르지 않은 것은 목록에서 치운다
+  LIST=LIST.filter(w=>SEL.has(w.id));
+  paintPicks(); render();
+}
+function pick(id, el){
+  el.checked ? SEL.add(id) : SEL.delete(id);
+  el.closest('label').classList.toggle('on', el.checked);
+  document.getElementById('cnt').textContent=`${SEL.size}개 고름 / 모두 ${LIST.length}개`;
+  warm().then(render);
+}
+function all(on){
+  SEL = on ? new Set(LIST.map(w=>w.id)) : new Set();
+  paintPicks(); warm().then(render);
+}
+function setMode(m){
+  MODE=m; localStorage.setItem('ws_mode', m);
+  for(const [id,v] of [['m10',10],['m1',1],['m0',0]])
+    document.getElementById(id).classList.toggle('on', m===v);
+  document.querySelector('.pick').style.display = m===0 ? 'none' : '';   // 빈칸엔 낱말이 필요 없다
+  render();
+}
+
+/* ── 그리기 ── */
+/* 한 줄 = 본보기 칸 + 쓰기 칸.
+   「쓰기 10」이면 본보기 1칸 뒤로 빈 칸이 10개 — 열 번 쓰게 된다. */
+/* 한 줄의 짜임 —  [진한 본보기 1칸] + [흐린 안내 칸] + [빈 쓰기 칸]
+   「안내 글씨」는 덧써 볼 흐린 글자를 몇 칸 깔지를 말한다.
+     없음  진한 본보기만
+     1개   진한 본보기 + 흐린 안내 한 칸 (덧쓰고 나서 빈 칸에 쓴다)
+     모두  진한 본보기 + 나머지를 모두 흐리게 (계속 덧쓰기) */
+function GD(){ return (document.querySelector('input[name=gd]:checked')||{}).value || '1'; }
+function FAINT(){ const g=GD(); return g==='0' ? 0 : (g==='all' ? num('wr') : 1); }
+function COLS(){ return 1 + (GD()==='all' ? 0 : FAINT()) + num('wr'); }
+function inkAt(i, ch){                     // i 번째 칸에 무엇이 들어가나
+  if(i===0) return ['cell dark', ch];
+  if(i <= FAINT()) return ['cell guide', ch];
+  return ['cell', ''];
+}
+function oneRow(ch){
+  let h='';
+  for(let i=0;i<COLS();i++){
+    const [cls, ink]=inkAt(i, ch);
+    h += `<div class="${cls}">${ink ? `<i>${esc(ink)}</i>` : ''}</div>`;
+  }
+  return `<div class="row">${h}</div>`;
+}
+function LINES(){ return Math.max(1, Math.min(5, +document.getElementById('two').value||1)); }
+function cells(ch){                        // 「한 글자 N줄」이면 같은 줄을 그만큼
+  return oneRow(ch).repeat(LINES());
+}
+function DIR(){ return (document.querySelector('input[name=dir]:checked')||{}).value || 'v'; }
+
+/* 낱말째 쓰기 — 「一张纸」를 통째로 한 벌 깔고, 그 뒤로 다시 쓸 칸을 이어 붙인다.
+   글자별 쓰기(한 글자씩 한 줄)와 달리 낱말의 흐름을 익히는 데 낫다. */
+function phraseCopies(){                   // 낱말을 몇 벌 깔까 — 본보기 1 + 안내 + 쓰기
+  const reps=num('wr') * LINES();
+  const faint = GD()==='0' ? 0 : (GD()==='all' ? reps : 1);
+  return {faint, total: 1 + (GD()==='all' ? 0 : faint) + reps};
+}
+function phraseCells(txt){
+  const cs=hans(txt), {faint, total}=phraseCopies(), cols=COLS();
+  const out=[];
+  for(let n=0;n<cs.length*total;n++){
+    const idx=n%cs.length, copy=Math.floor(n/cs.length);
+    let cls='cell', ink='';
+    if(copy===0){ cls='cell dark'; ink=cs[idx]; }
+    else if(copy<=faint){ cls='cell guide'; ink=cs[idx]; }
+    out.push(`<div class="${cls}">${ink?`<i>${esc(ink)}</i>`:''}</div>`);
+  }
+  let h='';
+  for(let i=0;i<out.length;i+=cols) h+=`<div class="row">${out.slice(i,i+cols).join('')}</div>`;
+  return h;
+}
+function phraseRowCount(txt){
+  return Math.ceil(hans(txt).length * phraseCopies().total / COLS());
+}
+function writeOf(txt){                     // 방향에 따라 알맞은 칸을 낸다
+  return DIR()==='h' ? phraseCells(txt) : hans(txt).map(cells).join('');
+}
+function sqRow(ch){
+  const d=SQ[ch];
+  if(!document.getElementById('showSq').checked || !d) return '';
+  const n=d.s.length;
+  return `<div class="sq"><span class="cap">${n}획</span>`+
+    Array.from({length:n},(_,i)=>sqSvg(d,i+1)).join('')+`</div>`;
+}
+function block(w, big){
+  const cs=hans(w.chinese);
+  return `<div class="item ${big?'big':''}">
+    <div class="lab"><span class="z">${esc(w.chinese)}</span>
+      <span class="p">${esc(w.pinyin||'')}</span>
+      <span class="k">${esc(w.meaning_ko||'')}</span></div>
+    ${DIR()==='h' ? (document.getElementById('showSq').checked ? cs.map(sqRow).join('') : '') + phraseCells(w.chinese)
+                   : cs.map(c=>sqRow(c)+cells(c)).join('')}
+  </div>`;
+}
+function exBlock(e){                       // 예문도 한자를 본보기로 보여 준다
+  const cs=hans(e.chinese);
+  return `<div class="ex">
+    <div class="el"><span class="z">${esc(e.chinese)}</span>
+      <span class="p">${esc(e.pinyin||'')}</span>
+      <span class="k">${esc(e.ko||e.meaning_ko||'')}</span></div>
+    ${writeOf(e.chinese)}
+  </div>`;
+}
+/* 칸 크기를 정한다. 한 장에 들어가면 그렇게 맞추고, 안 들어가면 **줄이지 않고 장을 넘긴다**.
+   ⚠️ 예전에는 무조건 한 장에 우겨넣느라 「한 글자 2줄」에서 글씨가 깨알같이 작아졌다.
+      쓰기 연습지는 글씨 크기가 곧 쓸모다 — 작아지느니 종이를 한 장 더 쓰는 편이 낫다. */
+const MIN_CELL = 12;                        // 이보다 작아지면 쓰기 어렵다
+function fitCell(rows, labels, sq, big){
+  const W=186, H=272;                       // 여백 11mm 를 뺀 쓸 수 있는 넓이(mm)
+  const byW = W / COLS();
+  let cell = Math.min(byW, 22);
+  // 이름줄 글씨가 칸 크기를 따라가므로 서로 물린다 — 몇 번 되짚으면 값이 자리를 잡는다
+  for(let k=0;k<4;k++){
+    const used = labels * (big ? cell*1.35 : cell*0.95) + sq*7.6 + 4;
+    const byH = rows>0 ? (H-used)/rows : 99;
+    cell = Math.max(MIN_CELL, Math.min(byW, byH, 22));
+  }
+  return cell.toFixed(2);
+}
+function rowsOf(w, withEx){
+  const per = LINES();
+  const cnt = t => DIR()==='h' ? phraseRowCount(t) : hans(t).length*per;
+  let rows = cnt(w.chinese), labels=1, sq=hans(w.chinese).length;
+  if(withEx) for(const e of (w.examples||[])){ rows += cnt(e.chinese); labels++; }
+  if(!document.getElementById('showSq').checked) sq=0;
+  return {rows, labels, sq};
+}
+function blankSheet(){
+  const cell=+document.getElementById('sz').value;
+  const W=186, H=272;
+  const cols=Math.floor(W/cell), rows=Math.floor(H/cell);
+  let one='';
+  for(let r=0;r<rows;r++){
+    one += `<div class="row">` + `<div class="cell"></div>`.repeat(cols) + `</div>`;
+  }
+  const n=Math.max(1, Math.min(20, +document.getElementById('pages').value||1));
+  return Array.from({length:n},()=>
+    `<div class="sheet blank" style="--cell:${cell}mm;--cols:${cols}">${one}</div>`).join('');
+}
+function render(){
+  document.getElementById('paper').classList.toggle('duplex',
+    document.getElementById('duplex').checked);
+  for(const [id,on] of [['szBox',MODE===0],['pgBox',MODE===0],['wmBox',MODE===1]])
+    document.getElementById(id).style.display = on ? '' : 'none';
+  if(MODE===0){ document.getElementById('paper').innerHTML=blankSheet(); return; }
+  document.documentElement.style.setProperty('--cols', COLS());
+  const pick=LIST.filter(w=>SEL.has(w.id));
+  const P=document.getElementById('paper');
+  if(!pick.length){ P.innerHTML='<div class="hint">고른 낱말이 없습니다.</div>'; return; }
+  let h='';
+  if(MODE===10){
+    for(let i=0;i<pick.length;i+=10){
+      const part=pick.slice(i,i+10);
+      let rows=0, labels=0, sq=0;
+      for(const w of part){ const r=rowsOf(w,false); rows+=r.rows; labels+=r.labels; sq+=r.sq; }
+      h += `<div class="sheet" style="--cell:${fitCell(rows,labels,sq,false)}mm">`
+         + part.map(w=>block(w,false)).join('') + `</div>`;
+    }
+  }else{
+    const useWm=document.getElementById('wm').checked;
+    for(const w of pick){                   // 낱말 하나 + 그 예문을 한 장에
+      const r=rowsOf(w,true);
+      const head=hans(w.chinese)[0]||'';    // 바탕에는 그 낱말의 첫 글자를 깐다
+      h += `<div class="sheet${useWm&&head?' wm':''}" data-wm="${esc(head)}"`
+         + ` style="--cell:${fitCell(r.rows,r.labels,r.sq,true)}mm">`
+         + block(w,true) + (w.examples||[]).map(exBlock).join('') + `</div>`;
+    }
+  }
+  P.innerHTML=h;
+}
+/* /flash 에서 넘어오면 보고 있던 묶음·급수를 그대로 고른다 */
+(function(){
+  const q=new URLSearchParams(location.search);
+  const want = q.get('set') ? 'set:'+q.get('set') : (q.get('hsk') ? 'hsk:'+q.get('hsk') : '');
+  if(want){
+    const sel=document.getElementById('src');
+    if([...sel.options].some(o=>o.value===want)) sel.value=want;
+  }
+})();
+setMode(MODE); load();
+</script>
