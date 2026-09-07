@@ -3824,6 +3824,90 @@ async def speech_answers(payload: dict, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+@app.get("/wordgame")
+async def wordgame_page():
+    """배운 낱말로 푸는 게임"""
+    return FileResponse("frontend/wordgame.html", headers=_NOCACHE)
+
+
+@app.get("/api/words/game")
+async def words_game(request: Request, n: int = 12, mode: str = "ko",
+                     wordset: str = "", hsk: int = 0, subject: str = "",
+                     week: int = 0, cls: int = 0, seen_only: int = 0):
+    """게임 문제를 만들어 준다.
+       ⚠️ 오답 후보는 **같은 묶음·급수 안에서** 뽑아야 문제가 된다.
+          아무 낱말이나 섞으면 뜻만 봐도 답이 보인다."""
+    import random as _rnd
+    uid = request.state.user_id
+    c = _wdb()
+    try:
+        cond = ["COALESCE(w.excluded,0)=0", "TRIM(COALESCE(w.meaning_ko,''))<>''"]
+        args = []
+        if wordset: cond.append("w.wordset=?"); args.append(wordset)
+        if hsk:     cond.append("w.hsk=?");     args.append(hsk)
+        if subject: cond.append("w.subject=?"); args.append(subject)
+        if week:    cond.append("w.unit_week=?");  args.append(week)
+        if cls:     cond.append("w.unit_class=?"); args.append(cls)
+        q = f"""SELECT w.id,w.chinese,w.pinyin,w.meaning_ko,w.audio1,w.audio2,
+                       COALESCE(p.seen,0) seen, COALESCE(p.correct,0) ok, COALESCE(p.wrong,0) ng
+                FROM words w LEFT JOIN word_progress p ON p.word_id=w.id AND p.user_id=?
+                WHERE {' AND '.join(cond)}"""
+        rows = [dict(r) for r in c.execute(q, [uid] + args)]
+    finally:
+        c.close()
+    if len(rows) < 4:
+        return {"questions": [], "total": len(rows)}
+    pool = [r for r in rows if r["seen"] > 0] if seen_only else rows
+    if len(pool) < 4:
+        pool = rows                                   # 배운 것이 모자라면 전체에서
+    # 틀린 적 있는 낱말을 앞에 둔다 — 약한 데를 먼저 다진다
+    pool.sort(key=lambda r: (-(r["ng"] or 0), r["seen"] or 0, _rnd.random()))
+    picked = pool[: max(4, min(n, 40))]
+    _rnd.shuffle(picked)
+    out = []
+    for r in picked:
+        others = [x for x in rows if x["id"] != r["id"]]
+        wrong = _rnd.sample(others, 3) if len(others) >= 3 else others
+        opts = wrong + [r]
+        _rnd.shuffle(opts)
+        out.append({
+            "id": r["id"], "chinese": r["chinese"], "pinyin": r["pinyin"] or "",
+            "ko": r["meaning_ko"], "seen": r["seen"],
+            "audio": bool(r["audio1"] or r["audio2"]),
+            "answer": r["id"],
+            "options": [{"id": o["id"], "chinese": o["chinese"],
+                         "pinyin": o["pinyin"] or "", "ko": o["meaning_ko"]} for o in opts],
+        })
+    return {"questions": out, "total": len(rows), "seen": sum(1 for r in rows if r["seen"] > 0)}
+
+
+@app.post("/api/words/game-result")
+async def words_game_result(payload: dict, request: Request):
+    """푼 결과를 익힘 기록에 남긴다 (약한 낱말을 다음에 먼저 내주려고)."""
+    uid = request.state.user_id
+    items = payload.get("items") or []
+    c = _wdb()
+    try:
+        for it in items[:200]:
+            wid, ok = it.get("id"), 1 if it.get("ok") else 0
+            if not wid:
+                continue
+            c.execute("""INSERT INTO word_progress(user_id,word_id,seen,correct,wrong,last_at)
+                         VALUES(?,?,1,?,?,datetime('now'))
+                         ON CONFLICT(user_id,word_id) DO UPDATE SET
+                           seen=seen+1, correct=correct+?, wrong=wrong+?, last_at=datetime('now')""",
+                      (uid, wid, ok, 1 - ok, ok, 1 - ok))
+            c.execute("""INSERT INTO study_log(user_id,word_id,mode,result,ms,created_at)
+                         VALUES(?,?,'game',?,?,datetime('now'))""",
+                      (uid, wid, ok, int(it.get("ms") or 0)))
+        c.commit()
+    except Exception:
+        pass
+    finally:
+        c.close()
+    return {"ok": True}
+
+
 @app.get("/api/words/audio")
 async def words_audio(w: str = "", voice: int = 2, user: dict = Depends(get_current_user)):
     """이미 만들어 둔 낱말 음성을 그대로 내어 준다.

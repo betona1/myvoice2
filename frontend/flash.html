@@ -220,6 +220,7 @@ button{font-family:inherit;}
     <span style="font-size:0.74rem;color:var(--muted2);font-weight:600">계속 단어보기</span></h1>
   <button class="tbtn" id="btnF" onclick="toggleFilt()" title="설정">설정</button>
   <button class="tbtn" onclick="goPrint()" title="A4 쓰기 연습지 인쇄">인쇄</button>
+  <button class="tbtn" onclick="goGame()" title="배운 낱말로 게임">게임</button>
   <button class="tbtn" onclick="location.href='/liangci'" title="양사 문제 풀기">문제</button>
   <button class="tbtn" onclick="hz(-1)">A−</button>
   <button class="tbtn" onclick="hz(1)">A+</button>
@@ -332,7 +333,7 @@ function toast(t){ const h=document.getElementById('hint'); h.textContent=t; h.s
 
 /* ── 설정 ── */
 const S=Object.assign({cat:'',hsk:0,order:'seq',only:'',spd:5000,snd:1,off:0,subject:'',week:0,cls:0,voice:2,
-                       course:0,wordset:'',exsnd:1,rep:3,repgap:5000,exgap:2000},
+                       course:0,wordset:'',exsnd:1,rep:3,repgap:5000,exgap:2000,spdM:0.9,spdF:1.1},
   JSON.parse(localStorage.getItem('flash_set')||'{}'));
 // 주소로 넘어온 값이 있으면 그걸 우선한다 (/flash?course=4, /flash?liangci=1)
 (function(){ const q=new URLSearchParams(location.search);
@@ -352,7 +353,11 @@ function chips(host,items,cur,fn){
 // 빠른 시작 줄 — 묶음·교재급수를 한 번에 고른다
 async function paintQuick(){
   const cur = S.wordset ? 'set:' + S.wordset : (S.course ? 'course:' + S.course : '');
-  const ITEMS = [['', '전체', ''], ['set:양사', '🔢 양사', '양사'],
+  // 첫걸음에 필요한 것부터 앞에 둔다 — 대명사 없이는 문장이 안 서고, 그다음이 동사다
+  const ITEMS = [['', '전체', ''],
+                 ['set:대명사', '🙋 대명사', '대명사'], ['set:동사', '🏃 동사', '동사'],
+                 ['set:형용사', '🎨 형용사', '형용사'],
+                 ['set:양사', '🔢 양사', '양사'],
                  ['set:접속사', '🔗 접속사', '접속사'], ['set:의성의태', '💬 의성·의태어', '의성의태'],
                  ['course:4', '📘 교재 4급', ''], ['course:5', '📗 교재 5급', '']];
   const host = document.getElementById('quick');
@@ -386,7 +391,8 @@ function paintFilt(){
   // 교재가 정한 급수 어휘 · 주요 양사
   chips('fCourse',[[0,'전체'],[4,'교재 4급'],[5,'교재 5급']],(S.wordset?-1:S.course),v=>{
     S.wordset=''; S.course=+v; reload(0);});
-  chips('fSet',[['','전체'],['양사','양사'],['접속사','접속사'],['의성의태','의성·의태어']],S.wordset,v=>{
+  chips('fSet',[['','전체'],['대명사','대명사'],['동사','동사'],['형용사','형용사'],['양사','양사'],
+                ['접속사','접속사'],['의성의태','의성·의태어']],S.wordset,v=>{
     S.wordset=v; if(v) S.course=0; reload(0);});
   chips('fOrd',[['seq','쉬운 순'],['unit','교재 단원순'],['random','무작위'],['due','복습 먼저']],S.order,v=>{S.order=v;reload(0);});
   chips('fOnly',[['','전체'],['new','안 배운 것'],['wrong','틀린 것'],['star','별표']],S.only,v=>{S.only=v;reload(0);});
@@ -397,6 +403,7 @@ function paintFilt(){
   const g=document.getElementById('fGap');
   if(g){ g.value=Math.round((S.repgap||5000)/1000);
          document.getElementById('fGapT').textContent=g.value+'초'; }
+  paintRate();
   const g2=document.getElementById('fExGap');
   if(g2){ g2.value=((S.exgap||2000)/1000).toFixed(1);
           document.getElementById('fExGapT').textContent=g2.value+'초'; }
@@ -699,6 +706,26 @@ function sayWord(e, voice){                   // voice 1=남 2=여
                     : pickSrc(w.audio1, w.audio2);
   playOne(src, w.chinese, null, ()=>{ if(b) b.classList.remove('on'); });
 }
+/* 목소리마다 빠르기를 따로 둔다 — 남성은 느리게, 여성은 조금 빠르게가 듣기 낫다는 말이 있었다.
+   파일은 그대로 두고 재생할 때만 바꾸므로, 음성을 다시 만들 필요가 없다. */
+function rateFor(src){
+  const m = String(src||'').includes('audio1');
+  const v = m ? (S.spdM||0.9) : (S.spdF||1.1);
+  return Math.max(0.5, Math.min(2, v));
+}
+function setRate(voice, v){
+  v = Math.max(0.6, Math.min(1.4, +v));
+  if(voice===1) S.spdM=v; else S.spdF=v;
+  saveS(); paintRate();
+  if(AU){ try{ AU.playbackRate = rateFor(AU.src); }catch(e){} }   // 듣는 중이면 바로 반영
+}
+function paintRate(){
+  for(const [id,tid,v] of [['fSpM','fSpMT',S.spdM||0.9], ['fSpF','fSpFT',S.spdF||1.1]]){
+    const e=document.getElementById(id), t=document.getElementById(tid);
+    if(e) e.value=v;
+    if(t) t.textContent=v.toFixed(2)+'배';
+  }
+}
 function pickSrc(a1,a2){ return (S.voice===1 ? a1 : a2) || a1 || a2 || ''; }
 
 // 한 소리를 끝까지 재생하고 다음으로 (약간의 갭을 둔다)
@@ -711,6 +738,10 @@ function playOne(src, zh, el, done){
   try{
     if(AU){AU.pause();}
     AU=new Audio('/'+String(src).replace(/^\/+/,''));
+    // 파일을 다시 만들지 않고 여기서 빠르기를 준다.
+    // 브라우저가 음높이는 그대로 두고 속도만 바꾼다(preservesPitch 는 요즘 기본값이 켜짐).
+    AU.preservesPitch = true;
+    AU.playbackRate = rateFor(src);
     AU.onended=go; AU.onerror=()=>{ sayCn(zh); setTimeout(go, 900); };
     AU.play().catch(()=>{ sayCn(zh); setTimeout(go, 900); });
   }catch(e){ sayCn(zh); setTimeout(go, 900); }
@@ -746,6 +777,13 @@ function setGap(v){ S.repgap=Math.max(3,Math.min(60,+v))*1000; saveS();
 function setExGap(v){ S.exgap=Math.round(Math.max(0.5,Math.min(10,+v))*1000); saveS();
   document.getElementById('fExGapT').textContent=(S.exgap/1000).toFixed(1)+'초'; }
 /* 지금 보고 있는 묶음·급수를 그대로 들고 쓰기 연습지로 넘어간다 */
+/* 지금 보고 있는 묶음·급수를 그대로 들고 게임으로 넘어간다 */
+function goGame(){
+  const q=new URLSearchParams();
+  if(S.wordset) q.set('set', S.wordset);
+  else if(S.hsk) q.set('hsk', S.hsk);
+  location.href='/wordgame' + (q.toString() ? '?'+q : '');
+}
 function goPrint(){
   const q=new URLSearchParams();
   if(S.wordset) q.set('set', S.wordset);
@@ -913,7 +951,7 @@ function sizeDeck(){ /* 높이는 이제 flex 가 알아서 나눈다 — 예문
 window.addEventListener('resize',sizeDeck);
 window.addEventListener('orientationchange',()=>setTimeout(sizeDeck,300));
 
-paintFilt(); paintVoiceBtn(); paintExBtn(); paintRepBtn(); loadRoad(); reload(S.off||0); setTimeout(sizeDeck,50);
+paintFilt(); paintVoiceBtn(); paintExBtn(); paintRepBtn(); paintRate(); loadRoad(); reload(S.off||0); setTimeout(sizeDeck,50);
 </script>
 <div class="wm" id="wm" onclick="if(event.target===this) closeWrite()">
   <div class="wmbox">

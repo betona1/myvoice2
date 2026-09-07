@@ -1,0 +1,399 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>단어 게임</title>
+<style>
+:root{
+  --bg:#14141b; --bg2:#1b1b24; --surface:#23232e; --surface2:#2c2c38;
+  --border:#33333f; --text:#eceff4; --muted:#a9adbb; --muted2:#6e7383;
+  --accent:#7c6dfa; --accent2:#4fd1c5; --ok:#34d399; --no:#f05252; --warn:#f0a020;
+  --font-cn:'Noto Sans SC','Source Han Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+  --ui:1.4;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{font-size:calc(16px * var(--ui));}
+body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;}
+.top,.pg,.ctl{flex:0 0 auto;}
+.top{display:flex;align-items:center;gap:0.3rem;padding:0.35rem 0.6rem;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.top h1{font-size:0.85rem;margin:0;font-weight:800;flex:1;white-space:nowrap;}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:0.25rem 0.5rem;font-size:0.74rem;cursor:pointer;}
+.tbtn:hover{border-color:var(--accent);}
+.tbtn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+select{font:inherit;font-size:0.76rem;background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;padding:0.2rem 0.35rem;}
+.pg{display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.7rem;font-size:0.78rem;
+  color:var(--muted);background:var(--bg2);border-bottom:1px solid var(--border);}
+.pb{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.pb i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s;}
+.sc{color:var(--accent2);font-weight:800;}
+.st{color:var(--warn);font-weight:800;}
+.wrap{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1rem;padding:0.8rem;text-align:center;}
+.q{font-family:var(--font-cn);font-size:clamp(2.6rem,13dvh,7rem);font-weight:600;line-height:1.05;}
+.qp{color:var(--accent2);font-size:clamp(1rem,3.2dvh,2rem);font-weight:800;}
+.qk{color:var(--muted);font-size:clamp(1rem,3dvh,1.8rem);max-width:36rem;line-height:1.4;}
+.qs{font-size:clamp(2.2rem,9dvh,4.5rem);}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.6rem;
+  width:100%;max-width:46rem;}
+.opt{background:var(--surface);border:2px solid var(--border);border-radius:15px;
+  padding:0.7rem 0.6rem;cursor:pointer;color:var(--text);text-align:center;
+  display:flex;flex-direction:column;gap:0.15rem;transition:border-color .1s,background .1s,transform .07s;}
+.opt:hover{border-color:var(--accent);}
+.opt:active{transform:scale(0.97);}
+.opt .c{font-family:var(--font-cn);font-size:clamp(1.5rem,4.6dvh,2.6rem);font-weight:600;line-height:1.1;}
+.opt .p{color:var(--accent2);font-size:clamp(0.72rem,1.7dvh,1rem);font-weight:700;}
+.opt .k{color:var(--muted);font-size:clamp(0.8rem,2dvh,1.15rem);line-height:1.3;}
+.opt.ok{border-color:var(--ok);background:rgba(52,211,153,0.18);}
+.opt.no{border-color:var(--no);background:rgba(240,82,82,0.16);}
+.ctl{display:flex;gap:0.4rem;justify-content:center;padding:0.5rem;
+  background:var(--bg2);border-top:1px solid var(--border);flex-wrap:wrap;}
+.btn{background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:11px;padding:0.45rem 0.9rem;font-size:0.85rem;font-weight:700;cursor:pointer;}
+.btn.main{background:var(--accent);border-color:var(--accent);color:#fff;}
+.done .big{font-size:clamp(2rem,9dvh,4rem);font-weight:900;color:var(--accent2);}
+.wrongs{display:flex;flex-wrap:wrap;gap:0.35rem;justify-content:center;max-width:44rem;}
+.wrongs span{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:0.2rem 0.5rem;font-size:0.82rem;}
+.wrongs b{font-family:var(--font-cn);color:var(--accent2);margin-right:0.2rem;}
+/* 짝맞추기 — 카드를 뒤집어 한자와 뜻을 맞춘다 */
+.board{display:grid;gap:0.5rem;width:100%;max-width:52rem;}
+.pc{position:relative;aspect-ratio:1/0.72;perspective:800px;cursor:pointer;}
+.pcin{position:absolute;inset:0;transition:transform .35s;transform-style:preserve-3d;}
+.pc.up .pcin{transform:rotateY(180deg);}
+.pf,.pb2{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border-radius:13px;border:2px solid var(--border);backface-visibility:hidden;padding:0.3rem;}
+.pf{background:linear-gradient(135deg,#2c2c38,#23232e);color:var(--muted2);font-size:1.4rem;}
+.pb2{background:var(--surface);transform:rotateY(180deg);text-align:center;line-height:1.25;}
+.pb2.cn{font-family:var(--font-cn);font-size:clamp(1.6rem,5dvh,2.8rem);font-weight:600;}
+.pb2.ko{font-size:clamp(0.8rem,2.1dvh,1.15rem);color:var(--text);}
+.pc.done .pcin{transform:rotateY(180deg);}
+.pc.done .pb2{border-color:var(--ok);background:rgba(52,211,153,0.16);}
+.pc.bad .pb2{border-color:var(--no);}
+/* 선잇기 — 왼쪽 한자와 오른쪽 뜻을 눌러 잇는다 */
+.link{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1.4rem;
+  width:100%;max-width:48rem;align-items:stretch;}
+.lk{background:var(--surface);border:2px solid var(--border);border-radius:12px;
+  padding:0.55rem 0.7rem;cursor:pointer;color:var(--text);display:flex;align-items:center;
+  justify-content:center;text-align:center;line-height:1.3;transition:border-color .1s,background .1s;}
+.lk:hover{border-color:var(--accent);}
+.lk.cn{font-family:var(--font-cn);font-size:clamp(1.5rem,4.4dvh,2.4rem);font-weight:600;}
+.lk.ko{font-size:clamp(0.85rem,2.2dvh,1.2rem);}
+.lk.sel{border-color:var(--accent);background:rgba(124,109,250,0.2);}
+.lk.done{border-color:var(--ok);background:rgba(52,211,153,0.16);opacity:0.55;
+  pointer-events:none;}
+.lk.bad{border-color:var(--no);background:rgba(240,82,82,0.16);}
+.hit{animation:pop .3s;}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.12)}100%{transform:scale(1)}}
+</style>
+
+<div class="top">
+  <h1>단어 게임</h1>
+  <select id="src" onchange="load()"></select>
+  <select id="mode" onchange="load()">
+    <option value="ko">뜻 고르기</option>
+    <option value="cn">한자 고르기</option>
+    <option value="snd">듣고 고르기</option>
+    <option value="pair">짝맞추기 (뒤집기)</option>
+    <option value="link">선잇기</option>
+  </select>
+  <select id="pairN" onchange="load()" style="display:none">
+    <option value="6">6쌍</option>
+    <option value="8" selected>8쌍</option>
+    <option value="10">10쌍</option>
+  </select>
+  <button class="tbtn" id="bSeen" onclick="flipSeen()">배운 것만</button>
+  <button class="tbtn" onclick="location.href='/flash'">학습</button>
+  <button class="tbtn" onclick="location.href='/words'">홈</button>
+</div>
+<div class="pg">
+  <span id="pgTxt">0 / 0</span><div class="pb"><i id="pgBar"></i></div>
+  <span class="st" id="streak"></span><span class="sc" id="score">0점</span>
+</div>
+
+<div class="wrap" id="wrap"></div>
+
+<div class="ctl">
+  <button class="btn" onclick="load()">새 게임</button>
+  <button class="btn main" onclick="next()">넘기기 ▶</button>
+</div>
+
+<script>
+/* 배운 낱말로 푸는 게임.
+   ⚠️ 오답 후보는 같은 묶음·급수 안에서 뽑는다(서버가 함) — 아무 낱말이나 섞으면 답이 보인다.
+   ⚠️ 결과를 익힘 기록에 남겨, 틀린 낱말이 다음에 먼저 나오게 한다. */
+const esc = t => String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let Q=[], I=0, OK=0, STREAK=0, BEST=0, WRONG=[], LOCK=false, T0=0, LOG=[];
+let SEEN = localStorage.getItem('wg_seen')==='1';
+let AU=null;
+
+const SETS=[
+  ['set:대명사','대명사'],['set:동사','동사'],['set:형용사','형용사'],
+  ['set:양사','양사'],['set:접속사','접속사'],['set:의성의태','의성의태어'],
+  ['hsk:1','HSK 1급'],['hsk:2','HSK 2급'],['hsk:3','HSK 3급'],
+  ['hsk:4','HSK 4급'],['hsk:5','HSK 5급'],['hsk:6','HSK 6급'],
+];
+function paintTop(){
+  const b=document.getElementById('bSeen');
+  b.classList.toggle('on', SEEN);
+  b.textContent = SEEN ? '배운 것만 ✓' : '배운 것만';
+}
+function flipSeen(){ SEEN=!SEEN; localStorage.setItem('wg_seen', SEEN?'1':'0'); paintTop(); load(); }
+
+async function load(){
+  const [kind,v]=document.getElementById('src').value.split(':');
+  const _m = document.getElementById('mode').value;
+  const isP = (_m==='pair' || _m==='link');
+  const q=new URLSearchParams({n: isP ? +document.getElementById('pairN').value : 12,
+    mode:document.getElementById('mode').value,
+    seen_only: SEEN?1:0,
+    wordset: kind==='set'?v:'', hsk: kind==='hsk'?v:0});
+  document.getElementById('wrap').innerHTML='<div class="qk">문제를 가져오는 중…</div>';
+  try{
+    const r=await fetch('/api/words/game?'+q, {credentials:'same-origin'});
+    const d=await r.json();
+    Q=d.questions||[];
+  }catch(e){ Q=[]; }
+  I=0; OK=0; STREAK=0; BEST=0; WRONG=[]; LOG=[]; LOCK=false;
+  const m=document.getElementById('mode').value;
+  const isPair = (m==='pair' || m==='link');
+  document.getElementById('pairN').style.display = isPair ? '' : 'none';
+  if(Q.length && m==='pair') return pairStart();
+  if(Q.length && m==='link') return linkStart();
+  if(!Q.length){
+    document.getElementById('wrap').innerHTML='<div class="qk">문제를 만들 낱말이 모자랍니다.<br>다른 묶음을 골라 보세요.</div>';
+    return;
+  }
+  paint();
+}
+function bar(){
+  document.getElementById('pgTxt').textContent=`${Math.min(I+1,Q.length)} / ${Q.length}`;
+  document.getElementById('pgBar').style.width=`${(I/Q.length)*100}%`;
+  document.getElementById('score').textContent=`${OK}점`;
+  document.getElementById('streak').textContent= STREAK>=2 ? `🔥 ${STREAK}연속` : '';
+}
+function say(q){
+  if(!q.audio) return;
+  try{
+    if(AU) AU.pause();
+    const m = (localStorage.getItem('cn_voice')||'2')==='1';
+    AU=new Audio(`/api/words/audio?w=${encodeURIComponent(q.chinese)}&voice=${m?1:2}&t=${Date.now()}`);
+    AU.preservesPitch=true;
+    AU.playbackRate=parseFloat(localStorage.getItem(m?'cn_spdM':'cn_spdF')||(m?'0.9':'1.1'));
+    AU.play().catch(()=>{});
+  }catch(e){}
+}
+/* ── 짝맞추기 (뒤집기) ──
+   한자 카드와 뜻 카드를 섞어 엎어 둔다. 두 장을 뒤집어 짝이면 남고, 아니면 도로 엎는다.
+   ⚠️ 뒤집는 동안 다른 카드를 못 누르게 잠근다(빨리 두드리면 짝이 꼬인다). */
+let PAIR=null;
+function pairStart(){
+  const n=+document.getElementById('pairN').value;
+  const pick=Q.slice(0, n);
+  if(pick.length < 3){
+    document.getElementById('wrap').innerHTML='<div class="qk">낱말이 모자랍니다.</div>'; return;
+  }
+  const cards=[];
+  pick.forEach(q=>{
+    cards.push({wid:q.id, kind:'cn', text:q.chinese, sub:q.pinyin, q});
+    cards.push({wid:q.id, kind:'ko', text:q.ko, q});
+  });
+  cards.sort(()=>Math.random()-0.5);
+  PAIR={cards, open:[], done:0, tries:0, t0:Date.now(), lock:false};
+  const cols = cards.length<=12 ? 4 : (cards.length<=16 ? 4 : 5);
+  document.getElementById('wrap').innerHTML=
+    `<div class="board" id="board" style="grid-template-columns:repeat(${cols},minmax(0,1fr))">` +
+    cards.map((c,i)=>
+      `<div class="pc" id="pc${i}" onclick="pairFlip(${i})">
+         <div class="pcin">
+           <div class="pf">?</div>
+           <div class="pb2 ${c.kind}">${esc(c.text)}</div>
+         </div></div>`).join('') + '</div>';
+  pairBar();
+}
+function pairBar(){
+  document.getElementById('pgTxt').textContent=`${PAIR.done} / ${PAIR.cards.length/2}쌍`;
+  document.getElementById('pgBar').style.width=`${PAIR.done/(PAIR.cards.length/2)*100}%`;
+  document.getElementById('score').textContent=`${PAIR.tries}번 뒤집음`;
+  document.getElementById('streak').textContent='';
+}
+function pairFlip(i){
+  if(!PAIR || PAIR.lock) return;
+  const el=document.getElementById('pc'+i), c=PAIR.cards[i];
+  if(el.classList.contains('done') || el.classList.contains('up')) return;
+  el.classList.add('up'); PAIR.open.push(i);
+  if(c.kind==='cn') say(c.q);                    // 한자를 뒤집으면 소리도 들려준다
+  if(PAIR.open.length < 2) return;
+  PAIR.tries++;
+  const [a,b]=PAIR.open;
+  const ca=PAIR.cards[a], cb=PAIR.cards[b];
+  if(ca.wid===cb.wid && ca.kind!==cb.kind){      // 짝이다
+    PAIR.open=[]; PAIR.done++;
+    ['pc'+a,'pc'+b].forEach(id=>{
+      const e=document.getElementById(id);
+      e.classList.remove('up'); e.classList.add('done');
+    });
+    LOG.push({id:ca.wid, ok:true, ms:0});
+    say(ca.kind==='cn'?ca.q:cb.q);
+    pairBar();
+    if(PAIR.done===PAIR.cards.length/2) setTimeout(pairFinish, 600);
+  }else{                                          // 아니면 도로 엎는다
+    PAIR.lock=true;
+    LOG.push({id:ca.wid, ok:false, ms:0});
+    ['pc'+a,'pc'+b].forEach(id=>document.getElementById(id).classList.add('bad'));
+    setTimeout(()=>{
+      ['pc'+a,'pc'+b].forEach(id=>{
+        const e=document.getElementById(id);
+        e.classList.remove('up','bad');
+      });
+      PAIR.open=[]; PAIR.lock=false; pairBar();
+    }, 900);
+  }
+}
+async function pairFinish(){
+  const sec=Math.round((Date.now()-PAIR.t0)/1000);
+  const pairs=PAIR.cards.length/2;
+  const best=pairs;                               // 가장 적게 뒤집는 횟수
+  const mark = PAIR.tries<=best*1.5 ? '🎉 기억력이 좋으십니다' :
+               (PAIR.tries<=best*2.5 ? '👍 잘하셨습니다' : '한 판 더 해 보실까요');
+  document.getElementById('wrap').innerHTML=
+    `<div class="done" style="display:flex;flex-direction:column;gap:0.7rem;align-items:center">
+       <div class="big">${pairs}쌍 완성</div>
+       <div class="qk">${PAIR.tries}번 뒤집어 ${sec}초 · ${mark}</div>
+       <button class="btn main" onclick="load()">한 판 더</button>
+     </div>`;
+  try{ await fetch('/api/words/game-result',{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:LOG})}); }catch(e){}
+}
+
+/* ── 선잇기 ──
+   왼쪽에 한자, 오른쪽에 뜻을 뒤섞어 놓고 하나씩 눌러 잇는다.
+   뒤집기와 달리 다 보이므로 빠르게 여러 번 돌리기에 좋다. */
+let LINK=null;
+function linkStart(){
+  const n=+document.getElementById('pairN').value;
+  const pick=Q.slice(0, n);
+  if(pick.length<3){ document.getElementById('wrap').innerHTML='<div class="qk">낱말이 모자랍니다.</div>'; return; }
+  const left=[...pick].sort(()=>Math.random()-0.5);
+  const right=[...pick].sort(()=>Math.random()-0.5);
+  LINK={done:0, tries:0, total:pick.length, sel:null, t0:Date.now(), lock:false};
+  document.getElementById('wrap').innerHTML=
+    '<div class="link" id="board">' +
+    left.map((q,i)=>
+      `<div class="lk cn" id="L${i}" data-w="${q.id}" onclick="linkPick('L',${i})">${esc(q.chinese)}</div>` +
+      `<div class="lk ko" id="R${i}" data-w="${right[i].id}" onclick="linkPick('R',${i})">${esc(right[i].ko)}</div>`
+    ).join('') + '</div>';
+  linkBar();
+}
+function linkBar(){
+  document.getElementById('pgTxt').textContent=`${LINK.done} / ${LINK.total}쌍`;
+  document.getElementById('pgBar').style.width=`${LINK.done/LINK.total*100}%`;
+  document.getElementById('score').textContent=`${LINK.tries}번 시도`;
+  document.getElementById('streak').textContent='';
+}
+/* 자리 번호(pos)로 칸을 집고, 짝인지는 그 칸에 적힌 낱말 번호(data-w)로 가린다.
+   ⚠️ 예전에는 칸 id 를 낱말 번호로 붙여, 왼쪽·오른쪽이 겹치면 엉뚱한 칸을 집었다.
+      그래서 맞혀도 초록 표시가 안 났다. */
+function linkPick(side, pos){
+  if(!LINK || LINK.lock) return;
+  const el=document.getElementById(side+pos);
+  if(!el || el.classList.contains('done')) return;
+  const wid=+el.dataset.w;
+  if(!LINK.sel || LINK.sel.side===side){         // 처음 고르거나 같은 쪽을 다시 누를 때
+    document.querySelectorAll('.lk.sel').forEach(x=>x.classList.remove('sel'));
+    el.classList.add('sel'); LINK.sel={side, pos, wid};
+    if(side==='L'){ const q=Q.find(x=>x.id===wid); if(q) say(q); }
+    return;
+  }
+  LINK.tries++;
+  const a=document.getElementById(LINK.sel.side+LINK.sel.pos);
+  if(LINK.sel.wid===wid){                        // 짝이 맞다
+    [a,el].forEach(x=>{ x.classList.remove('sel'); x.classList.add('done'); });
+    LINK.done++;
+    LOG.push({id:wid, ok:true, ms:0});
+    const q=Q.find(x=>x.id===wid); if(q) say(q);
+    LINK.sel=null; linkBar();
+    if(LINK.done===LINK.total) setTimeout(linkFinish, 500);
+  }else{                                          // 아니면 둘 다 빨갛게 알리고 되돌린다
+    LINK.lock=true;
+    LOG.push({id:LINK.sel.wid, ok:false, ms:0});
+    [a,el].forEach(x=>{ x.classList.remove('sel'); x.classList.add('bad'); });
+    setTimeout(()=>{
+      [a,el].forEach(x=>x.classList.remove('bad'));
+      LINK.sel=null; LINK.lock=false; linkBar();
+    }, 700);
+  }
+}
+async function linkFinish(){
+  const sec=Math.round((Date.now()-LINK.t0)/1000);
+  const mark = LINK.tries===LINK.total ? '🎉 한 번도 안 틀렸습니다' :
+               (LINK.tries<=LINK.total*1.5 ? '👍 잘하셨습니다' : '한 판 더 해 보실까요');
+  document.getElementById('wrap').innerHTML=
+    `<div class="done" style="display:flex;flex-direction:column;gap:0.7rem;align-items:center">
+       <div class="big">${LINK.total}쌍 완성</div>
+       <div class="qk">${LINK.tries}번 시도 · ${sec}초 · ${mark}</div>
+       <button class="btn main" onclick="load()">한 판 더</button>
+     </div>`;
+  try{ await fetch('/api/words/game-result',{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:LOG})}); }catch(e){}
+}
+
+function paint(){
+  LOCK=false; T0=Date.now();
+  if(I>=Q.length) return finish();
+  const q=Q[I], mode=document.getElementById('mode').value;
+  let head='';
+  if(mode==='ko')      head=`<div><div class="q">${esc(q.chinese)}</div><div class="qp">${esc(q.pinyin)}</div></div>`;
+  else if(mode==='cn') head=`<div><div class="qk" style="font-size:clamp(1.3rem,4dvh,2.4rem);font-weight:700">${esc(q.ko)}</div><div class="qp">${esc(q.pinyin)}</div></div>`;
+  else                 head=`<div><div class="qs">🔊</div><div class="qk">소리를 듣고 고르세요</div></div>`;
+  const opts=q.options.map((o,k)=>{
+    const body = mode==='ko'
+      ? `<span class="k">${esc(o.ko)}</span>`
+      : `<span class="c">${esc(o.chinese)}</span><span class="p">${esc(o.pinyin)}</span>`;
+    return `<button class="opt" data-id="${o.id}" onclick="answer(${o.id})">${body}</button>`;
+  }).join('');
+  document.getElementById('wrap').innerHTML=head+`<div class="opts">${opts}</div>`;
+  if(mode==='snd') say(q);
+  bar();
+}
+function answer(id){
+  if(LOCK) return; LOCK=true;
+  const q=Q[I], good = id===q.answer;
+  document.querySelectorAll('.opt').forEach(b=>{
+    const i=+b.dataset.id;
+    if(i===q.answer) b.classList.add('ok');
+    else if(i===id)  b.classList.add('no');
+  });
+  LOG.push({id:q.id, ok:good, ms:Date.now()-T0});
+  if(good){ OK++; STREAK++; BEST=Math.max(BEST,STREAK);
+            document.querySelector('.q,.qs')?.classList.add('hit'); }
+  else    { STREAK=0; WRONG.push(q); }
+  if(document.getElementById('mode').value!=='snd') say(q);
+  bar();
+  setTimeout(()=>{ if(LOCK) next(); }, good?900:1800);
+}
+function next(){ if(I<Q.length){ I++; paint(); } }
+async function finish(){
+  document.getElementById('pgBar').style.width='100%';
+  document.getElementById('pgTxt').textContent=`${Q.length} / ${Q.length}`;
+  const pct=Math.round(OK/Q.length*100);
+  const mark = pct===100 ? '🎉 모두 맞혔습니다!' : (pct>=80 ? '👍 잘하셨습니다' : '조금 더 익혀 볼까요');
+  document.getElementById('wrap').innerHTML=
+    `<div class="done" style="display:flex;flex-direction:column;gap:0.7rem;align-items:center">
+       <div class="big">${OK} / ${Q.length} (${pct}%)</div>
+       <div class="qk">${mark}${BEST>=3?` · 최고 ${BEST}연속 🔥`:''}</div>
+       ${WRONG.length?'<div class="qk" style="font-size:0.9rem">틀린 것</div><div class="wrongs">'+
+         WRONG.map(w=>`<span><b>${esc(w.chinese)}</b>${esc(w.ko)}</span>`).join('')+'</div>':''}
+       <button class="btn main" onclick="load()">한 판 더</button>
+     </div>`;
+  try{ await fetch('/api/words/game-result',{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({items:LOG})}); }catch(e){}
+}
+document.getElementById('src').innerHTML=SETS.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');
+const q0=new URLSearchParams(location.search);
+if(q0.get('set')) document.getElementById('src').value='set:'+q0.get('set');
+else if(q0.get('hsk')) document.getElementById('src').value='hsk:'+q0.get('hsk');
+paintTop(); load();
+</script>
