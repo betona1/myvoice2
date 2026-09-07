@@ -661,7 +661,8 @@
 
     /* ── 단어 모달 (뜻 + 쓰기 연습) ── */
     #wordModal{
-      position:fixed;inset:0;z-index:10000;display:none;
+      /* 해석·외우기 모달(10001) 안에서 낱말을 눌러 열므로 그보다 위에 있어야 한다 */
+      position:fixed;inset:0;z-index:10050;display:none;
       background:rgba(0,0,0,0.62);align-items:center;justify-content:center;padding:1rem;
     }
     #wordModal.active{display:flex;}
@@ -769,7 +770,7 @@
     .rb-pbtn:active{transform:scale(0.88);}
     /* 플로팅 툴팁 — 화면 위쪽에서 잘리면 자동으로 아래에 표시 */
     #rbTip{
-      position:fixed;display:none;z-index:9999;pointer-events:none;
+      position:fixed;display:none;z-index:10060;pointer-events:none;
       background:#1b1b24;color:#fff;border:1px solid rgba(255,255,255,0.12);
       padding:8px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.45);
       max-width:min(80vw,420px);
