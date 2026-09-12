@@ -1,0 +1,27 @@
+<meta charset="utf-8"><title>남성 음성 속도 견주기</title>
+<style>
+body{font-family:-apple-system,'Malgun Gothic',sans-serif;background:#14141b;color:#eceff4;
+  padding:1.5rem;font-size:20px;}
+h1{font-size:1.3rem}
+table{border-collapse:collapse;margin-top:1rem}
+th,td{border:1px solid #33333f;padding:0.5rem 0.7rem;text-align:center}
+th{font-family:'Noto Sans SC',sans-serif;font-size:1.8rem;background:#1b1b24}
+button{font:inherit;font-size:1rem;padding:0.5rem 1rem;border-radius:10px;cursor:pointer;
+  background:#23232e;border:1px solid #33333f;color:#eceff4}
+button:hover{border-color:#7c6dfa}
+button.on{background:#7c6dfa;border-color:#7c6dfa;color:#fff}
+p{color:#a9adbb;font-size:0.95rem;line-height:1.7}
+</style>
+<h1>남성 음성 속도 견주기</h1>
+<p>같은 낱말을 네 가지 속도로 만들었습니다. 눌러서 들어 보시고 어느 것이 좋은지 알려 주세요.</p>
+<table><tr><th>낱말</th><th>1.0 (지금)</th><th>0.95</th><th>0.90</th><th>0.85</th></tr><tr><th>什么</th><td><button onclick="play('什么_10.wav')">1.0 (지금)</button></td><td><button onclick="play('什么_095.wav')">0.95</button></td><td><button onclick="play('什么_09.wav')">0.90</button></td><td><button onclick="play('什么_085.wav')">0.85</button></td></tr><tr><th>妈妈</th><td><button onclick="play('妈妈_10.wav')">1.0 (지금)</button></td><td><button onclick="play('妈妈_095.wav')">0.95</button></td><td><button onclick="play('妈妈_09.wav')">0.90</button></td><td><button onclick="play('妈妈_085.wav')">0.85</button></td></tr><tr><th>学校</th><td><button onclick="play('学校_10.wav')">1.0 (지금)</button></td><td><button onclick="play('学校_095.wav')">0.95</button></td><td><button onclick="play('学校_09.wav')">0.90</button></td><td><button onclick="play('学校_085.wav')">0.85</button></td></tr><tr><th>很</th><td><button onclick="play('很_10.wav')">1.0 (지금)</button></td><td><button onclick="play('很_095.wav')">0.95</button></td><td><button onclick="play('很_09.wav')">0.90</button></td><td><button onclick="play('很_085.wav')">0.85</button></td></tr><tr><th>材料</th><td><button onclick="play('材料_10.wav')">1.0 (지금)</button></td><td><button onclick="play('材料_095.wav')">0.95</button></td><td><button onclick="play('材料_09.wav')">0.90</button></td><td><button onclick="play('材料_085.wav')">0.85</button></td></tr><tr><th>谢谢</th><td><button onclick="play('谢谢_10.wav')">1.0 (지금)</button></td><td><button onclick="play('谢谢_095.wav')">0.95</button></td><td><button onclick="play('谢谢_09.wav')">0.90</button></td><td><button onclick="play('谢谢_085.wav')">0.85</button></td></tr><tr><th>这个</th><td><button onclick="play('这个_10.wav')">1.0 (지금)</button></td><td><button onclick="play('这个_095.wav')">0.95</button></td><td><button onclick="play('这个_09.wav')">0.90</button></td><td><button onclick="play('这个_085.wav')">0.85</button></td></tr></table>
+<script>
+let cur=null;
+function play(f){
+  document.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  event.target.classList.add('on');
+  if(cur) cur.pause();
+  cur=new Audio('/outputs/chinese/_speed/'+encodeURIComponent(f));
+  cur.play();
+}
+</script>

@@ -21,6 +21,37 @@ FINETUNE_DIR = Path("finetune_data").resolve()
 FINETUNE_DIR.mkdir(exist_ok=True)
 
 
+def _release_inference_vram(train_gpu: str) -> bool:
+    """학습이 추론 엔진과 같은 GPU를 쓸 때만 엔진을 내려 VRAM을 비운다. 내렸으면 True."""
+    try:
+        if torch.cuda.device_count() > 1 and str(train_gpu) != "0":
+            return False  # 학습이 별도 카드 → 추론 엔진 유지
+    except Exception:
+        pass
+
+    from tts import engine as _engine_mod
+    if getattr(_engine_mod, "tts_engine", None) is None:
+        return False
+
+    print(f"[FINETUNE] 학습이 추론과 같은 GPU({train_gpu}) 사용 — 추론 엔진 언로드로 VRAM 확보")
+    _engine_mod.tts_engine = None
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+    return True
+
+
+def _reload_inference_engine() -> None:
+    """학습 종료 후 추론 엔진 재로드 (다음 합성 요청 지연 방지)."""
+    try:
+        from tts.engine import get_engine
+        get_engine()
+        print("[FINETUNE] 추론 엔진 재로드 완료")
+    except Exception as e:
+        print(f"[FINETUNE] 추론 엔진 재로드 실패 — 다음 요청 때 자동 로드됨: {e}")
+
+
 def prepare_dataset(
     audio_paths: list,
     speaker_name: str,
@@ -70,6 +101,7 @@ def run_finetune(
     num_epochs: int = 10,
     batch_size: int = 2,
     grad_acumm: int = 2,
+    max_audio_length: int = 255995,
 ) -> dict:
     """
     XTTS v2 파인튜닝 실행
@@ -79,6 +111,9 @@ def run_finetune(
     - num_epochs: 학습 에포크 수
     - batch_size: 배치 크기 (VRAM 8GB → 2, 10GB → 4)
     - grad_acumm: 그래디언트 누적 스텝
+    - max_audio_length: 학습에 쓸 조각의 최대 길이(22050Hz 표본 수).
+      기본 255995 = 11.6초. 10GB 카드에서는 이 값이 활성 메모리를 좌우한다 —
+      조각이 짧으면 여기도 같이 낮춰야 VRAM 이 넘치지 않는다.
     반환: {"model_path": str, "config_path": str, "vocab_path": str, "speaker_ref": str}
     """
     import subprocess, sys, tempfile
@@ -87,7 +122,7 @@ def run_finetune(
     eval_csv = os.path.abspath(eval_csv)
     output_path = os.path.abspath(output_path)
 
-    train_gpu = os.environ.get("FINETUNE_GPU", "2")
+    train_gpu = os.environ.get("FINETUNE_GPU", "0")
     print(f"[FINETUNE] 학습 시작: epochs={num_epochs}, batch={batch_size}, GPU={train_gpu} (격리된 서브프로세스)")
 
     payload = {
@@ -98,6 +133,7 @@ def run_finetune(
         "train_csv": train_csv,
         "eval_csv": eval_csv,
         "output_path": output_path,
+        "max_audio_length": max_audio_length,
     }
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as pf:
         import json as _j
@@ -108,7 +144,16 @@ def run_finetune(
     sub_env["CUDA_VISIBLE_DEVICES"] = train_gpu
     sub_env["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     script = os.path.join(os.path.dirname(__file__), "train_subprocess.py")
-    proc = subprocess.run([sys.executable, script, payload_path, result_path], env=sub_env)
+
+    # GPU가 1장뿐이면 학습 서브프로세스가 추론 엔진과 같은 카드를 쓴다.
+    # XTTS 추론(~2GiB) + 트레이너(7GiB+) = 10GiB 초과 → OOM.
+    # 학습 동안 부모 프로세스의 추론 엔진을 내려 VRAM을 비우고, 끝나면 다시 올린다.
+    released_engine = _release_inference_vram(train_gpu)
+    try:
+        proc = subprocess.run([sys.executable, script, payload_path, result_path], env=sub_env)
+    finally:
+        if released_engine:
+            _reload_inference_engine()
     if proc.returncode != 0 or not os.path.exists(result_path):
         raise RuntimeError(f"학습 서브프로세스 실패 (exit {proc.returncode})")
     with open(result_path, "r", encoding="utf-8") as f:

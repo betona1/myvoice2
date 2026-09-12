@@ -5,7 +5,13 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.12 python3.12-venv python3-pip python3.12-dev \
     ffmpeg libsndfile1 \
+    poppler-utils \
+    tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-chi-tra \
     && rm -rf /var/lib/apt/lists/*
+# poppler-utils: pdf2image가 교안 뷰어(/api/chinese/textbook/image)에서 사용.
+# 빠지면 PDFInfoNotInstalledError로 모든 과목 교안이 500.
+# tesseract-ocr(+chi_sim): 단어앱 카메라 검색(/api/words/ocr).
+# 빠지면 촬영 검색이 500. chi_tra는 번체 교재 사진 대비.
 
 # python3 기본 설정
 RUN ln -sf /usr/bin/python3.12 /usr/bin/python3 && \

@@ -13,7 +13,8 @@
 
    쓰기:  python3 export_pack.py 양사 hsk1 hsk2 --per 20
 """
-import os, re, sys, json, shutil, sqlite3, subprocess, hashlib, zipfile, math
+import os
+from datetime import datetime, re, sys, json, shutil, sqlite3, subprocess, hashlib, zipfile, math
 os.chdir('/app')
 import soundfile as sf
 # --per 20 처럼 값을 갖는 옵션은 그 값까지 걷어내야 한다 (안 그러면 '20' 이 과정 이름이 된다)
@@ -58,7 +59,7 @@ def sha(path):
     return h.hexdigest()
 
 index={"version":1, "per_day":PER, "audio":"wav" if WAV else "mp3 64k mono",
-       "voices":{"m":"남성 (김준용)","f":"여성 (수민)"},
+       "voices":{"m":"남성 (이한)","f":"여성 (리리)"},
        "note":"audio_say 가 있으면 그 낱말을 읽은 소리입니다 (홀로 읽히지 않는 양사).",
        "courses":[]}
 if os.path.exists(os.path.join(BASE,'index.json')):
@@ -124,6 +125,11 @@ for name in ARGS:
     mb=sum(l["bytes"] for l in course["lessons"])/1048576
     print(f"■ {label}: {len(rows)}낱말 → {days}일치 · 모두 {mb:.1f} MB", flush=True)
 
+# ⚠️ data_version 과 목소리 이름은 **매번 새로 쓴다**.
+#    기존 index.json 을 읽어 과목만 갈아 끼우는 구조라, 안 쓰면 옛 값이 남아
+#    앱이 「바뀐 게 없다」고 보고 새 음성을 안 받아 간다 (2026-09-11 실제로 그랬다).
+index["data_version"] = datetime.now().strftime('%Y%m%d-%H%M')
+index["voices"] = {"m": "남성 (이한)", "f": "여성 (리리)"}
 json.dump(index, open(os.path.join(BASE,'index.json'),'w',encoding='utf-8'),
           ensure_ascii=False, indent=1)
 print(f"\nindex.json 갱신 — 과정 {len(index['courses'])}개")

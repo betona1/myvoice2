@@ -1,0 +1,159 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>사진 속 중국어 읽기</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f5f7;--fg:#181818;--card:#fff;--line:#e2e2e8;--mut:#777;--acc:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#141417;--fg:#eee;--card:#1f1f24;--line:#33333a;--mut:#999}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans KR",sans-serif}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 12px}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:1.05rem;margin:0 0 8px;display:flex;gap:8px;align-items:center}
+h1 small{font-weight:400;color:var(--mut);font-size:.78rem}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--acc);color:#fff}
+.b.g{background:var(--line);color:var(--fg)}
+.b:disabled{opacity:.5}
+label.b{display:inline-block}
+input[type=file]{display:none}
+#stage{position:relative;max-width:900px;margin:10px auto;padding:0 12px}
+#cv{width:100%;height:auto;border-radius:12px;display:block;background:#000;touch-action:manipulation}
+#vid{width:100%;border-radius:12px;display:none;background:#000}
+.hint{color:var(--mut);font-size:.85rem;padding:0 12px;max-width:900px;margin:8px auto;line-height:1.6}
+#sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0;padding:14px 16px 20px;transform:translateY(110%);transition:transform .18s;z-index:20;
+  box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+#sheet.on{transform:none}
+.zh{font-size:2.2rem;font-weight:700;line-height:1.2}
+.py{color:var(--acc);font-size:1.05rem;margin-top:2px}
+.ko{margin-top:6px;font-size:1rem;line-height:1.5}
+.src{font-size:.72rem;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-left:8px}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+#list{max-width:900px;margin:10px auto 40px;padding:0 12px;display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 11px;font-size:.95rem;cursor:pointer}
+.chip.has{border-color:var(--acc);color:var(--acc);font-weight:600}
+.spin{display:none;padding:14px;text-align:center;color:var(--mut)}
+.spin.on{display:block}
+</style></head><body>
+<div class="top"><div class="wrap">
+  <h1>사진 속 중국어 읽기 <small>낱말을 누르면 뜻이 나오고, 학습으로 이어집니다</small></h1>
+  <div class="btns">
+    <label class="b" for="f">📷 사진 찍기 · 고르기</label>
+    <input type="file" id="f" accept="image/*" capture="environment">
+    <button class="b g" id="live">🎥 카메라 켜기</button>
+    <button class="b" id="shot" style="display:none">📸 찍기</button>
+    <button class="b g" id="again" style="display:none">↺ 다시</button>
+  </div>
+</div></div>
+
+<div id="stage"><video id="vid" playsinline muted></video><canvas id="cv"></canvas></div>
+<div class="spin" id="spin">읽는 중…</div>
+<p class="hint" id="hint">사진을 고르거나 카메라로 찍으면 중국어를 찾아 네모로 표시합니다.
+네모를 누르면 그 낱말의 병음·뜻이 뜨고, <b>학습하기</b>를 누르면 낱말 공부로 넘어갑니다.</p>
+<div id="list"></div>
+
+<div id="sheet">
+  <div style="display:flex;align-items:baseline"><span class="zh" id="s-zh"></span><span class="src" id="s-src"></span></div>
+  <div class="py" id="s-py"></div>
+  <div class="ko" id="s-ko"></div>
+  <div class="row">
+    <button class="b" id="s-play">🔊 발음</button>
+    <button class="b" id="s-go">학습하기</button>
+    <button class="b g" id="s-close">닫기</button>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d'), vid=document.getElementById('vid');
+let img=null, data=null, stream=null, cur=null;
+
+function draw(){
+  if(!img) return;
+  cv.width=img.width; cv.height=img.height;
+  ctx.drawImage(img,0,0);
+  if(!data) return;
+  ctx.lineWidth=Math.max(2, img.width/400);
+  for(const t of data.tokens){
+    const [x,y,w,h]=t.box;
+    ctx.strokeStyle = t.id ? 'rgba(37,99,235,.95)' : 'rgba(220,38,38,.8)';
+    ctx.fillStyle   = t.id ? 'rgba(37,99,235,.14)' : 'rgba(220,38,38,.10)';
+    ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
+  }
+}
+function hit(px,py){
+  if(!data) return null;
+  for(const t of data.tokens){
+    const [x,y,w,h]=t.box;
+    if(px>=x-4&&px<=x+w+4&&py>=y-4&&py<=y+h+4) return t;
+  }
+  return null;
+}
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const t=hit((e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height);
+  if(t) open(t);
+});
+function open(t){
+  cur=t;
+  s_zh.textContent=t.text; s_py.textContent=t.pinyin||'';
+  s_ko.textContent=t.meaning||'(뜻을 못 찾았습니다)';
+  s_src.textContent=t.src||''; s_src.style.display=t.src?'':'none';
+  s_go.style.display=t.id?'':'none';
+  sheet.classList.add('on');
+}
+s_close.onclick=()=>sheet.classList.remove('on');
+s_go.onclick=()=>{ if(cur&&cur.id) location.href='/words?w='+encodeURIComponent(cur.text); };
+s_play.onclick=()=>{ if(!cur) return;
+  new Audio('/api/words/audio?w='+encodeURIComponent(cur.text)+'&voice=2').play().catch(()=>{}); };
+
+async function send(blob){
+  spin.classList.add('on'); data=null; draw();
+  const fd=new FormData(); fd.append('file', blob, 'shot.jpg');
+  try{
+    const r=await fetch('/api/ocr/chinese',{method:'POST',body:fd,credentials:'same-origin'});
+    if(r.status===401){location.href='/login';return;}
+    data=await r.json();
+    draw(); chips();
+    hint.textContent = data.tokens.length
+      ? `낱말 ${data.tokens.length}개를 찾았습니다. 파란 네모는 학습 자료에 있는 낱말입니다.`
+      : '중국어를 못 찾았습니다. 글자가 크고 또렷하게 나오도록 다시 찍어 보세요.';
+  }catch(e){ hint.textContent='읽기 실패: '+e; }
+  spin.classList.remove('on');
+}
+function chips(){
+  const seen=new Set();
+  list.innerHTML=(data?data.tokens:[]).filter(t=>!seen.has(t.text)&&seen.add(t.text))
+    .map((t,i)=>`<span class="chip ${t.id?'has':''}" data-i="${i}">${t.text}</span>`).join('');
+  const uniq=(data?data.tokens:[]).filter((t,i,a)=>a.findIndex(x=>x.text===t.text)===i);
+  [...list.children].forEach((el,i)=>el.onclick=()=>open(uniq[i]));
+}
+document.getElementById('f').onchange=e=>{
+  const file=e.target.files[0]; if(!file) return;
+  stopLive();
+  const im=new Image(); im.onload=()=>{img=im; draw(); send(file);};
+  im.src=URL.createObjectURL(file);
+};
+document.getElementById('live').onclick=async()=>{
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920}}});
+    vid.srcObject=stream; await vid.play();
+    vid.style.display='block'; cv.style.display='none';
+    shot.style.display=''; again.style.display='none';
+  }catch(e){ hint.textContent='카메라를 열 수 없습니다 ('+e.name+'). 「사진 찍기·고르기」를 쓰세요. ※ 카메라는 https 에서만 됩니다.'; }
+};
+document.getElementById('shot').onclick=()=>{
+  const c=document.createElement('canvas');
+  c.width=vid.videoWidth; c.height=vid.videoHeight;
+  c.getContext('2d').drawImage(vid,0,0);
+  c.toBlob(b=>{
+    const im=new Image(); im.onload=()=>{img=im; draw(); send(b);};
+    im.src=URL.createObjectURL(b);
+    stopLive(); again.style.display='';
+  },'image/jpeg',0.92);
+};
+document.getElementById('again').onclick=()=>{ again.style.display='none'; document.getElementById('live').click(); };
+function stopLive(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  vid.style.display='none'; cv.style.display='block'; shot.style.display='none';
+}
+</script></body></html>

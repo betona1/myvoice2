@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#2bb6a6">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<title>짝꿍단어(호응) 학습</title>
+<style>
+:root{
+  --hz:1;
+  --bg:#14141b; --bg2:#1b1b24; --surface:#23232e; --surface2:#2c2c38;
+  --border:#33333f; --text:#eceff4; --muted:#a9adbb; --muted2:#6e7383;
+  --accent:#7c6dfa; --accent2:#4fd1c5; --success:#34d399; --danger:#f05252; --warn:#f0a020;
+  --teal:#4fd1c5;
+  --grad:linear-gradient(135deg,#7c6dfa,#4fd1c5);
+  --grad-t:linear-gradient(135deg,#2bb6a6,#7ee0d4);
+  --font-cn:'Noto Sans SC','Source Han Sans SC','PingFang SC','Microsoft YaHei','SimSun',
+            'Noto Sans CJK SC','Heiti SC',sans-serif;
+}
+body.light{--bg:#f7f8fa;--bg2:#fff;--surface:#f0f1f5;--surface2:#e6e8ef;--border:#dcdfe8;
+  --text:#1c1e26;--muted:#5b606e;--muted2:#8b90a0;--teal:#0f8f83;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Pretendard','Malgun Gothic',sans-serif;
+  padding-bottom:calc(env(safe-area-inset-bottom) + 1rem);}
+a{color:var(--accent);text-decoration:none;}
+
+.top{position:sticky;top:0;z-index:50;background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0.6rem 0.8rem;display:flex;align-items:center;gap:0.5rem;}
+.top h1{font-size:1.05rem;margin:0;flex:1;font-weight:800;}
+.top h1 em{font-style:normal;font-family:var(--font-cn);color:var(--teal);margin-right:0.3rem;}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:9px;padding:0.4rem 0.7rem;font-size:0.85rem;cursor:pointer;white-space:nowrap;
+  font-family:inherit;}
+.tbtn:hover{border-color:var(--teal);color:var(--teal);}
+.wrap{max-width:820px;margin:0 auto;padding:0.8rem;}
+
+.today{background:var(--bg2);border:1.5px solid var(--teal);border-radius:16px;
+  padding:1rem;margin-bottom:0.9rem;text-align:center;}
+.today .tl{font-size:0.78rem;color:var(--muted2);font-weight:700;}
+.today .tv{font-size:1.15rem;font-weight:800;margin:0.35rem 0 0.7rem;line-height:1.45;}
+.tgo{width:100%;min-height:56px;border:none;border-radius:13px;background:var(--grad-t);
+  color:#08302c;font-size:1.05rem;font-weight:800;cursor:pointer;font-family:inherit;}
+.tgo:active{transform:scale(0.97);}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;margin-bottom:0.6rem;}
+.mini .m{background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:0.6rem 0.4rem;text-align:center;}
+.mini .m b{display:block;font-size:1.5rem;font-weight:800;line-height:1;}
+.mini .m span{display:block;font-size:0.72rem;color:var(--muted);margin-top:0.25rem;font-weight:700;}
+.mini .m i{display:block;font-size:0.62rem;color:var(--muted2);font-style:normal;margin-top:1px;}
+.mini .mas b{color:var(--success);} .mini .lrn b{color:var(--accent);}
+.mini .unt b{color:var(--muted2);} .mini .due b{color:var(--warn);}
+.mini .wr b{color:var(--danger);} .mini .tod b{color:var(--teal);}
+.bar{height:12px;background:var(--surface);border-radius:7px;overflow:hidden;margin:0.5rem 0 0.2rem;position:relative;}
+.bar i{display:block;height:100%;background:var(--accent);opacity:.45;}
+.bar u{position:absolute;left:0;top:0;height:100%;background:var(--success);border-radius:7px;}
+.barlab{display:flex;justify-content:space-between;font-size:0.72rem;color:var(--muted2);margin-bottom:1rem;}
+
+h2{font-size:0.95rem;margin:1.1rem 0 0.5rem;color:var(--muted);font-weight:700;}
+h2 .sub{font-size:0.7rem;color:var(--muted2);font-weight:600;margin-left:0.3rem;}
+.rowsel{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.6rem;}
+.chip{background:var(--surface);border:1.5px solid var(--border);border-radius:999px;
+  padding:0.45rem 0.9rem;font-size:0.85rem;cursor:pointer;color:var(--muted);font-family:inherit;}
+.chip.on{background:var(--grad-t);color:#08302c;border-color:transparent;font-weight:700;}
+
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.6rem;}
+.mode{background:var(--bg2);border:1.5px solid var(--border);border-radius:14px;padding:1rem;
+  cursor:pointer;text-align:left;color:var(--text);transition:all .15s;font:inherit;}
+.mode:active{transform:scale(0.97);}
+.mode:hover{border-color:var(--teal);}
+.mode .ic{font-size:1.5rem;line-height:1;}
+.mode .t{font-weight:800;margin-top:0.35rem;font-size:1rem;}
+.mode .d{font-size:0.76rem;color:var(--muted2);margin-top:0.2rem;line-height:1.45;}
+
+#study,#browse,#groups{display:none;}
+.prog{display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;color:var(--muted2);
+  margin-bottom:0.7rem;flex-wrap:wrap;}
+.prog .pb{flex:1;min-width:80px;height:6px;background:var(--surface);border-radius:4px;overflow:hidden;}
+.prog .pb i{display:block;height:100%;background:var(--grad-t);transition:width .25s;}
+
+.qcard{background:var(--bg2);border:1.5px solid var(--border);border-radius:18px;
+  padding:1.4rem 0.9rem;text-align:center;}
+/* 호응 표현 — 머리말과 짝을 색으로 갈라 보여 준다 */
+.dp{font-family:var(--font-cn);font-weight:800;line-height:1.2;letter-spacing:0.04em;
+  font-size:calc(clamp(2.1rem,11vw,3.4rem)*var(--hz));}
+.dp .h{color:var(--accent);}
+.dp .c{color:var(--teal);}
+.dp .bk{color:var(--warn);}
+.py{font-size:1rem;color:var(--teal);margin-top:0.5rem;letter-spacing:0.02em;}
+.qask{font-size:0.8rem;color:var(--muted2);font-weight:700;margin-bottom:0.5rem;}
+.qmean{font-size:1.3rem;font-weight:800;line-height:1.5;padding:0.6rem 0.2rem;}
+.sent{font-family:var(--font-cn);font-size:calc(1.5rem*var(--hz));font-weight:600;
+  line-height:1.7;letter-spacing:0.02em;}
+.sentko{font-size:0.9rem;color:var(--muted);margin-top:0.5rem;line-height:1.5;}
+
+.opts{display:grid;gap:0.5rem;margin-top:0.9rem;}
+.opt{background:var(--bg2);border:1.5px solid var(--border);border-radius:13px;
+  padding:0.85rem 0.9rem;font-size:1rem;cursor:pointer;color:var(--text);text-align:left;
+  font:inherit;line-height:1.45;transition:all .12s;}
+.opt:hover{border-color:var(--teal);}
+.opt.cn{font-family:var(--font-cn);font-size:1.6rem;font-weight:700;text-align:center;letter-spacing:0.04em;}
+.opt.cn small{display:block;font-family:inherit;font-size:0.72rem;color:var(--muted2);
+  font-weight:500;letter-spacing:0;margin-top:0.15rem;}
+.opt.ok{border-color:var(--success);background:rgba(52,211,153,0.14);}
+.opt.ng{border-color:var(--danger);background:rgba(240,82,82,0.13);}
+.opt:disabled{cursor:default;}
+.optgrid{grid-template-columns:1fr 1fr;}
+
+.fb{min-height:1.6rem;text-align:center;font-weight:800;margin-top:0.7rem;}
+.fb.ok{color:var(--success);} .fb.ng{color:var(--danger);}
+
+.expl{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:0.9rem 1rem;margin-top:0.8rem;text-align:left;font-size:0.9rem;line-height:1.65;}
+.expl .r{display:flex;gap:0.5rem;margin-bottom:0.35rem;}
+.expl .r:last-child{margin-bottom:0;}
+.expl .k{flex:0 0 4.4rem;color:var(--muted2);font-size:0.78rem;font-weight:700;padding-top:0.15rem;}
+.expl .v{flex:1;}
+.expl .v.ko{color:var(--teal);font-weight:700;}
+.expl .v.st{color:var(--muted);font-size:0.86rem;}
+.expl .v .cn{font-family:var(--font-cn);}
+.acts{display:flex;gap:0.5rem;margin-top:0.9rem;flex-wrap:wrap;}
+.act{flex:1;min-width:120px;min-height:52px;border:none;border-radius:13px;font-size:1rem;
+  font-weight:800;cursor:pointer;color:#fff;background:var(--accent);font-family:inherit;}
+.act.no{background:var(--danger);} .act.yes{background:var(--success);}
+.act.sec{background:var(--surface2);color:var(--muted);}
+.done{text-align:center;padding:2rem 0.5rem;}
+.done .big{font-size:3rem;}
+
+.swipe{display:flex;gap:0.5rem;margin-top:0.8rem;}
+.swipe button{flex:1;min-height:52px;border-radius:13px;border:1.5px solid var(--border);
+  background:var(--bg2);color:var(--text);font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.swipe button.mid{flex:1.4;background:var(--grad-t);color:#08302c;border:none;}
+
+/* 묶음(머리말) 카드 — 호응 학습의 핵심 화면 */
+.gcard{background:var(--bg2);border:1.5px solid var(--teal);border-radius:18px;padding:1.1rem 1rem;}
+.gcard .gh{font-family:var(--font-cn);font-size:calc(2.6rem*var(--hz));font-weight:900;
+  color:var(--accent);line-height:1.15;}
+.gcard .gp{font-size:0.95rem;color:var(--teal);}
+.gcard .gk{font-size:1rem;font-weight:700;margin-top:0.2rem;}
+.gcard .gt{font-size:0.72rem;color:var(--muted2);margin-top:0.25rem;}
+.gitems{margin-top:0.9rem;display:grid;gap:0.4rem;}
+.gi{display:flex;gap:0.6rem;align-items:baseline;background:var(--surface);
+  border:1px solid var(--border);border-radius:11px;padding:0.55rem 0.7rem;cursor:pointer;}
+.gi:hover{border-color:var(--teal);}
+.gi .gic{font-family:var(--font-cn);font-size:calc(1.35rem*var(--hz));font-weight:700;
+  color:var(--teal);white-space:nowrap;}
+.gi .gip{font-size:0.72rem;color:var(--muted2);white-space:nowrap;}
+.gi .gim{flex:1;font-size:0.92rem;min-width:0;}
+.gi .gib{font-size:0.6rem;color:var(--muted2);border:1px solid var(--border);
+  border-radius:5px;padding:0.05rem 0.25rem;}
+
+.inp{background:var(--surface);border:1.5px solid var(--border);border-radius:11px;
+  color:var(--text);padding:0.6rem 0.8rem;font-size:1rem;font-family:inherit;}
+.li{background:var(--bg2);border:1px solid var(--border);border-radius:13px;padding:0.75rem 0.9rem;
+  margin-bottom:0.5rem;cursor:pointer;display:flex;gap:0.7rem;align-items:center;}
+.li:hover{border-color:var(--teal);}
+.li .c{font-family:var(--font-cn);font-size:1.45rem;font-weight:800;letter-spacing:0.03em;white-space:nowrap;}
+.li .c .h{color:var(--accent);}
+.li .x{flex:1;min-width:0;}
+.li .x .p{font-size:0.76rem;color:var(--teal);}
+.li .x .m{font-size:0.9rem;margin-top:0.1rem;}
+.li .badge{font-size:0.65rem;color:var(--muted2);border:1px solid var(--border);
+  border-radius:6px;padding:0.1rem 0.3rem;white-space:nowrap;}
+
+/* 묶음 목록 */
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0.5rem;}
+.hcell{background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:0.6rem 0.7rem;cursor:pointer;text-align:left;color:var(--text);font:inherit;}
+.hcell:hover{border-color:var(--teal);}
+.hcell .hh{font-family:var(--font-cn);font-size:1.5rem;font-weight:800;color:var(--accent);line-height:1.1;}
+.hcell .hp{font-size:0.7rem;color:var(--teal);}
+.hcell .hk{font-size:0.8rem;color:var(--muted);margin-top:0.15rem;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hcell .hn{font-size:0.68rem;color:var(--muted2);margin-top:0.25rem;}
+.hcell .hb{height:4px;background:var(--surface);border-radius:3px;margin-top:0.3rem;overflow:hidden;}
+.hcell .hb i{display:block;height:100%;background:var(--success);}
+
+.ov{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:100;display:none;
+  align-items:flex-end;justify-content:center;}
+.ov.on{display:flex;}
+.sheet{background:var(--bg2);border-radius:18px 18px 0 0;width:100%;max-width:820px;
+  max-height:88vh;overflow:auto;padding:1.1rem 1rem calc(1.6rem + env(safe-area-inset-bottom));}
+.sheet .x{float:right;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  border-radius:9px;padding:0.3rem 0.6rem;cursor:pointer;font-family:inherit;}
+.rel{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.4rem;}
+.rel button{background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);padding:0.35rem 0.6rem;cursor:pointer;font-family:var(--font-cn);font-size:0.95rem;}
+.rel button:hover{border-color:var(--teal);}
+.hint{font-size:0.78rem;color:var(--muted2);line-height:1.6;}
+.mid{text-align:center;color:var(--muted2);padding:1.4rem 0;font-size:0.9rem;}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <button class="tbtn" onclick="location.href='/words'">← 단어</button>
+  <h1><em>搭配</em>짝꿍단어</h1>
+  <button class="tbtn" onclick="openGroups()">묶음</button>
+  <button class="tbtn" onclick="openBrowse()">목록</button>
+  <button class="tbtn" onclick="hz(-1)">가−</button>
+  <button class="tbtn" onclick="hz(1)">가+</button>
+  <button class="tbtn" onclick="toggleTheme()">🌙</button>
+</div>
+
+<div class="wrap">
+
+<!-- 홈 -->
+<div id="home">
+  <div class="today">
+    <div class="tl">오늘의 호응 학습</div>
+    <div class="tv" id="todo">불러오는 중…</div>
+    <button class="tgo" onclick="start(recommendMode())" id="tgoBtn">시작하기</button>
+  </div>
+
+  <div class="bar"><i id="barSeen" style="width:0"></i><u id="barMas" style="width:0"></u></div>
+  <div class="barlab"><span id="labL">—</span><span id="labR">—</span></div>
+
+  <div class="mini">
+    <div class="m mas"><b id="sMas">0</b><span>숙달<i>5회 연속 정답</i></span></div>
+    <div class="m lrn"><b id="sLrn">0</b><span>외우는 중<i>학습 시작함</i></span></div>
+    <div class="m unt"><b id="sUnt">0</b><span>안 배움<i>처음 보는 표현</i></span></div>
+  </div>
+  <div class="mini">
+    <div class="m due"><b id="sDue">0</b><span>복습 대기<i>오늘 볼 것</i></span></div>
+    <div class="m wr"><b id="sWrong">0</b><span>틀린 표현<i>오답 복습</i></span></div>
+    <div class="m tod"><b id="sToday">0</b><span>오늘 푼 문제<i>정답률</i></span></div>
+  </div>
+
+  <h2>범위 <span class="sub">고를수록 좁아집니다</span></h2>
+  <div class="rowsel" id="filtSel"></div>
+  <h2>유형 <span class="sub">어떤 식으로 붙는 짝인가</span></h2>
+  <div class="rowsel" id="patSel"></div>
+
+  <h2>학습 방식</h2>
+  <div class="modes">
+    <button class="mode" onclick="openGroups()" style="border-color:var(--teal);">
+      <div class="ic">🧩</div><div class="t">묶음으로 외우기</div>
+      <div class="d">提高 → <b>水平·能力·效率…</b> 한 낱말이 거느리는 짝을 한 판에 모아 봅니다</div></button>
+    <button class="mode" onclick="start('coll')" style="border-color:var(--accent);">
+      <div class="ic">🔗</div><div class="t">짝 고르기</div>
+      <div class="d">앞말을 주고 <b>뒤에 붙는 말</b>을 고릅니다. 호응 학습의 핵심</div></button>
+    <button class="mode" onclick="start('head')" style="border-color:var(--accent);">
+      <div class="ic">🪝</div><div class="t">앞말 고르기</div>
+      <div class="d">水平에 붙는 동사는 提高? 增加? <b>거꾸로</b> 물어봅니다</div></button>
+    <button class="mode" onclick="start('meaning')">
+      <div class="ic">🎯</div><div class="t">뜻 맞히기</div>
+      <div class="d">호응 표현을 보고 뜻 고르기. 가장 기본</div></button>
+    <button class="mode" onclick="start('blank')" style="border-color:var(--warn);">
+      <div class="ic">⬜</div><div class="t">문장 빈칸</div>
+      <div class="d">예문 속 빈칸을 채웁니다. <b>실제로 쓰이는 모습</b>으로 익히기</div></button>
+    <button class="mode" onclick="start('listen')" style="border-color:var(--teal);">
+      <div class="ic">🔊</div><div class="t">듣고 고르기</div>
+      <div class="d">음성을 듣고 호응 표현 고르기</div></button>
+    <button class="mode" onclick="start('card')">
+      <div class="ic">📖</div><div class="t">카드 넘겨보기</div>
+      <div class="d">문제 없이 표현·뜻·예문을 한 장씩 (진도 기록 안 함)</div></button>
+  </div>
+
+  <h2>도움말</h2>
+  <div class="hint">
+    호응(搭配)은 <b>서로 붙어 다니는 낱말 묶음</b>입니다. 提高(높이다)는 水平·能力·效率와 붙지만
+    年龄(나이)와는 붙지 않습니다 — 낱말을 따로 외우면 알 수 없는 부분이라 통째로 외워야 합니다.<br>
+    진도는 단어·성어와 같은 복습 일정(라이트너 박스)을 씁니다.<br>
+    음성이 아직 없는 표현은 브라우저 읽어주기로 대신 들려줍니다.
+  </div>
+  <div class="rowsel" style="margin-top:0.6rem;align-items:center;">
+    <button class="tbtn" onclick="ttsBatch()" id="btnTts">🎙️ 호응 음성 만들기</button>
+    <span class="hint" id="ttsMsg">내 목소리(XTTS)로 호응 음성을 채웁니다 · GPU를 오래 씁니다</span>
+  </div>
+</div>
+
+<!-- 학습 -->
+<div id="study">
+  <div class="prog">
+    <span id="pgTxt">0 / 0</span><div class="pb"><i id="pgBar" style="width:0"></i></div>
+    <button class="tbtn" onclick="toggleStar()" id="btnStar" title="별표">☆</button>
+    <button class="tbtn" onclick="goHome()">✕</button>
+  </div>
+  <div id="stage"></div>
+  <div class="fb" id="fb"></div>
+</div>
+
+<!-- 묶음 -->
+<div id="groups">
+  <div class="rowsel">
+    <input class="inp" id="gq" placeholder="앞말 · 병음 · 뜻으로 찾기" style="flex:1;min-width:180px;"
+           autocomplete="off" oninput="gLive()">
+    <button class="tbtn" onclick="goHome()">✕</button>
+  </div>
+  <div class="rowsel" id="gpat"></div>
+  <div class="mid" id="gmsg"></div>
+  <div class="hgrid" id="glist"></div>
+</div>
+
+<!-- 목록 -->
+<div id="browse">
+  <div class="rowsel">
+    <input class="inp" id="bq" placeholder="한자 · 병음(tigao) · 한국어 뜻"
+           style="flex:1;min-width:180px;" autocomplete="off"
+           oninput="qLive()" onkeydown="if(event.key==='Enter')loadList(0)">
+    <button class="tbtn" onclick="loadList(0)">검색</button>
+    <button class="tbtn" onclick="document.getElementById('bq').value='';loadList(0)">지우기</button>
+    <button class="tbtn" onclick="goHome()">✕</button>
+  </div>
+  <div class="rowsel" id="bfilt"></div>
+  <div class="mid" id="bmsg"></div>
+  <div id="blist"></div>
+  <div class="rowsel" style="justify-content:center;margin-top:0.7rem;">
+    <button class="tbtn" onclick="pageList(-1)">‹ 이전</button>
+    <span id="bpg" style="align-self:center;font-size:0.85rem;color:var(--muted2)"></span>
+    <button class="tbtn" onclick="pageList(1)">다음 ›</button>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<div class="ov" id="ov" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+const API='';
+let TOKEN=localStorage.getItem('token')||'';
+function H(){ return TOKEN?{'Authorization':'Bearer '+TOKEN}:{}; }
+function esc(t){return String(t==null?'':t).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+async function api(path, opt){
+  const r=await fetch(API+path, Object.assign({headers:Object.assign({'Content-Type':'application/json'},H())}, opt||{}));
+  if(r.status===401){ location.href='/login'; return null; }
+  return r.ok ? r.json() : null;
+}
+
+let HZ=parseFloat(localStorage.getItem('cn_hz')||'1');
+function applyHz(){ document.documentElement.style.setProperty('--hz', HZ.toFixed(2)); }
+function hz(d){ HZ=Math.max(0.7,Math.min(2.0,+(HZ+d*0.15).toFixed(2)));
+  localStorage.setItem('cn_hz',HZ); applyHz(); }
+applyHz();
+if(localStorage.getItem('cn_theme')==='light') document.body.classList.add('light');
+function toggleTheme(){ document.body.classList.toggle('light');
+  localStorage.setItem('cn_theme', document.body.classList.contains('light')?'light':'dark'); }
+
+const home=document.getElementById('home'), study=document.getElementById('study'),
+      browse=document.getElementById('browse'), groups=document.getElementById('groups'),
+      stage=document.getElementById('stage'), fb=document.getElementById('fb'),
+      pgTxt=document.getElementById('pgTxt'), pgBar=document.getElementById('pgBar');
+
+// 호응 표현을 앞말/짝 두 색으로 나눠 보여 준다 — 어디서 끊기는지가 한눈에 보인다
+function dpHtml(w, cls){
+  return `<span class="h">${esc(w.head)}</span><span class="${cls||'c'}">${esc(w.collocate)}</span>`;
+}
+
+// ── 필터 ──────────────────────────────────────────────────────────────
+const FILTS=[
+  {k:'',        n:'전체'},
+  {k:'example', n:'예문 있는 것'},
+  {k:'new',     n:'안 배운 것'},
+  {k:'learning',n:'외우는 중'},
+  {k:'due',     n:'복습 대기'},
+  {k:'wrong',   n:'틀린 것'},
+  {k:'star',    n:'★ 별표'},
+];
+let FILT=localStorage.getItem('dp_filt')||'';
+let PAT=localStorage.getItem('dp_pat')||'';
+let PATS=[];   // 서버가 알려주는 유형 목록
+function qs(){
+  const p=[];
+  if(FILT==='example') p.push('has_example=1');
+  else if(FILT) p.push('only='+FILT);
+  if(PAT) p.push('pattern='+PAT);
+  return p.join('&');
+}
+function paintFilt(){
+  const html=FILTS.map(f=>`<button class="chip${FILT===f.k?' on':''}" onclick="setFilt('${f.k}')">${f.n}</button>`).join('');
+  document.getElementById('filtSel').innerHTML=html;
+  document.getElementById('bfilt').innerHTML=html;
+  const ph=[{k:'',n:'모든 유형',c:''}].concat(PATS.map(p=>({k:p.k,n:p.n,c:p.c})))
+    .map(p=>`<button class="chip${PAT===p.k?' on':''}" onclick="setPat('${p.k}')">${p.n}${p.c?` <small>${p.c}</small>`:''}</button>`).join('');
+  document.getElementById('patSel').innerHTML=ph;
+  document.getElementById('gpat').innerHTML=ph;
+}
+function setFilt(k){ FILT=k; localStorage.setItem('dp_filt',k); paintFilt();
+  loadStats(); if(browse.style.display==='block') loadList(0); }
+function setPat(k){ PAT=k; localStorage.setItem('dp_pat',k); paintFilt();
+  if(browse.style.display==='block') loadList(0);
+  if(groups.style.display==='block') loadGroups(); }
+
+// ── 홈 ────────────────────────────────────────────────────────────────
+let ST={};
+async function loadStats(){
+  const d=await api('/api/dapei/stats'); if(!d) return;
+  ST=d; PATS=d.patterns||[];
+  const g=id=>document.getElementById(id);
+  g('sMas').textContent=d.mastered; g('sLrn').textContent=d.learning;
+  g('sUnt').textContent=d.untouched; g('sDue').textContent=d.due;
+  g('sWrong').textContent=d.wrong;
+  g('sToday').textContent=d.today_count+(d.today_count?` · ${Math.round(100*d.today_correct/d.today_count)}%`:'');
+  const pct=t=>d.total?(100*t/d.total).toFixed(1):0;
+  g('barSeen').style.width=pct(d.seen)+'%';
+  g('barMas').style.width=pct(d.mastered)+'%';
+  g('labL').textContent=`학습 ${d.seen} / ${d.total}개 (${pct(d.seen)}%)`;
+  g('labR').textContent=`앞말 ${d.heads}묶음 · 예문 ${d.examples}개`;
+  let todo=[];
+  if(d.due) todo.push(`복습 ${d.due}개`);
+  if(d.wrong) todo.push(`오답 ${d.wrong}개`);
+  if(!todo.length) todo.push(d.untouched?`새 표현 ${Math.min(12,d.untouched)}개`:'전부 한 번씩 봤습니다');
+  g('todo').textContent=todo.join(' · ');
+  g('tgoBtn').textContent = d.due ? '복습부터 하기' : (d.wrong ? '틀린 것부터' : '새 표현 배우기');
+  paintFilt();
+}
+function recommendMode(){
+  if(ST.due){ FILT='due'; } else if(ST.wrong){ FILT='wrong'; } else if(ST.untouched){ FILT='new'; }
+  localStorage.setItem('dp_filt',FILT); paintFilt();
+  return 'coll';   // 호응은 '짝 고르기'가 가장 핵심적인 연습이다
+}
+function goHome(){ stopSpeak(); home.style.display='block'; study.style.display='none';
+  browse.style.display='none'; groups.style.display='none'; loadStats(); }
+
+// ── 발음 ──────────────────────────────────────────────────────────────
+let AU=null;
+function stopSpeak(){ try{ if(AU) AU.pause(); }catch(e){} try{ speechSynthesis.cancel(); }catch(e){} }
+function speak(w, v){
+  stopSpeak();
+  const p = (v===2 ? w.audio2 : w.audio1) || w.audio1 || w.audio2;
+  if(p){ try{ AU=new Audio('/'+String(p).replace(/^\/+/,'')); AU.play().catch(()=>fallback(w.chinese)); return; }catch(e){} }
+  fallback(w.chinese);
+}
+function speakText(t){ stopSpeak(); fallback(t); }
+function fallback(text){   // 아직 음성을 만들지 않은 표현은 브라우저 읽어주기로
+  try{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='zh-CN'; u.rate=0.8; speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+// ── 세션 ──────────────────────────────────────────────────────────────
+let MODE='', LIST=[], IDX=0, T0=0, SESSOK=0, SHOWN=false, HEAD='';
+async function start(mode, head){
+  MODE=mode; HEAD=head||'';
+  const n = (mode==='card') ? 20 : 12;
+  const q = `/api/dapei/session?mode=${mode}&limit=${n}&${qs()}` + (HEAD?`&head=${encodeURIComponent(HEAD)}`:'');
+  const d=await api(q);
+  if(!d || !d.items.length){
+    alert(mode==='blank' ? '이 범위에는 예문이 붙은 표현이 없습니다. 범위를 넓혀보세요.'
+        : mode==='listen' ? '아직 음성이 만들어진 호응 표현이 없습니다.'
+        : (FILT||PAT||HEAD) ? '이 범위에 낼 표현이 없습니다. 범위를 넓혀보세요.' : '학습할 표현이 없습니다');
+    return;
+  }
+  LIST=d.items; IDX=0; SESSOK=0; stopSpeak(); closeSheet();
+  home.style.display='none'; browse.style.display='none'; groups.style.display='none';
+  study.style.display='block';
+  render();
+}
+function prog(){
+  pgTxt.textContent=`${IDX+1} / ${LIST.length}`+(HEAD?` · ${HEAD}`:'');
+  pgBar.style.width=(100*IDX/LIST.length)+'%';
+  const w=LIST[IDX];
+  document.getElementById('btnStar').textContent = (w && w.starred) ? '★' : '☆';
+}
+function next(){ IDX++; if(IDX>=LIST.length){ finish(); return; }
+  fb.textContent=''; fb.className='fb'; render(); }
+function finish(){
+  stopSpeak();
+  stage.innerHTML=`<div class="done"><div class="big">🎉</div>
+    <h3>${LIST.length}개 완료!</h3>
+    <div style="color:var(--teal);font-weight:800;margin-bottom:1rem;">${
+      MODE==='card' ? '넘겨보기는 진도에 반영되지 않습니다' : `새로 학습 +${SESSOK}개`}</div>
+    <div class="acts">
+      <button class="act yes" onclick='start("${MODE}", ${JSON.stringify(HEAD)})'>이어서 하기</button>
+      <button class="act no" onclick="FILT='wrong';localStorage.setItem('dp_filt','wrong');paintFilt();start('coll')">틀린 것만</button>
+      <button class="act sec" onclick="goHome()">홈으로</button></div></div>`;
+  fb.textContent=''; pgBar.style.width='100%'; pgTxt.textContent=`${LIST.length} / ${LIST.length}`;
+  loadStats();
+}
+async function record(ok){
+  const w=LIST[IDX];
+  if(!w.seen){ SESSOK++; w.seen=1; }
+  await api('/api/dapei/answer',{method:'POST',body:JSON.stringify(
+    {dapei_id:w.id, mode:'dp_'+MODE, result:ok?1:0, ms:Date.now()-T0})});
+}
+async function toggleStar(){
+  const w=LIST[IDX]; if(!w) return;
+  const on=w.starred?0:1;
+  const r=await api('/api/dapei/star',{method:'POST',body:JSON.stringify({dapei_id:w.id,on})});
+  if(r){ w.starred=on; document.getElementById('btnStar').textContent=on?'★':'☆'; }
+}
+
+// 해설 — 뜻 / 앞말의 의미 / 예문 / 유형
+function explHtml(w, opts){
+  const o=opts||{};
+  let h='<div class="expl">';
+  if(o.mean!==false) h+=`<div class="r"><div class="k">뜻</div><div class="v ko"><b>${esc(w.meaning_ko)}</b></div></div>`;
+  h+=`<div class="r"><div class="k">읽기</div><div class="v"><span class="cn">${esc(w.chinese)}</span> · ${esc(w.pinyin)}</div></div>`;
+  if(w.head_ko) h+=`<div class="r"><div class="k">앞말</div><div class="v st"><span class="cn">${esc(w.head)}</span> ${esc(w.head_py)} — ${esc(w.head_ko)}</div></div>`;
+  if(w.example) h+=`<div class="r"><div class="k">예문</div><div class="v"><span class="cn">${esc(w.example)}</span>`
+    + (w.example_ko?`<div class="st">${esc(w.example_ko)}</div>`:'') + '</div></div>';
+  return h+'</div>';
+}
+
+function render(){
+  prog(); T0=Date.now(); SHOWN=false;
+  const w=LIST[IDX];
+  if(MODE==='card')    return renderCard(w);
+  if(MODE==='meaning') return renderChoice(w,'meaning');
+  if(MODE==='listen')  return renderChoice(w,'listen');
+  if(MODE==='coll')    return renderPair(w,'coll');
+  if(MODE==='head')    return renderPair(w,'head');
+  if(MODE==='blank')   return renderBlank(w);
+}
+
+// 카드 — 표현 → (탭) → 뜻·예문
+function renderCard(w){
+  stage.innerHTML=`
+    <div class="qcard" onclick="cardFlip()">
+      <div class="dp">${dpHtml(w)}</div>
+      <div class="py">${esc(w.pinyin)}</div>
+      <div id="cbody" style="margin-top:0.8rem;color:var(--muted2);font-size:0.85rem;">눌러서 뜻 보기</div>
+    </div>
+    <div class="swipe">
+      <button onclick="cardPrev()">‹ 이전</button>
+      <button class="mid" onclick="speak(LIST[IDX])">🔊 발음</button>
+      <button onclick="cardNext()">다음 ›</button>
+    </div>`;
+}
+function cardFlip(){
+  // 넘겨보기는 문제를 푼 것이 아니므로 진도(라이트너 박스)에 넣지 않는다
+  const w=LIST[IDX], b=document.getElementById('cbody'); if(!b) return;
+  if(SHOWN) return; SHOWN=true;
+  b.innerHTML=explHtml(w);
+}
+function cardPrev(){ if(IDX>0){ IDX--; fb.textContent=''; render(); } }
+function cardNext(){ if(!SHOWN) cardFlip(); next(); }
+
+// 4지선다 — meaning: 표현→뜻 / listen: 음성→표현
+function renderChoice(w, kind){
+  const head = kind==='meaning'
+    ? `<div class="qask">이 표현의 뜻은?</div>
+       <div class="dp">${dpHtml(w)}</div><div class="py">${esc(w.pinyin)}</div>`
+    : `<div class="qask">듣고 표현을 고르세요</div>
+       <div style="font-size:3.4rem;cursor:pointer;" onclick="speak(LIST[IDX])">🔊</div>
+       <div style="font-size:0.78rem;color:var(--muted2);">눌러서 다시 듣기</div>`;
+  const opts=w.choices.map((o,i)=>
+    kind==='meaning'
+      ? `<button class="opt" onclick="pick(${i},this)">${esc(o.meaning_ko)}</button>`
+      : `<button class="opt cn" onclick="pick(${i},this)">${esc(o.chinese)}<small>${esc(o.pinyin)}</small></button>`).join('');
+  stage.innerHTML=`<div class="qcard">${head}</div><div class="opts">${opts}</div>`;
+  if(kind==='listen') setTimeout(()=>speak(w), 250);
+}
+function pick(i){
+  if(SHOWN) return; SHOWN=true;
+  const w=LIST[IDX], ok=!!w.choices[i].ok;
+  markOpts(w.choices, i);
+  reveal(ok);
+}
+
+// 짝 고르기 — 호응 학습의 핵심.
+// coll: 앞말을 주고 뒤에 붙는 말을, head: 뒤말을 주고 앞에 붙는 말을 고른다.
+function renderPair(w, kind){
+  const given = kind==='coll' ? w.head : w.collocate;
+  const gpy   = kind==='coll' ? w.head_py : w.coll_py;
+  const ask   = kind==='coll' ? '이 말 뒤에 붙는 짝은?' : '이 말 앞에 붙는 짝은?';
+  const slotL = kind==='coll' ? `<span class="h">${esc(given)}</span>` : '<span class="bk">＿＿</span>';
+  const slotR = kind==='coll' ? '<span class="bk">＿＿</span>' : `<span class="c">${esc(given)}</span>`;
+  stage.innerHTML=`
+    <div class="qcard">
+      <div class="qask">${ask}</div>
+      <div class="dp">${slotL}${slotR}</div>
+      <div class="py">${esc(gpy)}</div>
+      <div class="qmean">${esc(w.meaning_ko)}</div>
+    </div>
+    <div class="opts optgrid">${w.choices.map((o,i)=>
+      `<button class="opt cn" onclick="pickPair(${i},this)">${esc(o.text)}<small>${esc(o.py)}</small></button>`).join('')}</div>`;
+}
+function pickPair(i){
+  if(SHOWN) return; SHOWN=true;
+  const w=LIST[IDX], ok=!!w.choices[i].ok;
+  markOpts(w.choices, i);
+  const dp=document.querySelector('.dp');
+  if(dp) dp.innerHTML=dpHtml(w);
+  reveal(ok);
+}
+
+// 문장 빈칸 — 예문 속에서 한쪽을 지우고 채운다
+function renderBlank(w){
+  stage.innerHTML=`
+    <div class="qcard">
+      <div class="qask">빈칸에 들어갈 말은?</div>
+      <div class="sent">${esc(w.masked).replace(/＿+/g,m=>`<span class="bk">${m}</span>`)}</div>
+      ${w.example_ko?`<div class="sentko">${esc(w.example_ko)}</div>`:''}
+      <div style="margin-top:0.7rem;font-size:0.95rem;font-weight:700;color:var(--teal);">${esc(w.meaning_ko)}</div>
+    </div>
+    <div class="opts optgrid">${w.blank_choices.map((o,i)=>
+      `<button class="opt cn" onclick="pickBlank(${i},this)">${esc(o.text)}</button>`).join('')}</div>`;
+}
+function pickBlank(i){
+  if(SHOWN) return; SHOWN=true;
+  const w=LIST[IDX], ok=!!w.blank_choices[i].ok;
+  markOpts(w.blank_choices, i);
+  const s=document.querySelector('.sent');
+  if(s) s.innerHTML=esc(w.example).replace(esc(w.blank_answer), m=>`<span class="c">${m}</span>`);
+  reveal(ok);
+}
+
+function markOpts(choices, picked){
+  document.querySelectorAll('.opt').forEach((b,j)=>{
+    b.disabled=true;
+    if(choices[j] && choices[j].ok) b.classList.add('ok');
+    else if(j===picked) b.classList.add('ng');
+  });
+}
+function reveal(ok){
+  const w=LIST[IDX];
+  fb.textContent = ok ? '정답!' : '오답';
+  fb.className='fb '+(ok?'ok':'ng');
+  record(ok);
+  speak(w);
+  stage.insertAdjacentHTML('beforeend', explHtml(w, {mean:MODE!=='meaning'}) +
+    `<div class="acts">
+       <button class="act${ok?' yes':''}" onclick="next()">다음 →</button>
+       <button class="act sec" onclick='openGroup(${JSON.stringify(w.head)})'>${esc(w.head)} 묶음 보기</button>
+     </div>`);
+}
+
+// ── 묶음(앞말) 목록 ────────────────────────────────────────────────────
+let GQT=null;
+function openGroups(){ home.style.display='none'; study.style.display='none';
+  browse.style.display='none'; groups.style.display='block'; paintFilt(); loadGroups(); }
+function gLive(){ clearTimeout(GQT); GQT=setTimeout(loadGroups, 300); }
+async function loadGroups(){
+  const q=encodeURIComponent((document.getElementById('gq').value||'').trim());
+  document.getElementById('gmsg').textContent='불러오는 중…';
+  const d=await api(`/api/dapei/heads?q=${q}`+(PAT?`&pattern=${PAT}`:''));
+  if(!d){ document.getElementById('gmsg').textContent='불러오지 못했습니다'; return; }
+  document.getElementById('gmsg').textContent = d.total ? `${d.total}묶음` : '결과가 없습니다';
+  document.getElementById('glist').innerHTML=d.heads.map(h=>`
+    <button class="hcell" onclick='openGroup(${JSON.stringify(h.head)})'>
+      <div class="hh">${esc(h.head)}</div>
+      <div class="hp">${esc(h.head_py)}</div>
+      <div class="hk">${esc(h.head_ko)}</div>
+      <div class="hn">짝 ${h.n}개 · 숙달 ${h.mastered}</div>
+      <div class="hb"><i style="width:${h.n?Math.round(100*h.mastered/h.n):0}%"></i></div>
+    </button>`).join('');
+  window.scrollTo(0,0);
+}
+
+// 한 묶음 전체 — 提高 아래 붙는 말들을 한 판에 모아 본다
+async function openGroup(head){
+  const d=await api('/api/dapei/group/'+encodeURIComponent(head)); if(!d) return;
+  document.getElementById('sheet').innerHTML=`
+    <button class="x" onclick="closeSheet()">닫기</button>
+    <div class="gcard" style="border:none;padding:0;">
+      <div class="gh">${esc(d.head)}</div>
+      <div class="gp">${esc(d.head_py)}</div>
+      <div class="gk">${esc(d.head_ko)}</div>
+      <div class="gt">${esc(d.pattern_ko)}${d.topic?' · '+esc(d.topic):''} · 짝 ${d.count}개</div>
+      <div class="gitems">${d.items.map(it=>`
+        <div class="gi" onclick="event.stopPropagation();openSheet(${it.id})">
+          <div class="gic">${esc(it.collocate)}</div>
+          <div class="gip">${esc(it.coll_py)}</div>
+          <div class="gim">${esc(it.meaning_ko)}</div>
+          ${it.box>=5?'<div class="gib">숙달</div>':''}
+          ${it.example?'<div class="gib">예문</div>':''}
+        </div>`).join('')}</div>
+    </div>
+    <div class="acts">
+      <button class="act" onclick='start("coll", ${JSON.stringify(head)})'>이 묶음 문제 풀기</button>
+      <button class="act sec" onclick='start("card", ${JSON.stringify(head)})'>카드로 보기</button>
+    </div>`;
+  document.getElementById('ov').classList.add('on');
+}
+
+// ── 표현 목록 ─────────────────────────────────────────────────────────
+let BOFF=0, BTOTAL=0, QT=null;
+function openBrowse(){ home.style.display='none'; study.style.display='none';
+  groups.style.display='none'; browse.style.display='block'; paintFilt(); loadList(0); }
+function qLive(){ clearTimeout(QT); QT=setTimeout(()=>loadList(0), 350); }
+function pageList(d){ const n=BOFF+d*60; if(n<0||n>=BTOTAL) return; loadList(n); }
+async function loadList(off){
+  BOFF=off;
+  const q=encodeURIComponent((document.getElementById('bq').value||'').trim());
+  document.getElementById('bmsg').textContent='불러오는 중…';
+  const d=await api(`/api/dapei/list?q=${q}&offset=${off}&limit=60&${qs()}`);
+  if(!d){ document.getElementById('bmsg').textContent='불러오지 못했습니다'; return; }
+  BTOTAL=d.total;
+  document.getElementById('bmsg').textContent = d.total ? `${d.total}개` : '결과가 없습니다';
+  document.getElementById('bpg').textContent = d.total ? `${off+1}–${Math.min(off+60,d.total)} / ${d.total}` : '';
+  document.getElementById('blist').innerHTML=d.items.map(w=>`
+    <div class="li" onclick="openSheet(${w.id})">
+      <div class="c">${dpHtml(w)}</div>
+      <div class="x">
+        <div class="p">${esc(w.pinyin)}</div>
+        <div class="m">${esc(w.meaning_ko)}</div>
+      </div>
+      ${w.example?'<div class="badge">예문</div>':''}
+      ${w.box>=5?'<div class="badge">숙달</div>':''}
+    </div>`).join('');
+  window.scrollTo(0,0);
+}
+
+// ── 상세 ──────────────────────────────────────────────────────────────
+async function openSheet(id){
+  const d=await api('/api/dapei/detail/'+id); if(!d) return;
+  document.getElementById('sheet').innerHTML=`
+    <button class="x" onclick="closeSheet()">닫기</button>
+    <div style="font-family:var(--font-cn);font-size:2.3rem;font-weight:800;letter-spacing:0.04em;">
+      <span style="color:var(--accent)">${esc(d.head)}</span><span style="color:var(--teal)">${esc(d.collocate)}</span></div>
+    <div class="py" style="margin-bottom:0.6rem;">${esc(d.pinyin)}
+      <button class="tbtn" style="margin-left:0.4rem;" onclick='speak(${JSON.stringify({chinese:d.chinese,audio1:d.audio1,audio2:d.audio2})})'>🔊</button>
+      <span class="hint" style="margin-left:0.4rem;">${esc(d.pattern_ko)}${d.topic?' · '+esc(d.topic):''}</span></div>
+    ${explHtml(d)}
+    ${d.same_head && d.same_head.length ? `<h2>${esc(d.head)}에 붙는 다른 짝</h2>
+      <div class="rel">${d.same_head.map(r=>
+        `<button onclick="openSheet(${r.id})">${esc(r.collocate)}<span style="font-family:inherit;font-size:0.7rem;color:var(--muted2)"> ${esc(r.meaning_ko)}</span></button>`).join('')}</div>` : ''}
+    ${d.same_coll && d.same_coll.length ? `<h2>${esc(d.collocate)} 앞에 오는 다른 말</h2>
+      <div class="rel">${d.same_coll.map(r=>
+        `<button onclick="openSheet(${r.id})">${esc(r.head)}<span style="font-family:inherit;font-size:0.7rem;color:var(--muted2)"> ${esc(r.meaning_ko)}</span></button>`).join('')}</div>` : ''}
+    <div class="acts">
+      <button class="act" onclick='openGroup(${JSON.stringify(d.head)})'>${esc(d.head)} 묶음 전체</button>
+      <button class="act sec" onclick="closeSheet()">닫기</button>
+    </div>`;
+  document.getElementById('ov').classList.add('on');
+}
+function closeSheet(){ stopSpeak(); document.getElementById('ov').classList.remove('on'); }
+
+document.addEventListener('keydown', e=>{
+  if(study.style.display!=='block') return;
+  if(e.key==='Enter' && SHOWN) next();
+  if(e.key===' '){ e.preventDefault(); if(MODE==='card') cardFlip(); else speak(LIST[IDX]); }
+  if(/^[1-4]$/.test(e.key)){
+    const b=document.querySelectorAll('.opt')[+e.key-1]; if(b && !b.disabled) b.click();
+  }
+});
+
+// ── 호응 음성 배치 (XTTS · GPU) ────────────────────────────────────────
+let TTSPOLL=null;
+async function ttsBatch(){
+  if(!confirm('음성이 없는 호응 표현에 XTTS 음성을 만듭니다.\nGPU를 오래 쓰기 때문에 다른 GPU 작업과 겹치면 느려집니다.\n시작할까요?')) return;
+  const r=await api('/api/dapei/tts-batch',{method:'POST',body:'{}'});
+  if(!r){ document.getElementById('ttsMsg').textContent='시작하지 못했습니다'; return; }
+  pollTts();
+}
+async function pollTts(quiet){
+  clearInterval(TTSPOLL);
+  let sawRunning=false;
+  const tick=async()=>{
+    const s=await api('/api/dapei/tts-status'); if(!s) return;
+    const p=s.progress||{}, msg=document.getElementById('ttsMsg');
+    if(s.running){
+      sawRunning=true;
+      msg.textContent=`생성 중 — ${p.voice||''} ${p.done||0}/${p.total||0}`;
+      document.getElementById('btnTts').disabled=true;
+    }else{
+      if(sawRunning || !quiet) msg.textContent='완료 · 새로고침하면 호응 음성이 나옵니다';
+      document.getElementById('btnTts').disabled=false;
+      clearInterval(TTSPOLL);
+    }
+  };
+  await tick(); if(!document.getElementById('btnTts').disabled && quiet) return;
+  TTSPOLL=setInterval(tick, 4000);
+}
+
+paintFilt();
+loadStats();
+pollTts(true);
+</script>
+</body>
+</html>

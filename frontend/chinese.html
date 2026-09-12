@@ -524,6 +524,105 @@
     .wq-msg{font-size:0.88rem;font-weight:700;margin-left:auto;}
     .wq-msg.ok{color:#3fb950;} .wq-msg.ng{color:#f05252;}
     .wq-ans{margin-top:0.5rem;font-family:var(--font-cn);font-size:1.15rem;color:var(--accent2);}
+    /* ── 신HSK 문제풀이 (2026-09-10) ──
+       낱말을 외우는 화면이 아니라 '문장을 읽고 푸는' 화면이다.
+       지문·물음·보기 모두 한자에 병음이 붙고, 낱말을 누르면 단어 학습으로 들어간다. */
+    .hq-rule{border:1px solid rgba(79,209,197,0.4);background:rgba(79,209,197,0.08);
+      border-radius:13px;padding:0.7rem 0.85rem;margin-bottom:0.8rem;}
+    .hq-rule b{color:var(--accent2);font-size:0.9rem;}
+    .hq-rule ol{margin:0.4rem 0 0;padding-left:1.1rem;font-size:0.84rem;
+      color:var(--muted);line-height:1.65;}
+    .hq-rule .tip{color:var(--text);font-weight:700;}
+    .hq-ftab{display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.7rem;}
+    .hq-ftab button{background:var(--surface);border:1px solid var(--border);color:var(--muted);
+      border-radius:999px;padding:0.34rem 0.75rem;font-size:0.84rem;font-weight:700;cursor:pointer;}
+    .hq-ftab button.on{background:var(--accent2);border-color:var(--accent2);color:#0b1114;}
+    .hq{border:1px solid var(--border);background:var(--bg2);border-radius:14px;
+      padding:0.9rem 0.9rem 0.85rem;margin-bottom:0.85rem;}
+    .hq.solved-ok{border-color:rgba(63,185,80,0.6);}
+    .hq.solved-ng{border-color:rgba(240,82,82,0.6);}
+    .hq-h{display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.6rem;}
+    .hq-no{font-size:0.8rem;font-weight:800;color:#fff;background:var(--accent);
+      border-radius:6px;padding:0.13rem 0.5rem;}
+    .hq-kind{font-size:0.72rem;font-weight:800;border-radius:5px;padding:0.08rem 0.4rem;}
+    .hq-kind.blank{color:#fbbf24;border:1px solid rgba(251,191,36,0.5);}
+    .hq-kind.order{color:#5b9bd4;border:1px solid rgba(91,155,212,0.5);}
+    .hq-kind.choice{color:var(--accent2);border:1px solid rgba(79,209,197,0.45);}
+    .hq-lv{font-size:0.72rem;color:var(--muted2);border:1px solid var(--border);
+      border-radius:5px;padding:0.05rem 0.35rem;}
+    .hq-src{font-size:0.7rem;border-radius:5px;padding:0.05rem 0.4rem;margin-left:auto;}
+    .hq-src.textbook{color:#3fb950;border:1px solid rgba(63,185,80,0.45);}
+    .hq-src.ai{color:#f0a020;border:1px solid rgba(240,160,32,0.5);cursor:pointer;}
+    .hq-src.manual{color:var(--accent);border:1px solid rgba(124,109,250,0.5);cursor:pointer;}
+    .hq-src.none{color:var(--muted2);border:1px solid var(--border);}
+    /* 지문 */
+    .hq-p{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+      padding:0.75rem 0.85rem;line-height:2.35;margin-bottom:0.55rem;}
+    .hq-turn{display:flex;gap:0.55rem;align-items:flex-start;margin-bottom:0.45rem;}
+    .hq-who{flex:0 0 1.7rem;height:1.7rem;border-radius:8px;display:flex;align-items:center;
+      justify-content:center;font-weight:800;font-size:0.85rem;color:#fff;background:var(--accent);}
+    .hq-turn:nth-child(even) .hq-who{background:var(--accent2);color:#0b1114;}
+    .hq-turn .tx{flex:1;line-height:2.35;}
+    /* 빈칸이 문장 가운데 놓이므로 문장 덩어리를 한 줄로 흐르게 한다 */
+    .hq-turn .tx .rb-sent{display:inline;}
+    .hq-turn .tx .pt-row{display:none;}
+    /* 물음 */
+    .hq-stem{font-family:var(--font-cn);font-size:1.05rem;font-weight:700;line-height:1.8;
+      margin:0.55rem 0 0.5rem;}
+    .hq-stem .ko{display:block;font-family:inherit;font-size:0.86rem;font-weight:500;
+      color:var(--muted);margin-top:0.15rem;}
+    /* 보기 */
+    .hq-o{display:flex;flex-direction:column;gap:0.38rem;}
+    .hq-i{display:flex;gap:0.5rem;align-items:flex-start;text-align:left;width:100%;
+      border:1px solid var(--border);background:var(--surface);color:var(--text);
+      border-radius:10px;padding:0.55rem 0.7rem;cursor:pointer;font-size:1rem;line-height:1.6;}
+    .hq-i:hover{border-color:var(--accent);}
+    .hq-i .lt{flex:0 0 1.35rem;height:1.35rem;border-radius:5px;background:var(--surface2);
+      color:var(--accent2);font-weight:800;font-size:0.85rem;display:flex;
+      align-items:center;justify-content:center;}
+    .hq-i .bd{flex:1;font-family:var(--font-cn);}
+    .hq-i .bd .ko{display:block;font-family:inherit;font-size:0.83rem;color:var(--muted);
+      margin-top:0.1rem;}
+    .hq-i.pick{border-color:var(--accent);background:rgba(124,109,250,0.14);}
+    .hq-i.ok{border-color:#3fb950;background:rgba(63,185,80,0.14);}
+    .hq-i.ng{border-color:#f05252;background:rgba(240,82,82,0.12);}
+    .hq-i .bd .rb-sent{display:inline;}
+    .hq-i .pt-row{display:none;}
+    .hq-i.ok .lt{background:#3fb950;color:#fff;}
+    .hq-i.ng .lt{background:#f05252;color:#fff;}
+    /* 순서 맞추기 */
+    .hq-ord{display:flex;flex-direction:column;gap:0.38rem;}
+    .hq-seq{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;min-height:2.6rem;
+      border:2px dashed var(--border);border-radius:11px;padding:0.45rem;background:var(--surface);
+      margin-bottom:0.5rem;}
+    .hq-seq.ok{border-style:solid;border-color:#3fb950;background:rgba(63,185,80,0.1);}
+    .hq-seq.ng{border-style:solid;border-color:#f05252;background:rgba(240,82,82,0.1);}
+    .hq-seq .ph{color:var(--muted2);font-size:0.84rem;}
+    .hq-chip{background:var(--accent);color:#fff;border:none;border-radius:8px;
+      padding:0.28rem 0.6rem;font-weight:800;font-size:0.95rem;cursor:pointer;}
+    /* 아래 단추·해설 */
+    .hq-btns{display:flex;gap:0.4rem;margin-top:0.65rem;flex-wrap:wrap;align-items:center;}
+    .hq-b{border:none;border-radius:8px;padding:0.42rem 0.85rem;font-size:0.86rem;
+      font-weight:700;color:#fff;cursor:pointer;background:var(--accent);}
+    .hq-b.sec{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+    .hq-msg{font-size:0.88rem;font-weight:800;margin-left:auto;}
+    .hq-msg.ok{color:#3fb950;} .hq-msg.ng{color:#f05252;}
+    .hq-ko{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+      padding:0.6rem 0.8rem;font-size:0.93rem;line-height:1.75;margin-top:0.5rem;}
+    .hq-ko.hide{filter:blur(6px);cursor:pointer;}
+    .hq-ex{margin-top:0.5rem;border-left:3px solid var(--accent2);padding:0.35rem 0 0.35rem 0.7rem;
+      font-size:0.9rem;line-height:1.65;color:var(--text);}
+    .hq-ex .lb{font-size:0.74rem;font-weight:800;color:var(--accent2);display:block;}
+    .hq-gr{display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.5rem;}
+    .hq-gchip{border:1px solid rgba(124,109,250,0.45);background:rgba(124,109,250,0.10);
+      color:var(--text);border-radius:8px;padding:0.3rem 0.55rem;font-size:0.82rem;
+      line-height:1.45;text-align:left;cursor:default;}
+    .hq-gchip b{font-family:var(--font-cn);color:var(--accent);margin-right:0.3rem;}
+    .hq-warn{font-size:0.78rem;color:#f0a020;margin-top:0.45rem;}
+    .hq-sum{display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
+      border:1px solid var(--border);background:var(--surface2);border-radius:11px;
+      padding:0.55rem 0.75rem;margin-bottom:0.7rem;font-size:0.86rem;font-weight:700;}
+    .hq-sum .v{color:var(--accent2);}
     .gtab{display:flex;gap:0.4rem;position:sticky;top:0;z-index:8;padding:0.5rem 0 0.55rem;
       background:var(--bg);border-bottom:1px solid var(--border);margin-bottom:0.5rem;
       overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -2943,6 +3042,9 @@ document.addEventListener('mouseout', e => {
 });
 document.addEventListener('click', e => {
   const el = e.target.closest && e.target.closest('.rb-w');
+  // 아직 답을 고르기 전인 보기 안에서는 낱말 학습이 아니라 '고르기'가 먼저다
+  // (채점한 뒤에는 보기의 낱말도 눌러서 익힐 수 있다)
+  if (el && el.closest('.hq-noword')) return;
   if (el) { e.stopPropagation(); hideRbTip(); openWordModal(el.dataset.w, el.dataset.py); }
 }, true);
 window.addEventListener('scroll', hideRbTip, true);
@@ -3411,7 +3513,7 @@ const _WAUD = {};                              // 한 번 받은 것은 담아 �
    파일을 다시 만들지 않고 재생할 때만 바꾼다 — 음높이는 브라우저가 지켜 준다. */
 function _vrate(){
   const m = (document.getElementById('voiceSelect')||{}).value === '1';
-  const v = parseFloat(localStorage.getItem(m ? 'cn_spdM' : 'cn_spdF') || (m ? '0.9' : '1.1'));
+  const v = parseFloat(localStorage.getItem(m ? 'cn_spdM' : 'cn_spdF') || (m ? '0.85' : '0.95'));
   return Math.max(0.5, Math.min(2, v)) * (playbackSpeed || 1);
 }
 function wmSpeak(){
@@ -3549,7 +3651,7 @@ async function loadReading(subject, week, cls){
   return _rdList;
 }
 function readingHtml(){
-  if (!_rdList.length) return '';
+  if (!_rdList.length || hqHas('choice')) return '';
   return '<div class="wq-wrap">' + _rdList.map((x, i) =>
     '<div class="wq rd">' +
       '<div class="wq-h">' +
@@ -3567,6 +3669,321 @@ function readingHtml(){
     '</div>').join('') + '</div>';
 }
 
+/* ── 신HSK 문제풀이 ─────────────────────────────────────────────────────────
+   교안은 슬라이드라서 한 문제의 지문·물음·보기가 여러 쪽에 흩어져 있었다.
+   그걸 한 문제로 되살려 담아 둔 것을 받아 온다
+   (scripts/hsk_build.py → hsk_questions → /api/chinese/questions).
+
+   이 화면의 규칙 — 낱말을 외우는 자리가 아니라 '문장을 읽고 푸는' 자리다.
+     ① 먼저 지문을 소리 내어 읽고  ② 해석은 가려 둔 채 답을 고르고
+     ③ 채점한 뒤에야 해석과 문법을 편다  ④ 모르는 낱말은 눌러서 따로 익힌다 */
+let _hqList = [];
+let _hqPick = {};     // 문제 id → 고른 보기 글자
+let _hqMark = {};     // 문제 id → 'ok' | 'ng'
+let _hqSeq  = {};     // 순서 맞추기 id → 고른 차례 ['B','A','C']
+let _hqKind = sessionStorage.getItem('cn_hqkind') || '';
+
+const HQ_KIND = { blank: '빈칸 채우기', order: '순서 맞추기', choice: '알맞은 답 고르기' };
+
+async function loadHskQ(subject, week, cls){
+  _hqList = []; _hqPick = {}; _hqMark = {}; _hqSeq = {};
+  try{
+    const q = `subject=${encodeURIComponent(subject||'')}&week=${week||0}&class_num=${cls||0}`;
+    const r = await fetch(`${API}/api/chinese/questions?${q}`, { headers: authHeaders() });
+    if (r.ok) _hqList = (await r.json()).questions || [];
+  }catch(e){ _hqList = []; }
+  return _hqList;
+}
+
+/* 지문에 나오는 낱말만 추린 사전.
+   buildRuby 는 이 표에 있는 낱말을 통째로 묶어 주고, 누르면 단어 학습으로 이어진다. */
+function hqWordMap(text){
+  const m = {};
+  for (const ch of new Set(Array.from(text || ''))){
+    const lst = _wordIndex[ch];
+    if (!lst) continue;
+    for (const it of lst){
+      const w = it[0], ko = it[2];
+      if (w && w.length >= 2 && ko && text.indexOf(w) >= 0) m[w] = { ko, en: '' };
+    }
+  }
+  return Object.assign(m, _wordMap);      // 이 교시 단어 카드의 뜻을 우선한다
+}
+
+/* 모델이 보기 뜻을 {ko:…, zh:…} 같은 덩이로 돌려주기도 한다 — 한국어 쪽만 꺼낸다.
+   중국어 원문 그대로면 옮기지 못한 것이니 아예 보여 주지 않는다. */
+function hqKo(v, zh){
+  let t = v;
+  if (t && typeof t === 'object') t = t.ko || t.korean || t.ko_kr || '';
+  // 예전 자료에는 {'ko': '…'} 가 글자열로 굳어 담긴 것이 있다 — 그 안의 한국어만 꺼낸다
+  if (typeof t === 'string' && /^\{\s*['"]?ko/.test(t)) {
+    const m = t.match(/['"]ko['"]\s*:\s*['"]([^'"]*)['"]/);
+    t = m ? m[1] : '';
+  }
+  // 글자 뒤에 구분 표시나 빈칸이 있을 때만 뗀다 ('A는 …' 의 첫 글자를 먹지 않게)
+  t = String(t == null ? '' : t).trim()
+        .replace(/^\s*(?:보기\s*)?[A-F](?:\s*[.)．、:：]\s*|\s+)/, '');
+  if (!t || (zh && t.replace(/\s/g, '') === String(zh).replace(/\s/g, ''))) return '';
+  return t;
+}
+
+function hqRuby(text, py){
+  if (!text) return '';
+  return buildRuby(text, py || '', hqWordMap(text), 0);
+}
+
+/* 괄호 자리를 눈에 띄는 빈칸으로 바꾼다.
+   앞뒤 글은 교안에서 뽑을 때 미리 갈라 담아 두었다(turns 의 pre/post) —
+   루비를 붙인 뒤 HTML 을 헤집지 않으려는 것이다. */
+function hqBlankSlot(q){
+  const picked = _hqPick[q.id];
+  const word = picked ? (q.options[picked.charCodeAt(0) - 65] || '') : '';
+  const mark = _hqMark[q.id];
+  const col = !mark ? 'var(--accent)' : (mark === 'ok' ? '#3fb950' : '#f05252');
+  const inner = word
+    ? '<b style="color:' + col + '">' + _esc(word) + '</b>'
+    : '<span style="color:var(--muted2)">＿＿＿</span>';
+  return '<span style="display:inline-block;min-width:3.6rem;text-align:center;' +
+    'border-bottom:2px solid ' + col + ';padding:0 0.25rem;font-family:var(--font-cn);">' +
+    inner + '</span>';
+}
+
+function hqOptionsHtml(q){
+  const mark = _hqMark[q.id];
+  const pick = _hqPick[q.id];
+  return '<div class="hq-o">' + (q.options || []).map((t, j) => {
+    const L = 'ABCDEF'[j];
+    let cls = '';
+    if (mark){
+      if (L === q.answer) cls = ' ok';
+      else if (L === pick) cls = ' ng';
+    } else if (L === pick) cls = ' pick';
+    const ko = hqKo((q.options_ko || [])[j], t);
+    return '<div class="hq-i' + cls + (mark ? '' : ' hq-noword') +
+      '" role="button" tabindex="0" onclick="hqPick(' + q.id + ',\'' + L + '\')">' +
+      '<span class="lt">' + L + '</span>' +
+      '<span class="bd">' + hqRuby(t, (q.options_py || [])[j] || '') +
+      (mark && ko ? '<span class="ko">' + _esc(ko) + '</span>' : '') + '</span></div>';
+  }).join('') + '</div>';
+}
+
+function hqOrderHtml(q){
+  const seq = _hqSeq[q.id] || [];
+  const mark = _hqMark[q.id];
+  const box = seq.length
+    ? seq.map(L => '<button class="hq-chip" onclick="hqSeqPop(' + q.id + ',\'' + L + '\')">' +
+        L + '</button>').join('')
+    : '<span class="ph">아래 도막을 앞뒤 차례대로 누르세요</span>';
+  // 채점한 뒤에는 바른 차례를 함께 보여 준다 (틀린 자리를 눈으로 견주게)
+  const ansRow = (mark && q.answer)
+    ? '<div class="hq-ex"><span class="lb">바른 차례</span>' +
+      Array.from(q.answer).join(' → ') + '</div>' : '';
+  return '<div class="hq-seq' + (mark ? ' ' + mark : '') + '">' + box + '</div>' + ansRow +
+    '<div class="hq-ord">' + (q.options || []).map((t, j) => {
+      const L = 'ABCDEF'[j];
+      const used = seq.indexOf(L) >= 0;
+      return '<div class="hq-i' + (used ? ' pick' : '') + (mark ? '' : ' hq-noword') +
+        '" role="button" tabindex="0" onclick="hqSeqPush(' + q.id + ',\'' + L + '\')">' +
+        '<span class="lt">' + L + '</span><span class="bd">' +
+        hqRuby(t, (q.options_py || [])[j] || '') +
+        (hqKo((q.options_ko || [])[j], t)
+           ? '<span class="ko">' + _esc(hqKo(q.options_ko[j], t)) + '</span>' : '') +
+        '</span></div>';
+    }).join('') + '</div>';
+}
+
+function hqBodyHtml(q){
+  if (q.qtype === 'blank' && (q.turns || []).length){
+    return '<div class="hq-p">' + q.turns.map(t => {
+      const body = t.has_blank
+        ? hqRuby(t.pre, t.pre_py) + hqBlankSlot(q) + hqRuby(t.post, t.post_py)
+        : hqRuby(t.text, t.py || '');
+      return '<div class="hq-turn"><span class="hq-who">' + _esc(t.who || '·') + '</span>' +
+             '<span class="tx">' + body + '</span></div>';
+    }).join('') + '</div>';
+  }
+  if (!q.passage) return '';
+  return '<div class="hq-p">' + hqRuby(q.passage, q.passage_py) + '</div>';
+}
+
+function hqSrcBadge(q){
+  if (q.qtype === 'order' && q.answer_src === 'textbook')
+    return '<span class="hq-src textbook">교안 정답</span>';
+  if (q.answer_src === 'manual')
+    return '<span class="hq-src manual" onclick="hqFix(' + q.id + ')">내가 고친 정답</span>';
+  if (q.answer_src === 'ai')
+    return '<span class="hq-src ai" onclick="hqFix(' + q.id + ')">AI 추정 · 눌러 고치기</span>';
+  return '<span class="hq-src none">정답 미표기</span>';
+}
+
+function hqCardHtml(q){
+  const mark = _hqMark[q.id];
+  const kind = HQ_KIND[q.qtype] || q.qtype;
+  const stem = q.stem || (q.qtype === 'choice' ? '根据这段话，下列哪项正确？' : '');
+  return '<div class="hq' + (mark ? ' solved-' + mark : '') + '" id="hq' + q.id + '">' +
+    '<div class="hq-h">' +
+      '<span class="hq-no">' + _esc(q.qno) + '번</span>' +
+      '<span class="hq-kind ' + q.qtype + '">' + kind + '</span>' +
+      '<span class="hq-lv">HSK' + (q.level || 4) + '</span>' +
+      (q.grp ? '<span class="hq-lv">' + _esc(q.grp) + ' 묶음</span>' : '') +
+      (q.page ? '<span class="hq-lv">교안 ' + q.page + '쪽</span>' : '') +
+      hqSrcBadge(q) +
+    '</div>' +
+    hqBodyHtml(q) +
+    (stem ? '<div class="hq-stem">' +
+       (/[\u4e00-\u9fff]/.test(stem) ? hqRuby(stem, q.stem_py || '') : _esc(stem)) +
+       // 물음이 이미 한글 안내문이면 번역을 덧붙이지 않는다 (같은 말이 두 번 나온다)
+       (q.stem_ko && /[\u4e00-\u9fff]/.test(stem)
+          ? '<span class="ko">' + _esc(q.stem_ko) + '</span>' : '') + '</div>'
+     : (q.qtype === 'blank'
+        ? '<div class="hq-stem"><span class="ko">괄호에 들어갈 알맞은 낱말을 고르세요</span></div>'
+        : '')) +
+    (q.qtype === 'order' ? hqOrderHtml(q) : hqOptionsHtml(q)) +
+    '<div class="hq-btns">' +
+      '<button class="hq-b" onclick="hqCheck(' + q.id + ')">채점</button>' +
+      '<button class="hq-b sec" onclick="hqReset(' + q.id + ')">다시</button>' +
+      '<button class="hq-b sec" onclick="hqShowKo(' + q.id + ')">해석 보기</button>' +
+      (q.page_idx >= 0 ? '<button class="hq-b sec" onclick="openTextbookAt(' + q.page_idx +
+        ')">교안 원본</button>' : '') +
+      '<span class="hq-msg' + (mark ? ' ' + mark : '') + '" id="hqm' + q.id + '">' +
+        (mark === 'ok' ? '맞았습니다' : mark === 'ng' ? '틀렸습니다' : '') + '</span>' +
+    '</div>' +
+    '<div class="hq-ko hide" id="hqk' + q.id + '" onclick="this.classList.toggle(\'hide\')">' +
+      (q.passage_ko ? _esc(q.passage_ko) : '(해석 준비 중)') + '</div>' +
+    (mark && q.explain_ko
+      ? '<div class="hq-ex"><span class="lb">왜 이 답인가</span>' + _esc(q.explain_ko) + '</div>' : '') +
+    (mark && (q.grammar || []).length
+      ? '<div class="hq-gr">' + q.grammar.map(g =>
+          '<span class="hq-gchip"><b>' + _esc(g.cn) + '</b>' + _esc(g.ko) + '</span>').join('') +
+        '</div>' : '') +
+    (!q.answer ? '<div class="hq-warn">이 문제는 교안에 정답이 없고 AI도 답을 내지 못했습니다 — ' +
+      '눌러서 직접 넣어 주세요</div>' : '') +
+    '</div>';
+}
+
+function hqHtml(){
+  if (!_hqList.length) return '';
+  const cnt = {};
+  _hqList.forEach(q => { cnt[q.qtype] = (cnt[q.qtype] || 0) + 1; });
+  const solved = Object.keys(_hqMark).length;
+  const right = Object.values(_hqMark).filter(v => v === 'ok').length;
+  const tabs = '<div class="hq-ftab">' +
+    '<button class="' + (_hqKind === '' ? 'on' : '') + '" onclick="hqSetKind(\'\')">전체 ' +
+      _hqList.length + '</button>' +
+    Object.keys(HQ_KIND).filter(k => cnt[k]).map(k =>
+      '<button class="' + (_hqKind === k ? 'on' : '') + '" onclick="hqSetKind(\'' + k + '\')">' +
+      HQ_KIND[k] + ' ' + cnt[k] + '</button>').join('') + '</div>';
+  const rule = '<div class="hq-rule"><b>📐 문장·문법 학습 규칙</b>' +
+    '<ol>' +
+      '<li><span class="tip">소리 내어 읽기</span> — 지문을 먼저 끝까지 읽습니다. 해석은 가려 두었습니다.</li>' +
+      '<li><span class="tip">먼저 풀고 채점</span> — 답을 고른 뒤 채점해야 해설·문법이 열립니다.</li>' +
+      '<li><span class="tip">문법 짚기</span> — 채점 뒤 나오는 문법 조각을 문장에 대어 봅니다.</li>' +
+      '<li><span class="tip">모르는 낱말은 그때</span> — 한자를 누르면 뜻·획순·발음 학습으로 들어갑니다.</li>' +
+    '</ol></div>';
+  const sum = '<div class="hq-sum">푼 문제 <span class="v">' + solved + ' / ' + _hqList.length +
+    '</span> · 맞은 문제 <span class="v">' + right + '</span>' +
+    '<button class="hq-b sec" style="margin-left:auto" onclick="hqResetAll()">전부 다시</button></div>';
+  const pool = _hqKind ? _hqList.filter(q => q.qtype === _hqKind) : _hqList;
+  return rule + tabs + sum + pool.map(hqCardHtml).join('');
+}
+
+function hqSetKind(k){
+  _hqKind = (_hqKind === k) ? '' : k;
+  sessionStorage.setItem('cn_hqkind', _hqKind);
+  renderCardFeed();
+}
+
+function hqRepaint(id){
+  const el = document.getElementById('hq' + id);
+  const q = _hqList.find(x => x.id === id);
+  if (el && q) el.outerHTML = hqCardHtml(q);
+}
+
+function hqPick(id, L){
+  if (_hqMark[id]) return;              // 채점한 뒤에는 바꾸지 않는다
+  _hqPick[id] = L;
+  hqRepaint(id);
+}
+function hqSeqPush(id, L){
+  if (_hqMark[id]) return;
+  const seq = _hqSeq[id] = _hqSeq[id] || [];
+  if (seq.indexOf(L) < 0) seq.push(L);
+  hqRepaint(id);
+}
+function hqSeqPop(id, L){
+  if (_hqMark[id]) return;
+  _hqSeq[id] = (_hqSeq[id] || []).filter(x => x !== L);
+  hqRepaint(id);
+}
+
+function hqCheck(id){
+  const q = _hqList.find(x => x.id === id);
+  if (!q) return;
+  const mine = q.qtype === 'order' ? (_hqSeq[id] || []).join('') : (_hqPick[id] || '');
+  if (!mine){ showToast('먼저 답을 고르세요'); return; }
+  if (!q.answer){ showToast('이 문제엔 정답이 없습니다 — 직접 넣어 주세요'); hqFix(id); return; }
+  if (q.qtype === 'order' && mine.length < (q.options || []).length){
+    showToast('도막을 모두 놓으세요'); return;
+  }
+  _hqMark[id] = (mine === q.answer) ? 'ok' : 'ng';
+  hqRepaint(id);
+  const box = document.getElementById('hqk' + id);
+  if (box) box.classList.remove('hide');        // 채점했으면 해석을 편다
+  hqPaintSum();
+}
+
+// 위쪽 '푼 문제 / 맞은 문제' 만 고쳐 쓴다
+function hqPaintSum(){
+  const el = document.querySelector('.hq-sum');
+  if (!el) return;
+  const v = el.querySelectorAll('.v');
+  const right = Object.values(_hqMark).filter(x => x === 'ok').length;
+  if (v[0]) v[0].textContent = Object.keys(_hqMark).length + ' / ' + _hqList.length;
+  if (v[1]) v[1].textContent = String(right);
+}
+
+function hqReset(id){
+  delete _hqMark[id]; delete _hqPick[id]; delete _hqSeq[id];
+  renderCardFeed();
+}
+function hqResetAll(){
+  _hqMark = {}; _hqPick = {}; _hqSeq = {};
+  renderCardFeed();
+}
+function hqShowKo(id){
+  const box = document.getElementById('hqk' + id);
+  if (box) box.classList.toggle('hide');
+}
+
+/* AI가 고른 답이 미덥지 않을 때 손으로 바로잡는다.
+   'manual' 로 담기면 교안을 다시 뽑아도 그 답이 그대로 남는다. */
+async function hqFix(id){
+  const q = _hqList.find(x => x.id === id);
+  if (!q) return;
+  const hint = q.qtype === 'order' ? '예: BAC' : '예: B';
+  const v = prompt('정답을 넣어 주세요 (' + hint + ')', q.answer || '');
+  if (!v) return;
+  const ans = v.trim().toUpperCase();
+  if (!/^[A-F]{1,6}$/.test(ans)){ showToast('A~F 글자로 넣어 주세요', 'error'); return; }
+  try{
+    const r = await fetch(`${API}/api/chinese/question/${id}/answer`, {
+      method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer: ans })
+    });
+    if (!r.ok) throw new Error();
+    q.answer = ans; q.answer_src = 'manual';
+    delete _hqMark[id];
+    showToast('정답을 고쳐 담았습니다');
+    renderCardFeed();
+  }catch(e){ showToast('정답 저장 실패', 'error'); }
+}
+
+// 교안 원본을 그 문제가 실린 쪽으로 바로 편다
+function openTextbookAt(pageIdx){
+  openTextbook();
+  if (pageIdx >= 0) setTimeout(() => showTbPage(pageIdx), 450);
+}
+
 async function loadWriting(subject, week, cls){
   _wqList = [];
   try{
@@ -3577,9 +3994,19 @@ async function loadWriting(subject, week, cls){
   return _wqList;
 }
 
+/* 순서 맞추기는 이제 문제 갈래에서 교안 정답까지 붙여 내보낸다.
+   같은 문제를 두 곳에서 보여 주지 않도록, 문제 갈래가 맡은 갈래는 여기서 뺀다. */
+function hqHas(kind){ return _hqList.some(q => q.qtype === kind); }
+function wqVisible(){
+  return hqHas('order') ? _wqList.filter(p => p.kind !== 'order') : _wqList;
+}
+
 function writingHtml(){
-  if (!_wqList.length) return '';
-  return '<div class="wq-wrap">' + _wqList.map((p, i) =>
+  // 화면에서 걸러 내더라도 번호(i)는 _wqList 의 본디 자리를 그대로 쓴다.
+  // 채점·되돌리기·끌어놓기가 모두 그 번호로 _wqList 를 찾아가기 때문이다.
+  const list = wqVisible().map(p => ({ p, i: _wqList.indexOf(p) }));
+  if (!list.length) return '';
+  return '<div class="wq-wrap">' + list.map(({ p, i }) =>
     '<div class="wq" id="wq' + i + '" data-i="' + i + '">' +
       '<div class="wq-h">' +
         '<span class="wq-n">' + (i+1) + '번</span>' +
@@ -3801,18 +4228,28 @@ function renderCardFeed() {
   // 갈래 탭 (본문/문제풀이/단어) — 누르면 그 갈래만, 다시 누르면 전체
   const gCnt = {};
   cards.forEach(c => { const g = c.group_name || '기타'; gCnt[g] = (gCnt[g] || 0) + 1; });
-  const GICON = { '본문': '📖', '문제풀이': '📝', '단어': '🔤', '쓰기': '✏️' };
-  if (_wqList.length) gCnt['쓰기'] = _wqList.length;      // 어순 배열 문제
+  const GICON = { '문제': '🧩', '본문': '📖', '문제풀이': '📝', '단어': '🔤', '쓰기': '✏️' };
+  if (wqVisible().length) gCnt['쓰기'] = wqVisible().length;   // 어순 배열 문제(쓰기 1부분)
+  if (_hqList.length) gCnt['문제'] = _hqList.length;      // 교안에서 되살린 문제
+  // 문제가 있는 교시는 문제부터 펴 준다 — 낱말이 아니라 문장·문법으로 익히는 자리다
+  if (_hqList.length && sessionStorage.getItem('cn_gfilter') === null) _gFilter = '문제';
   const gtab = '<div class="gtab">' +
     '<button class="' + (_gFilter === '' ? 'on' : '') + '" onclick="setGFilter(\'\')">전체' +
-      '<span class="n">' + (cards.length + _wqList.length) + '</span></button>' +
-    ['본문', '문제풀이', '쓰기', '단어'].filter(g => gCnt[g]).map(g =>
+      '<span class="n">' + (cards.length + wqVisible().length + _hqList.length) +
+      '</span></button>' +
+    ['문제', '본문', '문제풀이', '쓰기', '단어'].filter(g => gCnt[g]).map(g =>
       '<button class="' + (_gFilter === g ? 'on' : '') + '" onclick="setGFilter(\'' + g + '\')">' +
       (GICON[g] || '') + ' ' + g + '<span class="n">' + gCnt[g] + '</span></button>').join('') +
     '</div>';
-  // 쓰기 문제는 카드가 아니라 따로 그린다 (전체 볼 때는 맨 위에)
+  // 문제·쓰기는 카드가 아니라 따로 그린다 (전체 볼 때는 맨 위에)
+  const hqBlock = (_gFilter === '' || _gFilter === '문제') ? hqHtml() : '';
   const wqBlock = (_gFilter === '' || _gFilter === '쓰기')
         ? (readingHtml() + writingHtml()) : '';
+  if (_gFilter === '문제') {
+    feed.innerHTML = toolbar + gtab + hqBlock;
+    paintCourseProgress();
+    return;
+  }
   // 특정 문장에 붙지 않은 교시 전체 음성
   const unitAudio = profUnit().length
     ? '<div class="prof-row">' + profUnit().map(profBtn).join('') + '</div>' : '';
@@ -3826,7 +4263,7 @@ function renderCardFeed() {
   const ordered = pool.slice().sort((a, b) => (gkey(a) - gkey(b)) || ((a.sort_order||0) - (b.sort_order||0)));
   let _lastG = null;
 
-  feed.innerHTML = toolbar + gtab + unitAudio + wqBlock + ordered.map((c, i) => {
+  feed.innerHTML = toolbar + gtab + unitAudio + hqBlock + wqBlock + ordered.map((c, i) => {
     const pc = c.perfect_count || 0;
     const att = c.attempts || 0;
     const best = c.best_score || 0;
@@ -4881,6 +5318,7 @@ async function selectWeek(subject, week, classNum, btnEl) {
     const data = await res.json();
     // 교시 필터
     cards = (data.cards || []).filter(c => classNum === 0 || (c.class_num || 0) === classNum);
+    await loadHskQ(subject, week, currentClassNum);      // 교안에서 되살린 문제(빈칸·순서·객관식)
     await loadWriting(subject, week, currentClassNum);   // 어순 배열 문제(HSK 쓰기 1부분)
     await loadReading(subject, week, currentClassNum);   // 독해 2부분(지문+선택지)
     await loadProfAudio(subject, week, currentClassNum); // 교수님이 읽어 주신 본문 음성

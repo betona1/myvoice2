@@ -6,7 +6,7 @@
 
 - 같은 입력 텍스트를 **여러 모델로 합성**해 음성 품질 비교 (XTTS v2 zero-shot vs fine-tuned vs F5-TTS 등)
 - 운영본에 영향 없이 fine-tune/모델 교체/스키마 변경 등 자유롭게 실험
-- 88서버의 3× RTX 3080 GPU를 역할별로 분배해서 추론·STT·학습이 동시 가능
+- 88서버 GPU에서 추론·STT·학습 수행 (2026-08-28부터 RTX 3080 **1장**, 순차 실행)
 
 ## 🏗 아키텍처 차이점
 
@@ -18,8 +18,8 @@
 ### myvoice2 (이 프로젝트, 88서버)
 - LAN 직접 (`https://192.168.219.88:9092`, 자체서명 HTTPS)
 - 이메일 로그인만 (OAuth 비활성)
-- **GPU 역할 분리**: GPU 0 추론 / GPU 1 STT(Whisper large-v3) / GPU 2 학습·F5-TTS
-- **학습 서브프로세스 격리**: `tts/train_subprocess.py`가 `CUDA_VISIBLE_DEVICES`로 GPU 분리 실행
+- **단일 GPU 공유**: 추론 / STT(Whisper large-v3) / 학습 모두 GPU 0 (`.env`의 `STT_GPU`, `FINETUNE_GPU`)
+- **학습 서브프로세스 격리**: `tts/train_subprocess.py`를 `CUDA_VISIBLE_DEVICES`로 띄우며, 직전에 추론 엔진을 언로드해 10 GiB 안에 맞춤 (학습 중 합성 불가)
 - 비교 실험용 별도 venv (`/home/joacham/projects/voice_compare/f5tts_venv/`)
 
 ## ⚡ 빠른 시작

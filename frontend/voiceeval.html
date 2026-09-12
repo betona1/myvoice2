@@ -1,0 +1,175 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>낱말 음성 평가</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f5f7;--fg:#181818;--card:#fff;--line:#e2e2e8;--mut:#777;
+      --g:#16a34a;--s:#d97706;--b:#dc2626;--acc:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#151518;--fg:#eee;--card:#202024;--line:#33333a;--mut:#999}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Noto Sans KR",sans-serif}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+.wrap{max-width:900px;margin:0 auto}
+h1{font-size:1.1rem;margin:0 0 6px;display:flex;align-items:center;gap:10px}
+h1 small{font-weight:500;color:var(--mut);font-size:.8rem}
+.bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+select,input[type=text]{padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
+.tg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.tg button{border:0;padding:7px 12px;background:var(--card);color:var(--mut);font:inherit;font-weight:600;cursor:pointer}
+.tg button.on{background:var(--acc);color:#fff}
+.stat{font-size:.8rem;color:var(--mut);margin-left:auto;white-space:nowrap}
+.list{padding:10px 12px 90px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 auto 10px;max-width:900px}
+.card.cur{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.card.done{opacity:.55}
+.hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.zh{font-size:2rem;font-weight:700}
+.py{font-size:1rem;color:var(--acc)}
+.ko{font-size:.95rem;color:var(--mut);flex:1;min-width:120px}
+.tag{font-size:.72rem;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+.play{border:0;border-radius:9px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}
+.pa{background:#e8e8ee;color:#444}.pd{background:#fee2e2;color:#991b1b}
+@media (prefers-color-scheme:dark){.pa{background:#33333a;color:#ccc}.pd{background:#4c1d1d;color:#fecaca}}
+.playing{outline:3px solid #f59e0b;outline-offset:1px}
+.rate{display:flex;gap:6px;margin-left:auto}
+.rate button{border:2px solid var(--line);background:transparent;color:var(--fg);border-radius:9px;padding:8px 12px;font:inherit;font-weight:700;cursor:pointer}
+.rate button[data-r="3"].on{background:var(--g);border-color:var(--g);color:#fff}
+.rate button[data-r="2"].on{background:var(--s);border-color:var(--s);color:#fff}
+.rate button[data-r="1"].on{background:var(--b);border-color:var(--b);color:#fff}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.8rem;cursor:pointer;background:var(--card);color:var(--fg)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.cm{width:100%;margin-top:7px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;font-size:.9rem}
+.small{font-size:.75rem;color:var(--mut);margin-top:5px}
+.more{display:block;margin:10px auto;padding:10px 20px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+.foot{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);padding:8px 12px;font-size:.78rem;color:var(--mut);text-align:center}
+kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;font-family:inherit}
+#qm{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:20}
+#qm .box{background:var(--card);border-radius:14px;padding:16px;width:min(92vw,460px)}
+#qm textarea{width:100%;height:240px;font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.btn{border:0;border-radius:9px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer;background:var(--acc);color:#fff}
+.btn.gray{background:var(--line);color:var(--fg)}
+</style></head><body>
+<div class="top"><div class="wrap">
+<h1>낱말 음성 평가 <small>가 = 지금 음성 · 다 = 새 방식</small></h1>
+<div class="bar">
+  <div class="tg"><button id="sM" onclick="setSex('남')">남 · 이한</button><button id="sF" class="on" onclick="setSex('여')">여 · 리리</button></div>
+  <select id="grp" onchange="reload()">
+    <option value="">전체</option>
+    <option value="양사">양사</option><option value="접속사">접속사</option><option value="의성의태">의성의태</option>
+    <option value="대명사">대명사</option><option value="동사">동사</option><option value="형용사">형용사</option>
+    <option value="hsk1">HSK 1</option><option value="hsk2">HSK 2</option><option value="hsk3">HSK 3</option>
+    <option value="hsk4">HSK 4</option><option value="hsk5">HSK 5</option><option value="hsk6">HSK 6</option>
+    <option value="hsk0">그 밖</option>
+  </select>
+  <div class="tg"><button id="oU" class="on" onclick="setOnly('unrated')">미평가</button><button id="oR" onclick="setOnly('rated')">평가함</button><button id="oA" onclick="setOnly('all')">전부</button></div>
+  <input type="text" id="q" placeholder="한자 찾기" style="width:110px" onchange="reload()">
+  <button class="chip" onclick="openQuick()">✎ 자주 쓰는 코멘트</button>
+  <span class="stat" id="stat"></span>
+</div></div></div>
+<div class="list" id="list"></div>
+<div class="foot"><kbd>Space</kbd> 다 듣기 · <kbd>A</kbd> 가 듣기 · <kbd>1</kbd> 아주좋음 <kbd>2</kbd> 보통 <kbd>3</kbd> 나쁨 · <kbd>↑</kbd><kbd>↓</kbd> 이동 — 평가하면 다음 낱말로 넘어가며 「다」를 바로 들려줍니다</div>
+
+<div id="qm"><div class="box">
+  <b>자주 쓰는 코멘트</b> <span class="small">한 줄에 하나, 10개쯤</span>
+  <textarea id="qt"></textarea>
+  <div class="row" style="justify-content:flex-end"><button class="btn gray" onclick="qm.style.display='none'">닫기</button><button class="btn" onclick="saveQuick()">저장</button></div>
+</div></div>
+
+<script>
+const API='/api/voiceeval';
+let sex='여', only='unrated', page=0, total=0, items=[], quick=[], curIdx=-1, audio=null, playingBtn=null;
+const $=s=>document.querySelector(s);
+const j=(u,o)=>fetch(u,Object.assign({credentials:'same-origin',headers:{'Content-Type':'application/json'}},o||{})).then(r=>{if(r.status===401){location.href='/login';throw 0;}return r.json();});
+
+function setSex(s){sex=s;$('#sM').classList.toggle('on',s==='남');$('#sF').classList.toggle('on',s==='여');reload();}
+function setOnly(o){only=o;for(const [id,v] of [['oU','unrated'],['oR','rated'],['oA','all']])$('#'+id).classList.toggle('on',v===o);reload();}
+async function stats(){const s=await j(`${API}/stats?sex=${sex}`);
+  $('#stat').textContent=`만듦 ${s.generated}/${s.total} · 못 만듦 ${s.failed} · 평가 ${s.rated} (좋음 ${s.good} 보통 ${s.soso} 나쁨 ${s.bad})`;}
+async function reload(){page=0;items=[];curIdx=-1;$('#list').innerHTML='';await loadMore();stats();}
+async function loadMore(){
+  const g=$('#grp').value,q=$('#q').value.trim();
+  const r=await j(`${API}/words?sex=${sex}&group=${encodeURIComponent(g)}&only=${only}&page=${page}&size=30&q=${encodeURIComponent(q)}`);
+  total=r.total; const start=items.length; items=items.concat(r.items); page++;
+  const old=$('#list').querySelector('.more'); if(old) old.remove();
+  $('#list').insertAdjacentHTML('beforeend', r.items.map((it,i)=>card(it,start+i)).join(''));
+  if(items.length<total) $('#list').insertAdjacentHTML('beforeend',`<button class="more" onclick="loadMore()">더 보기 (${items.length}/${total})</button>`);
+  if(items.length===0) $('#list').innerHTML='<p style="text-align:center;color:var(--mut)">여기엔 남은 낱말이 없습니다.</p>';
+  if(curIdx<0&&items.length) focus(0,false);
+}
+function card(it,i){
+  const chips=quick.map(t=>`<span class="chip ${(it.comment||'').includes(t)?'on':''}" onclick="chip(${i},this)">${t}</span>`).join('');
+  const tag=it.wordset||(it.hsk?`HSK${it.hsk}`:'');
+  const note=it.spoken&&it.spoken!==it.chinese?`「${it.spoken}」로 읽힘 · `:'';
+  return `<div class="card ${it.rating?'done':''}" id="c${i}" onclick="focus(${i},false)">
+    <div class="hd"><span class="zh">${it.chinese}</span><span class="py">${it.pinyin||''}</span><span class="ko">${it.meaning||''}</span>${tag?`<span class="tag">${tag}</span>`:''}</div>
+    <div class="row">
+      <button class="play pa" ${it.cur?'':'disabled'} onclick="event.stopPropagation();play(${i},'cur',this)">가 ▶</button>
+      <button class="play pd" onclick="event.stopPropagation();play(${i},'new',this)">다 ▶</button>
+      <span class="small">${note}${it.model||''} · ${it.dur||''}s</span>
+      <div class="rate">
+        <button data-r="3" class="${it.rating===3?'on':''}" onclick="event.stopPropagation();rate(${i},3)">아주좋음</button>
+        <button data-r="2" class="${it.rating===2?'on':''}" onclick="event.stopPropagation();rate(${i},2)">보통</button>
+        <button data-r="1" class="${it.rating===1?'on':''}" onclick="event.stopPropagation();rate(${i},1)">나쁨</button>
+      </div></div>
+    <div class="chips">${chips}</div>
+    <input class="cm" placeholder="비고 (자유롭게)" value="${(it.comment||'').replace(/"/g,'&quot;')}" onchange="freeText(${i},this.value)" onclick="event.stopPropagation()">
+  </div>`;
+}
+function focus(i,autoplay){
+  if(i<0||i>=items.length) return;
+  document.querySelectorAll('.card.cur').forEach(e=>e.classList.remove('cur'));
+  curIdx=i; const c=$('#c'+i); c.classList.add('cur');
+  c.scrollIntoView({block:'center',behavior:'smooth'});
+  if(autoplay) play(i,'new',c.querySelector('.pd'));
+}
+function play(i,kind,btn){
+  const src=items[i][kind]; if(!src) return;
+  if(audio){audio.pause(); if(playingBtn) playingBtn.classList.remove('playing');}
+  audio=new Audio(src+'?t='+Date.now()); playingBtn=btn; btn.classList.add('playing');
+  audio.onended=()=>btn.classList.remove('playing'); audio.play().catch(()=>btn.classList.remove('playing'));
+}
+async function save(i){
+  const it=items[i];
+  await j(`${API}/rate`,{method:'POST',body:JSON.stringify({word_id:it.id,sex,rating:it.rating,comment:it.comment||''})});
+  stats();
+}
+async function rate(i,r){
+  const it=items[i]; it.rating=r;
+  const c=$('#c'+i); c.querySelectorAll('.rate button').forEach(b=>b.classList.toggle('on',+b.dataset.r===r));
+  c.classList.add('done');
+  await save(i);
+  // 다음 미평가 낱말로
+  let n=i+1; while(n<items.length&&items[n].rating) n++;
+  if(n>=items.length&&items.length<total){await loadMore(); while(n<items.length&&items[n].rating) n++;}
+  if(n<items.length) focus(n,true);
+}
+function chip(i,el){
+  el.classList.toggle('on'); const it=items[i];
+  const on=[...$('#c'+i).querySelectorAll('.chip.on')].map(e=>e.textContent);
+  const free=(it.comment||'').split(', ').filter(x=>x&&!quick.includes(x));
+  it.comment=on.concat(free).join(', ');
+  $('#c'+i+' .cm').value=it.comment; save(i);
+}
+function freeText(i,v){
+  const it=items[i]; it.comment=v.trim(); save(i);
+  $('#c'+i).querySelectorAll('.chip').forEach(e=>e.classList.toggle('on',it.comment.includes(e.textContent)));
+}
+async function loadQuick(){quick=(await j(`${API}/quick`)).items;}
+function openQuick(){$('#qt').value=quick.join('\n');qm.style.display='flex';}
+async function saveQuick(){
+  const items_=$('#qt').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  quick=(await j(`${API}/quick`,{method:'PUT',body:JSON.stringify({items:items_})})).items;
+  qm.style.display='none'; reload();
+}
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(curIdx<0) return;
+  const c=$('#c'+curIdx);
+  if(e.code==='Space'){e.preventDefault();play(curIdx,'new',c.querySelector('.pd'));}
+  else if(e.key==='a'||e.key==='A'){play(curIdx,'cur',c.querySelector('.pa'));}
+  else if(e.key==='1'){rate(curIdx,3);} else if(e.key==='2'){rate(curIdx,2);} else if(e.key==='3'){rate(curIdx,1);}
+  else if(e.key==='ArrowDown'){e.preventDefault();focus(curIdx+1,false);} else if(e.key==='ArrowUp'){e.preventDefault();focus(curIdx-1,false);}
+});
+(async()=>{await loadQuick();reload();})();
+</script></body></html>

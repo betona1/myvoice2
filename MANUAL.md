@@ -13,7 +13,7 @@
 | 이미지 | `myvoice-myvoice-prod:latest` (재사용, 코드/.env는 볼륨 마운트) |
 | 접근 URL | `https://192.168.219.88:9092` (LAN, 자체서명 인증서) |
 | 관리자 | `admin@myvoice2.local` / 비번은 `.env`의 `SUPER_ADMIN_PASSWORD` |
-| GPU | 0 = XTTS 추론, 1 = Whisper, 2 = 학습/F5-TTS |
+| GPU | RTX 3080 **1장** — GPU 0에 추론/Whisper/학습 전부 (학습 중엔 추론 엔진 자동 언로드) |
 
 브라우저 첫 접속 시 "안전하지 않음" 경고 → "고급 → 계속 진행"으로 통과시키면 secure context 인정 → 마이크 권한 정상 발급.
 
@@ -162,20 +162,29 @@ ref wav는 12초 mono 24kHz로 미리 ffmpeg 트리밍할 것.
 
 ## 6. GPU 분배 정책
 
-| GPU | 용도 | 메모리 |
+> **2026-08-28 변경**: 3080 3장 → **1장**으로 축소. 아래는 단일 GPU 기준.
+
+| 워크로드 | GPU | 메모리 |
 |---|---|---|
-| **GPU 0** (09:00.0) | XTTS v2 추론 엔진 (서비스 startup에 자동 로드) | ~2 GiB |
-| **GPU 1** (0A:00.0) | Faster Whisper `large-v3` (lazy load on 첫 STT 호출) | ~3-4 GiB |
-| **GPU 2** (0F:00.0) | XTTS fine-tune 트레이너 + F5-TTS 추론 | ~6 GiB peak |
+| XTTS v2 추론 엔진 (서비스 startup에 자동 로드) | **GPU 0** | ~2 GiB |
+| Faster Whisper `large-v3` (lazy load on 첫 STT 호출) | **GPU 0** (`STT_GPU`) | ~3-4 GiB |
+| XTTS fine-tune 트레이너 + F5-TTS 추론 | **GPU 0** (`FINETUNE_GPU`) | ~6-7 GiB peak |
 
-### 주의: GPU 0 학습 금지
-같은 프로세스에서 GPU 0의 추론 엔진(2 GiB) + 학습용 모델(7+ GiB)이 동시에 올라가면 10 GiB 한도 초과 → CUDA OOM 크래시. `tts/finetuner.py`는 학습을 **subprocess.run**으로 띄우고 `CUDA_VISIBLE_DEVICES=2`(env: `FINETUNE_GPU`)를 부모에서 자식으로 전달해 격리.
+전부 한 장(10 GiB)에 올라가므로 **추론 + STT + 학습 동시 실행은 불가능**하다.
 
-### 다른 GPU에서 학습하려면
-`.env`에 `FINETUNE_GPU=1` 추가 후 컨테이너 재시작 — 단 GPU 1은 Whisper와 충돌 가능.
+### 학습 시 VRAM 확보 (자동)
+추론 엔진(2 GiB) + 트레이너(7 GiB+)가 같은 카드에 동시에 올라가면 10 GiB 초과 → CUDA OOM.
+`tts/finetuner.py`는 학습 서브프로세스를 띄우기 **직전에 추론 엔진을 언로드**(`tts.engine.tts_engine = None` + `empty_cache`)하고, 학습이 끝나면 다시 로드한다 (`_release_inference_vram` / `_reload_inference_engine`).
+
+- 학습 중에는 **TTS 합성 요청이 느려지거나 실패**할 수 있다 (엔진이 내려가 있음).
+- Whisper(large-v3)가 이미 올라가 있으면 3-4 GiB를 더 먹으므로, 학습 전 STT 요청이 몰렸다면 컨테이너 재시작 후 학습을 권장.
+- 그래도 OOM이 나면 `batch_size`를 낮춰라.
+
+### GPU가 다시 늘어나면
+`.env`의 `STT_GPU` / `FINETUNE_GPU`를 원하는 인덱스로 바꾸고 컨테이너 재시작. 학습이 0번이 아닌 카드로 가면 추론 엔진 언로드는 자동으로 생략된다.
 
 ### PCIe x1 라이저 제약
-3장 모두 Gen3 x1 (~1 GB/s/GPU). 추론은 무관하지만 분산 학습은 비현실적. 현재 학습은 단일 GPU에서만 함.
+Gen3 x1 (~1 GB/s). 추론은 무관하지만 분산 학습은 비현실적 — 현재 학습은 단일 GPU에서만 함.
 
 ---
 
@@ -200,9 +209,11 @@ ref wav는 12초 mono 24kHz로 미리 ffmpeg 트리밍할 것.
 브라우저는 secure context(HTTPS, localhost만)에서만 마이크 허용. `https://192.168.219.88:9092`로 접속하고 자체서명 인증서 경고 통과.
 
 ### CUDA out of memory (학습 중)
-- 트레이너가 GPU 0에 떴는지 확인 — `FINETUNE_GPU=2` 인지 점검
-- GPU 2에 다른 작업(F5-TTS 등) 있는지 `nvidia-smi`로 확인 후 종료
+GPU 1장에 추론·STT·학습이 모두 올라가므로 여유가 거의 없다.
+- `nvidia-smi`로 다른 프로젝트(ollama, tryroom 워커 등)가 카드를 잡고 있는지 확인 후 종료
+- Whisper가 이미 올라가 있으면 3-4 GiB 점유 → 컨테이너 재시작 후 학습
 - `batch_size=1`까지 낮춰보기 (속도 ↓)
+- 로그에 `[FINETUNE] ... 추론 엔진 언로드` 가 찍혔는지 확인 (안 찍혔으면 엔진이 안 내려간 것)
 
 ### 학습 모델이 API에 안 보임 / "찾을 수 없습니다"
 - `finetune_data/<name>_model/meta.json` 존재 확인
@@ -218,6 +229,24 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 ### 컨테이너 재시작 후 학습된 pandas/패키지가 사라짐
 이건 `docker compose down/up` 같은 컨테이너 재생성 때만. `docker restart` 는 컨테이너 인스턴스 보존이라 안 사라짐. 영속화는 requirements.txt + 이미지 재빌드.
 
+현재 이미지(`myvoice-myvoice-prod:latest`, 4개월 전 빌드)에 **빠져 있어 런타임 설치로 버티는 것들**이 있다.
+컨테이너를 재생성했다면 아래를 다시 넣어야 교안 뷰어·카메라 검색·문제 뽑기가 산다.
+
+```bash
+docker exec myvoice2-prod sh -lc 'apt-get update -qq && \
+  apt-get install -y -qq --no-install-recommends \
+  poppler-utils tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-chi-tra'
+docker exec myvoice2-prod python3 -m pip install --break-system-packages --no-cache-dir jieba pytesseract
+```
+
+| 빠지면 | 무엇이 죽나 |
+|---|---|
+| `poppler-utils` | 교안 뷰어(`/api/chinese/textbook/image`), 교안 글 찾기, 문제 뽑기(`hsk_build.py`) |
+| `tesseract-ocr(+chi_sim)` · `pytesseract` | 단어앱 카메라 검색(`/api/words/ocr`) |
+| `jieba` | 카메라 검색의 한자 끊기 |
+
+근본 해결은 `docker compose build` 로 이미지를 다시 굽는 것(Dockerfile·requirements.txt에는 이미 다 들어 있다).
+
 ### Whisper 첫 호출이 느림
 `large-v3` 모델 (~3 GB) GPU 1에 첫 로드 5-15초. lru_cache로 1회만 로드되니 두 번째 호출부터는 즉시.
 
@@ -226,7 +255,52 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 
 ---
 
-## 9. 공통 디렉터리 (88서버 전체)
+## 9. 신HSK 문제 꾸러미 (독해 문제풀이)
+
+교안(`temp/신HSK쓰기독해/S02926.pdf`)은 파워포인트 슬라이드라서, 한 문제의 **지문·물음·보기가 여러 쪽에 흩어져** 있다.
+예전에는 이걸 낱말 단위로 잘라 `chinese_cards` 에 넣었더니 `65．筷子是…讲究。` 처럼 **첫 줄만 남은 카드**가 생겼고,
+80-81·82-86 처럼 지문 한 덩이에 물음이 여러 개 달린 문제는 지문이 통째로 빠졌다.
+
+그래서 문제를 **문제 꼴 그대로** 되살려 따로 담는다.
+
+```bash
+# 한 주차 뽑기 (교시 전부)
+docker exec myvoice2-prod python3 -u /app/scripts/hsk_build.py --week 3
+# 특정 교시만 / 정답·해석 없이 뽑기만
+docker exec myvoice2-prod python3 -u /app/scripts/hsk_build.py --week 3 --classes 1 --no-llm
+# 뽑기 규칙을 고친 뒤, 정답·해석은 살리고 '글'만 다시 채우기 (LLM 안 부름 · 몇 초)
+docker exec myvoice2-prod python3 -u /app/scripts/hsk_build.py --week 3 --text-only
+```
+
+| 파일 | 하는 일 |
+|---|---|
+| `scripts/hsk_pdfxml.py` | `pdftohtml -xml` 로 쪽마다 글자 위치·크기·색을 읽는다 |
+| `scripts/hsk_qextract.py` | 슬라이드를 지문/물음(★)/보기(A~D)/정답으로 갈라 한 문제로 잇는다 |
+| `scripts/hsk_build.py` | 그림에 든 보기 낱말 OCR → 정답·해석·문법 → `hsk_questions` 저장 |
+
+담기는 갈래는 셋이다 — `blank`(빈칸 채우기) · `order`(순서 맞추기) · `choice`(알맞은 답 고르기).
+
+### 정답의 출처 (`answer_src`)
+| 값 | 뜻 |
+|---|---|
+| `textbook` | 교안에 정답이 찍혀 있는 것 (4급 순서 맞추기) |
+| `ai` | 교안에 정답이 없어 로컬 LLM(`qwen2.5vl:7b`, ollama)이 푼 것 — **틀릴 수 있다** |
+| `manual` | 화면에서 사람이 고쳐 넣은 것. **다시 뽑아도 덮이지 않는다** |
+
+화면(중국어 학습 → 신HSK 교시 → 🧩 문제)에서 `AI 추정 · 눌러 고치기` 배지를 누르면 바로 고칠 수 있고,
+`POST /api/chinese/question/{id}/answer` 로도 넣을 수 있다.
+
+### 낡은 카드 정리
+문제를 담을 때, 같은 내용이 조각나 있던 `문제풀이` 카드는 `chinese_cards.hidden=1` 로 접는다(지우지는 않는다).
+되돌리려면 `UPDATE chinese_cards SET hidden=0 WHERE id=…`.
+
+### GPU
+`hsk_build.py` 는 ollama(호스트 `172.17.0.1:11434`)를 쓴다. 3080 한 장을 TTS·학습과 나눠 쓰므로,
+**학습 중에는 돌리지 말 것**. 한 주차에 15~25분 걸린다.
+
+---
+
+## 10. 공통 디렉터리 (88서버 전체)
 
 | 경로 | 내용 |
 |---|---|
@@ -237,7 +311,7 @@ JSON 말고 form-encoded로 보내야 함 — `-d "email=...&password=..."` (cur
 
 ---
 
-## 10. 비교 실험 워크플로 (학습 회차별)
+## 11. 비교 실험 워크플로 (학습 회차별)
 
 ```
 같은 텍스트 합성 → 3가지 모델 결과를 voice_compare/ 아래 모음:
@@ -251,7 +325,7 @@ scp로 가져가기:
 
 ---
 
-## 11. 80서버 운영본과의 관계
+## 12. 80서버 운영본과의 관계
 
 `myvoice2`는 운영본을 절대 건드리지 않음. 비교 데이터(voices, ref wav)만 80서버에서 80→88로 일방향 가져옴.
 

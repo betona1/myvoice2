@@ -1278,6 +1278,270 @@ async def api_start_finetune(
     }
 
 
+@app.post("/api/finetune/start-zh")
+async def api_start_finetune_zh(
+    speaker: str = Form(...),
+    epochs: int = Form(40),
+    batch_size: int = Form(2),
+    grad_acumm: int = Form(3),
+    max_seconds: float = Form(6.5),
+):
+    """중국어 XTTS 파인튜닝.
+
+    ⚠️ 학습 자료는 finetune_data/_zhds/<speaker> 에 미리 잘라 둔 것을 쓴다.
+       코퀴가 딸려 주는 자르개는 낱말이 `.` `!` `?` 로 끝날 때만 문장을 끊는데
+       Whisper 의 중국어 전사에는 이 부호가 안 붙어 한 조각도 안 나온다
+       (finetune_data/_wordapp/build_zh_dataset.py 로 미리 만든다).
+    ⚠️ 반드시 이 앱 프로세스 안에서 돌려야 한다. 카드가 한 장(10GB)뿐이라
+       학습(7GB)과 추론 엔진(2GB)이 함께 못 올라간다. run_finetune 이
+       학습 직전에 추론 엔진을 내려 자리를 비운다 — 딴 프로세스로 돌리면
+       앱이 쥔 2GB 를 못 내려 반드시 VRAM 이 넘친다.
+    """
+    global finetune_status
+    if finetune_status["running"]:
+        raise HTTPException(409, "이미 파인튜닝이 진행 중입니다")
+
+    ds = os.path.join("finetune_data", "_zhds", speaker)
+    train_csv, eval_csv = f"{ds}/metadata_train.csv", f"{ds}/metadata_eval.csv"
+    if not (os.path.exists(train_csv) and os.path.exists(eval_csv)):
+        raise HTTPException(400, f"학습 자료가 없습니다: {ds}")
+    n_train = sum(1 for _ in open(train_csv, encoding="utf-8")) - 1
+    if n_train < 4:
+        raise HTTPException(400, f"학습 조각이 {n_train}개뿐입니다. 녹음을 더 받아야 합니다.")
+
+    finetune_status = {"running": True, "progress": f"{speaker} 중국어 학습 준비 중...", "result": None}
+
+    async def _run():
+        global finetune_status
+        from tts.finetuner import run_finetune, FINETUNE_DIR
+        import shutil as _sh, time as _t, json as _j
+        try:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base = str(FINETUNE_DIR / f"{speaker}_zh_{stamp}")
+            finetune_status["progress"] = f"{speaker} 학습 중 (조각 {n_train}개, {epochs} 에포크)..."
+            def _train():
+                # 학습 언어 코드는 'zh' — 합성할 때 쓰는 'zh-cn' 과 이름이 다르다
+                return run_finetune(train_csv=train_csv, eval_csv=eval_csv, output_path=base,
+                                    language="zh", num_epochs=epochs,
+                                    batch_size=batch_size, grad_acumm=grad_acumm,
+                                    max_audio_length=int(max_seconds * 22050))
+            t0 = _t.time()
+            r = await asyncio.get_event_loop().run_in_executor(None, _train)
+
+            md = str(FINETUNE_DIR / f"{speaker}_zh_model")
+            os.makedirs(md, exist_ok=True)
+            _sh.copy2(r["model_path"], f"{md}/model.pth")
+            _sh.copy2(r["config_path"], f"{md}/config.json")
+            _sh.copy2(r["vocab_path"], f"{md}/vocab.json")
+            if r.get("speaker_ref"):
+                _sh.copy2(r["speaker_ref"], f"{md}/reference.wav")
+            meta = {"voice_name": f"{speaker}_zh", "language": "zh", "segments": n_train,
+                    "num_epochs": epochs, "created_at": stamp, "minutes": round((_t.time()-t0)/60, 1),
+                    "model_path": f"{md}/model.pth", "config_path": f"{md}/config.json",
+                    "vocab_path": f"{md}/vocab.json", "speaker_ref": f"{md}/reference.wav"}
+            with open(f"{md}/meta.json", "w", encoding="utf-8") as f:
+                _j.dump(meta, f, ensure_ascii=False, indent=2)
+            finetune_status["result"] = meta
+            finetune_status["progress"] = f"완료! → {md}"
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            finetune_status["progress"] = f"실패: {e}"
+            finetune_status["result"] = None
+        finally:
+            finetune_status["running"] = False
+
+    asyncio.create_task(_run())
+    return {"success": True, "message": f"{speaker} 중국어 파인튜닝 시작 (조각 {n_train}개, {epochs} 에포크)"}
+
+
+# ─── 낱말 음성 평가 (가=지금 음성, 다=새 방식) ────────────────────────
+_EVAL_ORDER = """CASE WHEN w.wordset IS NOT NULL AND w.wordset<>'' THEN 0
+                      WHEN w.hsk BETWEEN 1 AND 6 THEN w.hsk ELSE 9 END, w.id"""
+
+def _eval_where(group: str):
+    """묶음 이름(양사…) · hsk1~6 · hsk0(그 밖) · '' 전체"""
+    if not group: return "", ()
+    if group.startswith("hsk"):
+        n = int(group[3:] or 0)
+        if n == 0: return " AND (w.wordset IS NULL OR w.wordset='') AND NOT (w.hsk BETWEEN 1 AND 6)", ()
+        return " AND (w.wordset IS NULL OR w.wordset='') AND w.hsk=?", (n,)
+    return " AND w.wordset=?", (group,)
+
+@app.get("/api/voiceeval/words")
+async def api_voiceeval_words(sex: str = "여", group: str = "", only: str = "unrated",
+                              page: int = 0, size: int = 30, q: str = "",
+                              user: dict = Depends(get_current_user)):
+    """평가 화면 목록. only: unrated(미평가) | rated | all — 새 음성이 만들어진 것만 보인다."""
+    cur_col = "audio1" if sex == "남" else "audio2"
+    wh, args = _eval_where(group)
+    if q: wh += " AND w.chinese LIKE ?"; args += (f"%{q}%",)
+    if only == "unrated": wh += " AND e.rating IS NULL"
+    elif only == "rated": wh += " AND e.rating IS NOT NULL"
+    c = _wdb()
+    base = f"""FROM words w JOIN word_audio_new n ON n.word_id=w.id AND n.sex=? AND n.path IS NOT NULL
+               LEFT JOIN voice_eval e ON e.word_id=w.id AND e.sex=?
+               WHERE COALESCE(w.excluded,0)=0 {wh}"""
+    total = c.execute(f"SELECT COUNT(*) {base}", (sex, sex) + args).fetchone()[0]
+    rows = c.execute(f"""SELECT w.id, w.chinese, w.pinyin, w.meaning_ko, w.wordset, w.hsk,
+                                w.{cur_col} AS cur, n.path AS new, n.model, n.spoken, n.dur,
+                                e.rating, e.comment
+                         {base} ORDER BY {_EVAL_ORDER} LIMIT ? OFFSET ?""",
+                     (sex, sex) + args + (size, page * size)).fetchall()
+    def url(p): return ("/" + p) if p else None
+    items = [dict(id=r["id"], chinese=r["chinese"], pinyin=r["pinyin"], meaning=r["meaning_ko"],
+                  wordset=r["wordset"], hsk=r["hsk"], cur=url(r["cur"]), new=url(r["new"]),
+                  model=r["model"], spoken=r["spoken"], dur=r["dur"],
+                  rating=r["rating"], comment=r["comment"] or "") for r in rows]
+    c.close()
+    return {"total": total, "items": items}
+
+@app.get("/api/voiceeval/stats")
+async def api_voiceeval_stats(sex: str = "여", user: dict = Depends(get_current_user)):
+    c = _wdb()
+    total = c.execute("SELECT COUNT(*) FROM words WHERE COALESCE(excluded,0)=0").fetchone()[0]
+    gen = c.execute("SELECT COUNT(*) FROM word_audio_new WHERE sex=? AND path IS NOT NULL", (sex,)).fetchone()[0]
+    fail = c.execute("SELECT COUNT(*) FROM word_audio_new WHERE sex=? AND path IS NULL", (sex,)).fetchone()[0]
+    by = dict(c.execute("SELECT rating, COUNT(*) FROM voice_eval WHERE sex=? AND rating IS NOT NULL GROUP BY rating", (sex,)).fetchall())
+    c.close()
+    return {"total": total, "generated": gen, "failed": fail,
+            "rated": sum(by.values()), "good": by.get(3, 0), "soso": by.get(2, 0), "bad": by.get(1, 0)}
+
+@app.post("/api/voiceeval/rate")
+async def api_voiceeval_rate(request: Request, user: dict = Depends(get_current_user)):
+    d = await request.json()
+    wid, sex = int(d["word_id"]), d.get("sex", "여")
+    rating = d.get("rating"); comment = (d.get("comment") or "").strip()
+    c = _wdb()
+    c.execute("""INSERT INTO voice_eval(word_id,sex,rating,comment,updated_at)
+                 VALUES(?,?,?,?,CURRENT_TIMESTAMP)
+                 ON CONFLICT(word_id,sex) DO UPDATE SET rating=excluded.rating,
+                 comment=excluded.comment, updated_at=CURRENT_TIMESTAMP""",
+              (wid, sex, rating, comment))
+    c.commit(); c.close()
+    return {"ok": True}
+
+@app.get("/api/voiceeval/quick")
+async def api_voiceeval_quick(user: dict = Depends(get_current_user)):
+    c = _wdb()
+    items = [r[0] for r in c.execute("SELECT text FROM eval_quick_comments ORDER BY seq, id")]
+    c.close(); return {"items": items}
+
+@app.put("/api/voiceeval/quick")
+async def api_voiceeval_quick_put(request: Request, user: dict = Depends(get_current_user)):
+    """자주 쓰는 코멘트를 통째로 갈아 끼운다 (순서 = 목록 순서)."""
+    d = await request.json()
+    items = [str(x).strip() for x in d.get("items", []) if str(x).strip()][:20]
+    c = _wdb()
+    c.execute("DELETE FROM eval_quick_comments")
+    c.executemany("INSERT INTO eval_quick_comments(seq,text) VALUES(?,?)", list(enumerate(items)))
+    c.commit(); c.close()
+    return {"ok": True, "items": items}
+
+@app.get("/voiceeval")
+async def voiceeval_page():
+    return FileResponse("frontend/voiceeval.html")
+
+
+# ─── 사진 속 중국어 읽기 (OCR) ────────────────────────────────────
+_OCR_LANGS = "chi_sim"
+
+def _ocr_lines(img):
+    """tesseract 로 줄마다 글월과 자리를 얻는다.
+    ⚠️ 중국어는 낱말 사이가 안 띄어져 있어 tesseract 의 'word' 는 줄 토막에 가깝다.
+       그래서 줄 단위로 받아 jieba 로 낱말을 나누고, 자리는 글자 수로 나눠 잡는다
+       (한자는 폭이 고르므로 가로쓰기에서는 이 어림이 잘 맞는다)."""
+    import pytesseract
+    from pytesseract import Output
+    d = pytesseract.image_to_data(img, lang=_OCR_LANGS, config="--psm 6",
+                                  output_type=Output.DICT)
+    lines = {}
+    for i in range(len(d["text"])):
+        txt = (d["text"][i] or "").strip()
+        if not txt or int(d.get("conf", [0])[i] or 0) < 30:
+            continue
+        key = (d["block_num"][i], d["par_num"][i], d["line_num"][i])
+        x, y, w, h = d["left"][i], d["top"][i], d["width"][i], d["height"][i]
+        e = lines.setdefault(key, {"text": "", "x0": x, "y0": y, "x1": x + w, "y1": y + h})
+        e["text"] += txt
+        e["x0"] = min(e["x0"], x); e["y0"] = min(e["y0"], y)
+        e["x1"] = max(e["x1"], x + w); e["y1"] = max(e["y1"], y + h)
+    return [v for v in lines.values() if _HANZI_RE.search(v["text"])]
+
+_HANZI_RE = re.compile(r"[一-鿿]")
+
+def _ocr_lookup(tok: str):
+    """낱말 하나 → 병음·뜻·학습 낱말 번호. 우리 DB 먼저, 없으면 CC-CEDICT, 그다음 글자별."""
+    from pypinyin import pinyin as _py, Style as _St
+    py = " ".join(x[0] for x in _py(tok, style=_St.TONE))
+    c = _wdb()
+    r = c.execute("""SELECT id, pinyin, meaning_ko FROM words
+                     WHERE chinese=? AND COALESCE(excluded,0)=0 LIMIT 1""", (tok,)).fetchone()
+    if r:
+        c.close()
+        return {"id": r["id"], "pinyin": r["pinyin"] or py, "meaning": r["meaning_ko"] or "", "src": "학습"}
+    ko = ""
+    rows = c.execute("SELECT ko FROM char_ko WHERE char=?", (tok,)).fetchall() if len(tok) == 1 else []
+    if rows: ko = rows[0]["ko"] or ""
+    if not ko and len(tok) > 1:                       # 글자별 뜻을 이어 붙여 짐작을 돕는다
+        parts = []
+        for ch in tok:
+            rr = c.execute("SELECT ko FROM char_ko WHERE char=?", (ch,)).fetchone()
+            if rr and rr["ko"]: parts.append(f"{ch} {rr['ko'].split(',')[0]}")
+        ko = " · ".join(parts)
+    c.close()
+    en = _cedict.get(tok, "")
+    return {"id": None, "pinyin": py, "meaning": ko or en, "src": "사전" if (ko or en) else ""}
+
+@app.post("/api/ocr/chinese")
+async def api_ocr_chinese(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """사진 속 중국어를 읽어 **낱말마다 자리와 뜻**을 준다.
+       화면에서 그 자리를 누르면 낱말 학습으로 이어진다."""
+    import io, jieba
+    from PIL import Image, ImageOps
+    raw = await file.read()
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(413, "사진이 너무 큽니다 (12MB 넘음)")
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img = ImageOps.exif_transpose(img).convert("L")     # 찍은 방향 바로잡고 흑백으로
+    except Exception:
+        raise HTTPException(400, "사진을 열 수 없습니다")
+    W, H = img.size
+    scale = 1.0
+    if max(W, H) > 2000:                                    # 너무 크면 줄여 빠르게
+        scale = 2000 / max(W, H)
+        img = img.resize((int(W * scale), int(H * scale)))
+    ocr = await asyncio.get_event_loop().run_in_executor(None, _ocr_lines, img)
+
+    tokens = []
+    for ln in ocr:
+        text = ln["text"]
+        n = len(text)
+        if not n: continue
+        lw = (ln["x1"] - ln["x0"]) / n                      # 글자 하나 너비 어림
+        pos = 0
+        for tok in jieba.cut(text):
+            k = len(tok)
+            if _HANZI_RE.search(tok):
+                info = _ocr_lookup(tok)
+                tokens.append({
+                    "text": tok, **info,
+                    "box": [round((ln["x0"] + lw * pos) / scale), round(ln["y0"] / scale),
+                            round(lw * k / scale), round((ln["y1"] - ln["y0"]) / scale)],
+                })
+            pos += k
+    return {"width": W, "height": H,
+            "lines": [{"text": l["text"],
+                       "box": [round(l["x0"] / scale), round(l["y0"] / scale),
+                               round((l["x1"] - l["x0"]) / scale), round((l["y1"] - l["y0"]) / scale)]}
+                      for l in ocr],
+            "tokens": tokens}
+
+@app.get("/camera")
+async def camera_page():
+    return FileResponse("frontend/camera.html")
+
+
 @app.get("/api/finetune/status")
 async def api_finetune_status():
     """파인튜닝 진행 상태 조회"""
@@ -5590,6 +5854,66 @@ async def reading_items(request: Request, subject: str = "", week: int = 0, clas
                     "ko": r["meaning_ko"] or "", "options_ko": opk,
                     "py": r["passage_py"] or "", "options_py": opp})
     return {"items": out}
+
+
+# ─── 신HSK 문제 꾸러미 API ──────────────────────────────
+# 교안은 슬라이드라서 지문·물음·보기가 여러 쪽에 흩어져 있다.
+# scripts/hsk_build.py 가 그걸 한 문제로 되살려 hsk_questions 에 담아 둔다.
+def _jarr(s):
+    try:
+        v = json.loads(s) if s else []
+        return v if isinstance(v, list) else []
+    except Exception:
+        return []
+
+
+@app.get("/api/chinese/questions")
+async def hsk_questions(request: Request, subject: str = "", week: int = 0, class_num: int = 0):
+    """한 교시의 문제들 — 빈칸 채우기·순서 맞추기·답 고르기."""
+    c = _wdb()
+    try:
+        cond, args = [], []
+        if subject:   cond.append("subject=?");   args.append(subject)
+        if week:      cond.append("week=?");      args.append(week)
+        if class_num: cond.append("class_num=?"); args.append(class_num)
+        where = (" WHERE " + " AND ".join(cond)) if cond else ""
+        rows = c.execute(f"""SELECT * FROM hsk_questions{where}
+                             ORDER BY week, class_num, sort_order, id""", args).fetchall()
+    except Exception:
+        return {"questions": []}
+    finally:
+        c.close()
+    # 교안 원본을 바로 펼 수 있게, 절대 쪽번호를 그 교시 안에서의 차례로 바꿔 준다
+    starts = {(x["subject"], x["week"], x["class_num"]): x["start_page"]
+              for x in _load_sections()}
+    out = []
+    for r in rows:
+        d = dict(r)
+        for k in ("options", "options_ko", "options_py", "grammar", "turns"):
+            d[k] = _jarr(d.get(k))
+        sp = starts.get((d["subject"], d["week"], d["class_num"]))
+        d["page_idx"] = (d["page"] - 1 - sp) if (sp is not None and d.get("page")) else -1
+        out.append(d)
+    return {"questions": out}
+
+
+@app.post("/api/chinese/question/{qid}/answer")
+async def hsk_question_answer(qid: int, request: Request):
+    """AI가 고른 답이 틀렸을 때 손으로 바로잡는다. 'manual' 은 다시 만들어도 살아남는다."""
+    body = await request.json()
+    ans = str(body.get("answer", "")).strip().upper()[:6]
+    if not re.fullmatch(r"[A-F]{1,6}", ans or ""):
+        raise HTTPException(400, "정답은 A~F 글자여야 합니다")
+    c = _wdb()
+    try:
+        cur = c.execute("""UPDATE hsk_questions SET answer=?, answer_src='manual',
+                           updated_at=datetime('now') WHERE id=?""", (ans, qid))
+        c.commit()
+        if not cur.rowcount:
+            raise HTTPException(404, "문제를 찾을 수 없습니다")
+    finally:
+        c.close()
+    return {"ok": True, "answer": ans, "answer_src": "manual"}
 
 
 # ─── 교안 뷰어 API ──────────────────────────────────────

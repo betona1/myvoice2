@@ -333,7 +333,7 @@ function toast(t){ const h=document.getElementById('hint'); h.textContent=t; h.s
 
 /* ── 설정 ── */
 const S=Object.assign({cat:'',hsk:0,order:'seq',only:'',spd:5000,snd:1,off:0,subject:'',week:0,cls:0,voice:2,
-                       course:0,wordset:'',exsnd:1,rep:3,repgap:5000,exgap:2000,spdM:0.9,spdF:1.1},
+                       course:0,wordset:'',exsnd:1,rep:3,repgap:5000,exgap:2000,spdM:0.85,spdF:0.95},
   JSON.parse(localStorage.getItem('flash_set')||'{}'));
 // 주소로 넘어온 값이 있으면 그걸 우선한다 (/flash?course=4, /flash?liangci=1)
 (function(){ const q=new URLSearchParams(location.search);
@@ -710,7 +710,7 @@ function sayWord(e, voice){                   // voice 1=남 2=여
    파일은 그대로 두고 재생할 때만 바꾸므로, 음성을 다시 만들 필요가 없다. */
 function rateFor(src){
   const m = String(src||'').includes('audio1');
-  const v = m ? (S.spdM||0.9) : (S.spdF||1.1);
+  const v = m ? (S.spdM||0.85) : (S.spdF||0.95);
   return Math.max(0.5, Math.min(2, v));
 }
 function setRate(voice, v){
@@ -720,7 +720,7 @@ function setRate(voice, v){
   if(AU){ try{ AU.playbackRate = rateFor(AU.src); }catch(e){} }   // 듣는 중이면 바로 반영
 }
 function paintRate(){
-  for(const [id,tid,v] of [['fSpM','fSpMT',S.spdM||0.9], ['fSpF','fSpFT',S.spdF||1.1]]){
+  for(const [id,tid,v] of [['fSpM','fSpMT',S.spdM||0.85], ['fSpF','fSpFT',S.spdF||0.95]]){
     const e=document.getElementById(id), t=document.getElementById(tid);
     if(e) e.value=v;
     if(t) t.textContent=v.toFixed(2)+'배';

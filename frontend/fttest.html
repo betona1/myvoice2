@@ -1,0 +1,104 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>새 목소리 세 가지 듣고 고르기</title>
+<style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font-family:system-ui,"Noto Sans KR",sans-serif;
+     background:#f6f6f8;color:#181818;max-width:820px;margin:0 auto}
+h1{font-size:1.3rem;margin:.2em 0 .4em}
+p.lead{color:#555;font-size:.94rem;margin:.2em 0 1em;line-height:1.6}
+.sexbar{display:flex;gap:8px;margin:0 0 14px}
+.sexbar button{flex:1;padding:11px;border:0;border-radius:10px;font-size:1rem;
+   font-weight:700;cursor:pointer;background:#e6e6ec;color:#555;font-family:inherit}
+.sexbar button.on{background:#2563eb;color:#fff}
+.leg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;font-size:.82rem}
+.leg span{padding:5px 10px;border-radius:999px;font-weight:600}
+.l1{background:#e9e9ee;color:#444}.l2{background:#dcfce7;color:#166534}
+.l3{background:#fee2e2;color:#991b1b}
+.row{background:#fff;border:1px solid #e4e4ea;border-radius:12px;padding:11px 13px;margin-bottom:9px}
+.zh{font-size:1.5rem;font-weight:600;margin-bottom:8px;line-height:1.35}
+.zh.s{font-size:1.1rem;font-weight:500}
+.btns{display:flex;gap:7px;flex-wrap:wrap}
+button.p{border:0;border-radius:9px;padding:9px 16px;font-size:.95rem;font-weight:700;
+   cursor:pointer;font-family:inherit}
+.b1{background:#e9e9ee;color:#444}.b2{background:#dcfce7;color:#166534}
+.b3{background:#fee2e2;color:#991b1b}
+button.p:active{transform:scale(.96)}
+.playing{outline:3px solid #f59e0b;outline-offset:1px}
+.note{margin-top:20px;padding:13px;background:#fffbeb;border:1px solid #fde68a;
+   border-radius:10px;font-size:.9rem;line-height:1.65;color:#78350f}
+.note b{display:block;margin-bottom:3px}
+.note + .note{margin-top:10px}
+@media (prefers-color-scheme:dark){
+ body{background:#161619;color:#eee}.row{background:#212125;border-color:#32323a}
+ p.lead{color:#aaa}.b1,.l1{background:#32323a;color:#ccc}
+ .b2,.l2{background:#14532d;color:#bbf7d0}.b3,.l3{background:#4c1d1d;color:#fecaca}
+ .sexbar button{background:#2a2a30;color:#bbb}
+ .note{background:#2a2410;border-color:#57430f;color:#fde68a}}
+</style></head><body>
+<h1>새 목소리 세 가지 듣고 고르기</h1>
+<p class="lead">올려 주신 이한·리리 녹음으로 만든 결과입니다.
+같은 낱말을 세 가지 방식으로 만들었으니 잇달아 들어 보시고
+<b>가·나·다</b> 로 알려 주세요.</p>
+
+<div class="sexbar">
+  <button id="bm" class="on" onclick="setSex('남')">남 · 이한</button>
+  <button id="bf" onclick="setSex('여')">여 · 리리</button>
+</div>
+<div class="leg">
+  <span class="l1">가 · 지금 쓰는 목소리</span>
+  <span class="l2">나 · 새 녹음 목소리만 본뜸</span>
+  <span class="l3">다 · 새 녹음으로 학습</span>
+</div>
+<div id="list"></div>
+
+<div class="note"><b>먼저 말씀드릴 것</b>
+<b>다</b>(학습한 것)는 짧은 낱말에서 말을 안 멈추고 딴소리를 이어 붙입니다.
+`那些` 를 시켰더니 "那些我们对着一大堆…" 하고 계속 말합니다.
+학습 조각이 전부 3~6초라 모델이 "3초는 넘게 말해야 한다"고 배운 탓입니다.
+녹음 2분에 조각 17~24개면 외워 버리기 딱 좋은 양입니다.</div>
+
+<div class="note"><b>기계로 먼저 훑은 결과</b>
+26개(낱말 13 × 남녀)를 받아쓰기로 맞춰 봤습니다.
+<b>가</b> 2개 어긋남 · <b>나</b> 5개 · <b>다</b> 6개.
+다만 한 글자짜리(二·张·哪)는 받아쓰기가 원래 못 맞히니 셈에서 빼고 들으셔야 합니다.
+<b>다</b>의 어긋남은 그것과 달리 여러 글자에서도 나므로 진짜 흠입니다.</div>
+
+<div class="note"><b>들으실 때</b>
+① 목소리가 이한·리리 님과 닮았는가 &nbsp;② 성조가 제대로 오르내리는가
+&nbsp;③ 군더더기 소리가 붙지 않는가<br>
+<b>나</b>가 낫다고 하시면 바로 5,500개를 그 목소리로 다시 만들 수 있습니다.
+<b>다</b>를 살리고 싶으시면 짧은 낱말도 섞어 다시 학습해야 하니 녹음을 더 받는 편이 좋습니다.</div>
+
+<script>
+const W=['哪','哪儿','张','些','那些','很','个','二','会','点',
+         '材料','妈妈','什么','一点儿','图书馆',
+         '我们明天去图书馆看书。','这个问题有点儿难，但是我会努力。'];
+const K=[['old','가','b1'],['clone','나','b2'],['new','다','b3']];
+let sex='남', cur=null;
+function draw(){
+  document.getElementById('list').innerHTML=W.map((t,i)=>{
+    const n=String(i).padStart(2,'0');
+    return `<div class="row"><div class="zh${t.length>4?' s':''}">${t}</div><div class="btns">`+
+      K.map(([k,lab,cls])=>`<button class="p ${cls}" data-s="/outputs/chinese/_fttest/${n}_${encodeURIComponent(sex)}_${k}.wav">${lab}</button>`).join('')+
+      `</div></div>`;
+  }).join('');
+}
+function setSex(s){
+  sex=s;
+  document.getElementById('bm').classList.toggle('on', s==='남');
+  document.getElementById('bf').classList.toggle('on', s==='여');
+  if(cur){cur.a.pause(); cur=null;}
+  draw();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button[data-s]'); if(!b) return;
+  if(cur){cur.a.pause(); cur.b.classList.remove('playing');}
+  const a=new Audio(b.dataset.s); b.classList.add('playing');
+  a.onended=()=>b.classList.remove('playing');
+  a.play().catch(()=>b.classList.remove('playing'));
+  cur={a,b};
+});
+draw();
+</script></body></html>

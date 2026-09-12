@@ -49,3 +49,10 @@ fugashi>=1.3.0
 unidic-lite>=1.0.8
 Levenshtein>=0.21.0
 pandas
+
+# 2026-08-28 누락 복구 — 이미지 빌드 시 빠져 있어 런타임에 조용히 실패하던 것들
+translators           # /api/chinese/translate 한국어 번역 (없으면 해석이 빈칸으로 나옴)
+gspread               # /api/sheets/* 구글시트 교안 연동
+google-auth-oauthlib  # 구글시트 OAuth 플로우
+pytesseract        # 단어앱 카메라 검색 OCR (tesseract 바인딩)
+jieba              # 촬영 검색·문제 지문의 한자 끊기 (/api/words/ocr, 문제풀이 낱말 나누기)

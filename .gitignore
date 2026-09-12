@@ -27,3 +27,8 @@ promo_tts_script.txt
 database/voices.db*
 database/.admin_hash*
 database/*.DAMAGED.*
+
+# 음성 만들기·검사 스크립트는 올린다 (finetune_data 는 통째로 빼되 예외)
+!finetune_data/_wordapp/
+!finetune_data/_wordapp/*.py
+!temp/*.sh

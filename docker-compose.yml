@@ -20,6 +20,7 @@ services:
       - ./temp:/app/temp
       - ./diarize_temp:/app/diarize_temp
       - ./main.py:/app/main.py:ro
+      - ./scripts:/app/scripts:ro
       - ./auth:/app/auth:ro
       - ./tts:/app/tts:ro
       - ./library:/app/library:ro

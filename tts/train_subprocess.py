@@ -1,5 +1,6 @@
 """GPU 2에 격리해서 XTTS 학습만 도는 서브프로세스 entrypoint."""
 import sys, json, os, traceback
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 def main():
     payload_path = sys.argv[1]
